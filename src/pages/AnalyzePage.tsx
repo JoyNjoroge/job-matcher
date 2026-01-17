@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { FileSearch, Link as LinkIcon, FileText } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { FileSearch, Link as LinkIcon, FileText, X, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -8,20 +8,48 @@ import { FileUpload } from "@/components/FileUpload";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { analyzeJob } from "@/api";
 import { cn } from "@/lib/utils";
+import type { Job, AnalysisResult } from "@/types";
 
 type InputMode = "description" | "url";
 
+const FIT_SCORE_THRESHOLD = 70;
+
+interface LocationState {
+  selectedJob?: Job;
+}
+
 export default function AnalyzePage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const state = location.state as LocationState | null;
+  
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [inputMode, setInputMode] = useState<InputMode>("description");
   const [jobDescription, setJobDescription] = useState("");
   const [jobUrl, setJobUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+
+  // Handle job coming from Search page
+  useEffect(() => {
+    if (state?.selectedJob) {
+      setSelectedJob(state.selectedJob);
+      setJobDescription(state.selectedJob.description);
+      // Clear the location state to prevent re-filling on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [state?.selectedJob]);
+
+  const clearSelectedJob = () => {
+    setSelectedJob(null);
+    setJobDescription("");
+    setAnalysisResult(null);
+  };
 
   const canSubmit =
-    cvFile && (inputMode === "description" ? jobDescription.trim() : jobUrl.trim());
+    cvFile && (selectedJob || (inputMode === "description" ? jobDescription.trim() : jobUrl.trim()));
 
   const handleSubmit = async () => {
     if (!cvFile) return;
@@ -31,17 +59,31 @@ export default function AnalyzePage() {
 
     try {
       const result = await analyzeJob(cvFile, {
-        job_description: inputMode === "description" ? jobDescription : undefined,
-        job_url: inputMode === "url" ? jobUrl : undefined,
+        job_description: selectedJob ? selectedJob.description : (inputMode === "description" ? jobDescription : undefined),
+        job_url: !selectedJob && inputMode === "url" ? jobUrl : undefined,
       });
 
-      navigate("/results", { state: { analysis: result } });
+      setAnalysisResult(result);
+      navigate("/results", { 
+        state: { 
+          analysis: result,
+          job: selectedJob 
+        } 
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to analyze job");
     } finally {
       setIsLoading(false);
     }
   };
+
+  const handleProceedToApply = () => {
+    if (selectedJob && analysisResult) {
+      navigate("/apply", { state: { job: selectedJob, analysis: analysisResult } });
+    }
+  };
+
+  const showProceedToApply = selectedJob && analysisResult && analysisResult.fit_score >= FIT_SCORE_THRESHOLD;
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -69,49 +111,76 @@ export default function AnalyzePage() {
           <label className="block text-sm font-medium text-foreground mb-3">
             Job Details
           </label>
-          
-          {/* Input Mode Toggle */}
-          <div className="flex gap-2 mb-4">
-            <button
-              onClick={() => setInputMode("description")}
-              className={cn(
-                "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors",
-                inputMode === "description"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <FileText className="h-4 w-4" />
-              Paste Description
-            </button>
-            <button
-              onClick={() => setInputMode("url")}
-              className={cn(
-                "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors",
-                inputMode === "url"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <LinkIcon className="h-4 w-4" />
-              Job URL
-            </button>
-          </div>
 
-          {inputMode === "description" ? (
-            <Textarea
-              placeholder="Paste the job description here..."
-              value={jobDescription}
-              onChange={(e) => setJobDescription(e.target.value)}
-              className="min-h-[200px] resize-none"
-            />
+          {/* Selected Job from Search */}
+          {selectedJob ? (
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="font-medium text-foreground">{selectedJob.title}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedJob.company} • {selectedJob.location}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
+                    {selectedJob.description}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={clearSelectedJob}
+                  className="flex-shrink-0"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           ) : (
-            <Input
-              type="url"
-              placeholder="https://company.com/jobs/position"
-              value={jobUrl}
-              onChange={(e) => setJobUrl(e.target.value)}
-            />
+            <>
+              {/* Input Mode Toggle */}
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => setInputMode("description")}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+                    inputMode === "description"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <FileText className="h-4 w-4" />
+                  Paste Description
+                </button>
+                <button
+                  onClick={() => setInputMode("url")}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+                    inputMode === "url"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <LinkIcon className="h-4 w-4" />
+                  Job URL
+                </button>
+              </div>
+
+              {inputMode === "description" ? (
+                <Textarea
+                  placeholder="Paste the job description here..."
+                  value={jobDescription}
+                  onChange={(e) => setJobDescription(e.target.value)}
+                  className="min-h-[200px] resize-none"
+                />
+              ) : (
+                <Input
+                  type="url"
+                  placeholder="https://company.com/jobs/position"
+                  value={jobUrl}
+                  onChange={(e) => setJobUrl(e.target.value)}
+                />
+              )}
+            </>
           )}
         </section>
 
@@ -138,6 +207,19 @@ export default function AnalyzePage() {
             "Analyze Job"
           )}
         </Button>
+
+        {/* Proceed to Apply - shown after successful analysis with good fit */}
+        {showProceedToApply && (
+          <Button
+            onClick={handleProceedToApply}
+            variant="outline"
+            className="w-full"
+            size="lg"
+          >
+            <ArrowRight className="h-4 w-4 mr-2" />
+            Proceed to Apply (Score: {analysisResult.fit_score}%)
+          </Button>
+        )}
       </div>
     </div>
   );

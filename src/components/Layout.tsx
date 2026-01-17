@@ -1,13 +1,15 @@
 import { Link, useLocation } from "react-router-dom";
-import { FileSearch, LayoutGrid, MessageSquare, Upload, Moon, Sun } from "lucide-react";
+import { FileSearch, LayoutGrid, MessageSquare, Upload, Moon, Sun, Search, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 
 const navItems = [
   { path: "/", label: "Analyze", icon: Upload },
+  { path: "/search", label: "Search Jobs", icon: Search },
   { path: "/board", label: "Applications", icon: LayoutGrid },
   { path: "/prep", label: "Interview Prep", icon: MessageSquare },
+  { path: "/apply", label: "Apply", icon: Send },
 ];
 
 interface LayoutProps {

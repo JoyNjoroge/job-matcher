@@ -9,6 +9,8 @@ import AnalyzePage from "./pages/AnalyzePage";
 import ResultsPage from "./pages/ResultsPage";
 import BoardPage from "./pages/BoardPage";
 import PrepPage from "./pages/PrepPage";
+import SearchPage from "./pages/SearchPage";
+import ApplyPage from "./pages/ApplyPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,8 +26,10 @@ const App = () => (
             <Routes>
               <Route path="/" element={<AnalyzePage />} />
               <Route path="/results" element={<ResultsPage />} />
+              <Route path="/search" element={<SearchPage />} />
               <Route path="/board" element={<BoardPage />} />
               <Route path="/prep" element={<PrepPage />} />
+              <Route path="/apply" element={<ApplyPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Layout>
