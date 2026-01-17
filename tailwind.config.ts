@@ -47,6 +47,11 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        fit: {
+          strong: "hsl(var(--fit-strong))",
+          medium: "hsl(var(--fit-medium))",
+          low: "hsl(var(--fit-low))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
