@@ -3,7 +3,7 @@ import { FileSearch, LayoutGrid, MessageSquare, Upload, Moon, Sun, Search, Send 
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
-
+import { Footer } from "./Footer";
 const navItems = [
   { path: "/analyze", label: "Analyze", icon: Upload },
   { path: "/search", label: "Search Jobs", icon: Search },
@@ -21,7 +21,7 @@ export function Layout({ children }: LayoutProps) {
   const { theme, setTheme } = useTheme();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
@@ -67,9 +67,11 @@ export function Layout({ children }: LayoutProps) {
         </div>
       </header>
       
-      <main className="container py-8">
+      <main className="container py-8 flex-1">
         {children}
       </main>
+      
+      <Footer />
     </div>
   );
 }
