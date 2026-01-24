@@ -5,7 +5,7 @@ import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 
 const navItems = [
-  { path: "/", label: "Analyze", icon: Upload },
+  { path: "/analyze", label: "Analyze", icon: Upload },
   { path: "/search", label: "Search Jobs", icon: Search },
   { path: "/board", label: "Applications", icon: LayoutGrid },
   { path: "/prep", label: "Interview Prep", icon: MessageSquare },
