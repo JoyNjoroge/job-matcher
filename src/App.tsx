@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { Layout } from "./components/Layout";
+import HomePage from "./pages/HomePage";
 import AnalyzePage from "./pages/AnalyzePage";
 import ResultsPage from "./pages/ResultsPage";
 import BoardPage from "./pages/BoardPage";
@@ -24,7 +25,8 @@ const App = () => (
         <BrowserRouter>
           <Layout>
             <Routes>
-              <Route path="/" element={<AnalyzePage />} />
+              <Route path="/" element={<HomePage />} />
+              <Route path="/analyze" element={<AnalyzePage />} />
               <Route path="/results" element={<ResultsPage />} />
               <Route path="/search" element={<SearchPage />} />
               <Route path="/board" element={<BoardPage />} />
