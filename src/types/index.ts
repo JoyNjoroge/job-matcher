@@ -42,6 +42,7 @@ export interface Job {
   location: string;
   description: string;
   apply_link: string;
+  source?: string;
 }
 
 export interface JobSearchParams {
@@ -54,8 +55,26 @@ export interface JobSearchParams {
 export type JobType = "remote" | "onsite" | "hybrid";
 export type ExperienceLevel = "entry" | "mid" | "senior" | "lead";
 
+export type APIStatusType = "success" | "error" | "no_api_key" | "timeout" | "rate_limited";
+
+export interface APIStatus {
+  source: string;
+  status: APIStatusType;
+  jobs_count: number;
+  error_message?: string;
+}
+
+export interface JobSearchSummary {
+  successful_sources: number;
+  total_sources: number;
+  jobs_found: number;
+  duplicates_removed?: number;
+}
+
 export interface JobSearchResponse {
   jobs: Job[];
+  api_status?: APIStatus[];
+  summary?: JobSearchSummary;
 }
 
 // Apply Preparation Types

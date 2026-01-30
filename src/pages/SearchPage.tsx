@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, MapPin, Briefcase } from "lucide-react";
+import { Search, MapPin, Briefcase, CheckCircle2, XCircle, AlertCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { JobCard } from "@/components/JobCard";
@@ -8,7 +8,99 @@ import { JobSearchFilters } from "@/components/JobSearchFilters";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { ErrorState } from "@/components/ErrorState";
 import { searchJobs } from "@/api";
-import type { Job, JobType, ExperienceLevel } from "@/types";
+import type { Job, JobType, ExperienceLevel, APIStatus, JobSearchSummary } from "@/types";
+import { cn } from "@/lib/utils";
+
+function APIStatusIndicator({ status }: { status: APIStatus }) {
+  const getStatusStyles = () => {
+    switch (status.status) {
+      case "success":
+        return "text-primary";
+      case "error":
+        return "text-destructive";
+      case "timeout":
+        return "text-accent-foreground";
+      case "rate_limited":
+        return "text-accent-foreground";
+      case "no_api_key":
+        return "text-muted-foreground";
+      default:
+        return "text-muted-foreground";
+    }
+  };
+
+  const getStatusIcon = () => {
+    const className = cn("h-3.5 w-3.5", getStatusStyles());
+    switch (status.status) {
+      case "success":
+        return <CheckCircle2 className={className} />;
+      case "error":
+        return <XCircle className={className} />;
+      case "timeout":
+        return <Clock className={className} />;
+      case "rate_limited":
+        return <AlertCircle className={className} />;
+      case "no_api_key":
+        return <AlertCircle className={className} />;
+      default:
+        return <AlertCircle className={className} />;
+    }
+  };
+
+  const getStatusText = () => {
+    switch (status.status) {
+      case "success":
+        return `${status.jobs_count} jobs`;
+      case "error":
+        return "Error";
+      case "timeout":
+        return "Timeout";
+      case "rate_limited":
+        return "Rate limited";
+      case "no_api_key":
+        return "Not configured";
+      default:
+        return status.status;
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-1.5 text-xs">
+      {getStatusIcon()}
+      <span className="capitalize font-medium">{status.source}</span>
+      <span className="text-muted-foreground">({getStatusText()})</span>
+    </div>
+  );
+}
+
+function SearchSummary({ 
+  summary, 
+  apiStatuses 
+}: { 
+  summary: JobSearchSummary; 
+  apiStatuses: APIStatus[];
+}) {
+  return (
+    <div className="bg-muted/50 rounded-lg p-4 mb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-foreground">
+            Found {summary.jobs_found} job{summary.jobs_found !== 1 ? "s" : ""}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {summary.successful_sources}/{summary.total_sources} sources responded
+            {summary.duplicates_removed ? ` • ${summary.duplicates_removed} duplicates removed` : ""}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          {apiStatuses.map((status) => (
+            <APIStatusIndicator key={status.source} status={status} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function SearchPage() {
   const navigate = useNavigate();
@@ -17,6 +109,8 @@ export default function SearchPage() {
   const [selectedJobTypes, setSelectedJobTypes] = useState<JobType[]>([]);
   const [selectedExperienceLevels, setSelectedExperienceLevels] = useState<ExperienceLevel[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [apiStatuses, setApiStatuses] = useState<APIStatus[]>([]);
+  const [summary, setSummary] = useState<JobSearchSummary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
@@ -36,9 +130,13 @@ export default function SearchPage() {
         experience_level: selectedExperienceLevels.length > 0 ? selectedExperienceLevels : undefined,
       });
       setJobs(result.jobs);
+      setApiStatuses(result.api_status || []);
+      setSummary(result.summary || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to search jobs");
       setJobs([]);
+      setApiStatuses([]);
+      setSummary(null);
     } finally {
       setIsLoading(false);
     }
@@ -119,9 +217,14 @@ export default function SearchPage() {
       {error && <ErrorState message={error} onRetry={handleSearch} />}
 
       {isLoading && (
-        <div className="flex items-center justify-center py-16">
+        <div className="flex flex-col items-center justify-center py-16 gap-4">
           <LoadingSpinner size="lg" />
+          <p className="text-sm text-muted-foreground">Searching across multiple job sources...</p>
         </div>
+      )}
+
+      {!isLoading && !error && hasSearched && summary && apiStatuses.length > 0 && (
+        <SearchSummary summary={summary} apiStatuses={apiStatuses} />
       )}
 
       {!isLoading && !error && hasSearched && jobs.length === 0 && (
@@ -137,15 +240,10 @@ export default function SearchPage() {
       )}
 
       {!isLoading && !error && jobs.length > 0 && (
-        <div>
-          <p className="text-sm text-muted-foreground mb-4">
-            Found {jobs.length} job{jobs.length !== 1 ? "s" : ""}
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {jobs.map((job) => (
-              <JobCard key={job.id} job={job} onCheckFit={handleCheckFit} />
-            ))}
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {jobs.map((job) => (
+            <JobCard key={job.id} job={job} onCheckFit={handleCheckFit} />
+          ))}
         </div>
       )}
 

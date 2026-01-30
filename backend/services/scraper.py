@@ -1,13 +1,47 @@
 """
 Scraper Service - Handles job listing scraping and search using real APIs.
 Integrates with JSearch (RapidAPI), Adzuna, and SerpAPI for job listings.
+Includes comprehensive error handling and logging.
 """
 
 import os
 import uuid
 import requests
+import logging
 from bs4 import BeautifulSoup
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
+from dataclasses import dataclass, asdict
+from enum import Enum
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+class APIStatus(Enum):
+    SUCCESS = "success"
+    ERROR = "error"
+    NO_KEY = "no_api_key"
+    TIMEOUT = "timeout"
+    RATE_LIMITED = "rate_limited"
+
+
+@dataclass
+class APIResult:
+    """Result from an individual API call."""
+    source: str
+    status: APIStatus
+    jobs: List[dict]
+    error_message: Optional[str] = None
+    jobs_count: int = 0
+    
+    def to_dict(self) -> dict:
+        return {
+            "source": self.source,
+            "status": self.status.value,
+            "jobs_count": self.jobs_count,
+            "error_message": self.error_message
+        }
 
 
 def scrape_job_description(url: str) -> str:
@@ -58,8 +92,14 @@ def scrape_job_description(url: str) -> str:
         
         return ""
     
+    except requests.Timeout:
+        logger.warning(f"Timeout scraping {url}")
+        return ""
+    except requests.RequestException as e:
+        logger.warning(f"Request error scraping {url}: {e}")
+        return ""
     except Exception as e:
-        print(f"Scraping error for {url}: {e}")
+        logger.error(f"Unexpected error scraping {url}: {e}")
         return ""
 
 
@@ -68,13 +108,21 @@ def search_jobs_jsearch(
     location: str = "",
     job_types: Optional[List[str]] = None,
     experience_levels: Optional[List[str]] = None
-) -> List[dict]:
+) -> APIResult:
     """
     Search jobs using JSearch API (RapidAPI).
+    Returns APIResult with status and jobs.
     """
     api_key = os.getenv("JSEARCH_API_KEY")
+    
     if not api_key:
-        return []
+        logger.info("JSearch API key not configured")
+        return APIResult(
+            source="jsearch",
+            status=APIStatus.NO_KEY,
+            jobs=[],
+            error_message="API key not configured"
+        )
     
     try:
         url = "https://jsearch.p.rapidapi.com/search"
@@ -110,7 +158,19 @@ def search_jobs_jsearch(
             "X-RapidAPI-Host": "jsearch.p.rapidapi.com"
         }
         
+        logger.info(f"JSearch API request: query='{search_query}'")
         response = requests.get(url, headers=headers, params=params, timeout=15)
+        
+        # Handle rate limiting
+        if response.status_code == 429:
+            logger.warning("JSearch API rate limited")
+            return APIResult(
+                source="jsearch",
+                status=APIStatus.RATE_LIMITED,
+                jobs=[],
+                error_message="Rate limit exceeded"
+            )
+        
         response.raise_for_status()
         data = response.json()
         
@@ -126,11 +186,38 @@ def search_jobs_jsearch(
                 "source": "jsearch"
             })
         
-        return jobs
+        logger.info(f"JSearch API returned {len(jobs)} jobs")
+        return APIResult(
+            source="jsearch",
+            status=APIStatus.SUCCESS,
+            jobs=jobs,
+            jobs_count=len(jobs)
+        )
         
+    except requests.Timeout:
+        logger.error("JSearch API timeout")
+        return APIResult(
+            source="jsearch",
+            status=APIStatus.TIMEOUT,
+            jobs=[],
+            error_message="Request timed out"
+        )
+    except requests.RequestException as e:
+        logger.error(f"JSearch API request error: {e}")
+        return APIResult(
+            source="jsearch",
+            status=APIStatus.ERROR,
+            jobs=[],
+            error_message=str(e)
+        )
     except Exception as e:
-        print(f"JSearch API error: {e}")
-        return []
+        logger.error(f"JSearch API unexpected error: {e}")
+        return APIResult(
+            source="jsearch",
+            status=APIStatus.ERROR,
+            jobs=[],
+            error_message=f"Unexpected error: {str(e)}"
+        )
 
 
 def search_jobs_adzuna(
@@ -138,15 +225,22 @@ def search_jobs_adzuna(
     location: str = "",
     job_types: Optional[List[str]] = None,
     experience_levels: Optional[List[str]] = None
-) -> List[dict]:
+) -> APIResult:
     """
     Search jobs using Adzuna API.
+    Returns APIResult with status and jobs.
     """
     app_id = os.getenv("ADZUNA_APP_ID")
     app_key = os.getenv("ADZUNA_APP_KEY")
     
     if not app_id or not app_key:
-        return []
+        logger.info("Adzuna API credentials not configured")
+        return APIResult(
+            source="adzuna",
+            status=APIStatus.NO_KEY,
+            jobs=[],
+            error_message="API credentials not configured"
+        )
     
     try:
         # Default to US, could be made configurable
@@ -165,7 +259,19 @@ def search_jobs_adzuna(
         if location:
             params["where"] = location
         
+        logger.info(f"Adzuna API request: query='{query}', location='{location}'")
         response = requests.get(url, params=params, timeout=15)
+        
+        # Handle rate limiting
+        if response.status_code == 429:
+            logger.warning("Adzuna API rate limited")
+            return APIResult(
+                source="adzuna",
+                status=APIStatus.RATE_LIMITED,
+                jobs=[],
+                error_message="Rate limit exceeded"
+            )
+        
         response.raise_for_status()
         data = response.json()
         
@@ -181,11 +287,38 @@ def search_jobs_adzuna(
                 "source": "adzuna"
             })
         
-        return jobs
+        logger.info(f"Adzuna API returned {len(jobs)} jobs")
+        return APIResult(
+            source="adzuna",
+            status=APIStatus.SUCCESS,
+            jobs=jobs,
+            jobs_count=len(jobs)
+        )
         
+    except requests.Timeout:
+        logger.error("Adzuna API timeout")
+        return APIResult(
+            source="adzuna",
+            status=APIStatus.TIMEOUT,
+            jobs=[],
+            error_message="Request timed out"
+        )
+    except requests.RequestException as e:
+        logger.error(f"Adzuna API request error: {e}")
+        return APIResult(
+            source="adzuna",
+            status=APIStatus.ERROR,
+            jobs=[],
+            error_message=str(e)
+        )
     except Exception as e:
-        print(f"Adzuna API error: {e}")
-        return []
+        logger.error(f"Adzuna API unexpected error: {e}")
+        return APIResult(
+            source="adzuna",
+            status=APIStatus.ERROR,
+            jobs=[],
+            error_message=f"Unexpected error: {str(e)}"
+        )
 
 
 def search_jobs_serpapi(
@@ -193,13 +326,21 @@ def search_jobs_serpapi(
     location: str = "",
     job_types: Optional[List[str]] = None,
     experience_levels: Optional[List[str]] = None
-) -> List[dict]:
+) -> APIResult:
     """
     Search jobs using SerpAPI (Google Jobs).
+    Returns APIResult with status and jobs.
     """
     api_key = os.getenv("SERPAPI_KEY")
+    
     if not api_key:
-        return []
+        logger.info("SerpAPI key not configured")
+        return APIResult(
+            source="serpapi",
+            status=APIStatus.NO_KEY,
+            jobs=[],
+            error_message="API key not configured"
+        )
     
     try:
         url = "https://serpapi.com/search"
@@ -214,9 +355,31 @@ def search_jobs_serpapi(
         if location:
             params["location"] = location
         
+        logger.info(f"SerpAPI request: query='{query}', location='{location}'")
         response = requests.get(url, params=params, timeout=15)
+        
+        # Handle rate limiting
+        if response.status_code == 429:
+            logger.warning("SerpAPI rate limited")
+            return APIResult(
+                source="serpapi",
+                status=APIStatus.RATE_LIMITED,
+                jobs=[],
+                error_message="Rate limit exceeded"
+            )
+        
         response.raise_for_status()
         data = response.json()
+        
+        # Check for API errors in response
+        if "error" in data:
+            logger.error(f"SerpAPI error response: {data['error']}")
+            return APIResult(
+                source="serpapi",
+                status=APIStatus.ERROR,
+                jobs=[],
+                error_message=data["error"]
+            )
         
         jobs = []
         for job in data.get("jobs_results", [])[:10]:
@@ -233,11 +396,38 @@ def search_jobs_serpapi(
                 "source": "serpapi"
             })
         
-        return jobs
+        logger.info(f"SerpAPI returned {len(jobs)} jobs")
+        return APIResult(
+            source="serpapi",
+            status=APIStatus.SUCCESS,
+            jobs=jobs,
+            jobs_count=len(jobs)
+        )
         
+    except requests.Timeout:
+        logger.error("SerpAPI timeout")
+        return APIResult(
+            source="serpapi",
+            status=APIStatus.TIMEOUT,
+            jobs=[],
+            error_message="Request timed out"
+        )
+    except requests.RequestException as e:
+        logger.error(f"SerpAPI request error: {e}")
+        return APIResult(
+            source="serpapi",
+            status=APIStatus.ERROR,
+            jobs=[],
+            error_message=str(e)
+        )
     except Exception as e:
-        print(f"SerpAPI error: {e}")
-        return []
+        logger.error(f"SerpAPI unexpected error: {e}")
+        return APIResult(
+            source="serpapi",
+            status=APIStatus.ERROR,
+            jobs=[],
+            error_message=f"Unexpected error: {str(e)}"
+        )
 
 
 def search_jobs(
@@ -245,10 +435,10 @@ def search_jobs(
     location: str = "",
     job_types: Optional[List[str]] = None,
     experience_levels: Optional[List[str]] = None
-) -> List[dict]:
+) -> Dict[str, Any]:
     """
     Search for job listings using multiple APIs.
-    Tries JSearch first, falls back to Adzuna, then SerpAPI.
+    Returns jobs along with API status information for each source.
     
     Args:
         query: Search keywords
@@ -257,23 +447,25 @@ def search_jobs(
         experience_levels: List of experience levels
     
     Returns:
-        List of job dictionaries
+        Dictionary with jobs list and api_status for each source
     """
+    logger.info(f"Starting job search: query='{query}', location='{location}'")
+    
     all_jobs = []
+    api_statuses = []
     
-    # Try JSearch API first
-    jsearch_jobs = search_jobs_jsearch(query, location, job_types, experience_levels)
-    all_jobs.extend(jsearch_jobs)
+    # Try all APIs and collect results
+    jsearch_result = search_jobs_jsearch(query, location, job_types, experience_levels)
+    api_statuses.append(jsearch_result.to_dict())
+    all_jobs.extend(jsearch_result.jobs)
     
-    # If not enough results, try Adzuna
-    if len(all_jobs) < 5:
-        adzuna_jobs = search_jobs_adzuna(query, location, job_types, experience_levels)
-        all_jobs.extend(adzuna_jobs)
+    adzuna_result = search_jobs_adzuna(query, location, job_types, experience_levels)
+    api_statuses.append(adzuna_result.to_dict())
+    all_jobs.extend(adzuna_result.jobs)
     
-    # If still not enough, try SerpAPI
-    if len(all_jobs) < 5:
-        serpapi_jobs = search_jobs_serpapi(query, location, job_types, experience_levels)
-        all_jobs.extend(serpapi_jobs)
+    serpapi_result = search_jobs_serpapi(query, location, job_types, experience_levels)
+    api_statuses.append(serpapi_result.to_dict())
+    all_jobs.extend(serpapi_result.jobs)
     
     # Deduplicate by title + company
     seen = set()
@@ -284,4 +476,23 @@ def search_jobs(
             seen.add(key)
             unique_jobs.append(job)
     
-    return unique_jobs[:15]  # Return max 15 jobs
+    # Calculate summary
+    successful_apis = sum(1 for s in api_statuses if s["status"] == "success")
+    total_before_dedup = len(all_jobs)
+    total_after_dedup = len(unique_jobs[:15])
+    
+    logger.info(
+        f"Job search complete: {successful_apis}/3 APIs succeeded, "
+        f"{total_before_dedup} jobs found, {total_after_dedup} unique jobs returned"
+    )
+    
+    return {
+        "jobs": unique_jobs[:15],
+        "api_status": api_statuses,
+        "summary": {
+            "successful_sources": successful_apis,
+            "total_sources": 3,
+            "jobs_found": total_after_dedup,
+            "duplicates_removed": total_before_dedup - total_after_dedup
+        }
+    }
