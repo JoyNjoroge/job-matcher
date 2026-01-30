@@ -45,7 +45,7 @@ export default function SearchPage() {
   };
 
   const handleCheckFit = (job: Job) => {
-    navigate("/", { state: { selectedJob: job } });
+    navigate("/analyze", { state: { selectedJob: job } });
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
