@@ -2,11 +2,32 @@
 Analyze route - CV and job description analysis endpoint.
 """
 
+import re
 from flask import Blueprint, request, jsonify
 from services.parser import parse_cv
 from services.gemini import analyze_job_fit
 
 analyze_bp = Blueprint("analyze", __name__)
+
+
+def clean_text(text):
+    """Clean and validate text input."""
+    if not text:
+        return ""
+    # Remove HTML tags
+    cleaned = re.sub(r'<[^>]*>', '', str(text))
+    # Normalize whitespace
+    cleaned = ' '.join(cleaned.split())
+    return cleaned.strip()
+
+
+def validate_content(content, content_type="content", min_length=50):
+    """Validate that content is not null and meets minimum requirements."""
+    if not content:
+        return False, f"{content_type} is empty or null"
+    if len(content.strip()) < min_length:
+        return False, f"{content_type} is too short (minimum {min_length} characters)"
+    return True, None
 
 
 @analyze_bp.route("/analyze", methods=["POST"])
@@ -32,30 +53,43 @@ def analyze():
             return jsonify({"error": "CV file is required"}), 400
         
         cv_file = request.files["cv"]
-        job_description = request.form.get("job_description", "")
-        job_url = request.form.get("job_url", "")
+        
+        if not cv_file.filename:
+            return jsonify({"error": "CV file is required"}), 400
+        
+        job_description = clean_text(request.form.get("job_description", ""))
+        job_url = request.form.get("job_url", "").strip()
         
         # Parse CV content
         cv_content = parse_cv(cv_file)
         
-        if not cv_content:
-            return jsonify({"error": "Failed to parse CV"}), 400
+        # Validate CV content
+        is_valid, error_msg = validate_content(cv_content, "CV content", 100)
+        if not is_valid:
+            return jsonify({"error": f"Unable to analyze: {error_msg}. Please ensure your CV is readable and contains sufficient text."}), 400
         
         # If job_url provided but no description, scrape it
         if job_url and not job_description:
             from services.scraper import scrape_job_description
-            job_description = scrape_job_description(job_url)
+            job_description = clean_text(scrape_job_description(job_url))
         
-        if not job_description:
-            return jsonify({"error": "Job description or URL is required"}), 400
+        # Validate job description
+        is_valid, error_msg = validate_content(job_description, "Job description", 50)
+        if not is_valid:
+            return jsonify({"error": f"Unable to analyze: {error_msg}. Please provide a complete job description."}), 400
         
         # Analyze with Gemini
         result = analyze_job_fit(cv_content, job_description)
         
+        # Validate result
+        if result.get("strengths", [""])[0] == "Unable to analyze - please try again":
+            return jsonify({"error": "Unable to analyze this job. Please try again or check your inputs."}), 500
+        
         return jsonify(result)
     
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"Analyze error: {e}")
+        return jsonify({"error": f"Unable to analyze: {str(e)}"}), 500
 
 
 @analyze_bp.route("/extension/analyze", methods=["POST"])
@@ -76,12 +110,14 @@ def analyze_from_extension():
         if not data:
             return jsonify({"error": "JSON payload required"}), 400
         
-        job_title = data.get("job_title", "")
-        company = data.get("company", "")
-        job_description = data.get("job_description", "")
+        job_title = clean_text(data.get("job_title", ""))
+        company = clean_text(data.get("company", ""))
+        job_description = clean_text(data.get("job_description", ""))
         
-        if not job_description:
-            return jsonify({"error": "Job description is required"}), 400
+        # Validate job description
+        is_valid, error_msg = validate_content(job_description, "Job description", 50)
+        if not is_valid:
+            return jsonify({"error": f"Unable to analyze: {error_msg}"}), 400
         
         # For extension analysis, we use a stored CV or require it to be set up
         # This is a simplified version - you'd typically fetch the user's stored CV
@@ -95,4 +131,5 @@ def analyze_from_extension():
         return jsonify(result)
     
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"Extension analyze error: {e}")
+        return jsonify({"error": f"Unable to analyze: {str(e)}"}), 500

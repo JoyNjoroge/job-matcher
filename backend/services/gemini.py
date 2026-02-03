@@ -128,48 +128,131 @@ def generate_application_materials(job_id: str, cv_content: str = "", job_descri
         }
 
 
-def generate_interview_prep(application_id: str, job_title: str = "", company: str = "", job_description: str = "") -> dict:
+def generate_interview_prep(application_id: str, job_title: str = "", company: str = "", job_description: str = "", cv_text: str = "") -> dict:
     """
-    Generate interview preparation materials.
+    Generate interview preparation materials based on CV and job description.
     
     Args:
         application_id: The application identifier
         job_title: Optional job title
         company: Optional company name
-        job_description: Optional job description
+        job_description: Required job description
+        cv_text: Optional CV content for personalization
     
     Returns:
         dict with questions list
     """
+    # Input validation
+    if not job_description or len(job_description.strip()) < 50:
+        return {
+            "questions": [],
+            "error": "Job description is required and must be at least 50 characters"
+        }
+    
     model = get_model()
     
+    # Build a more detailed prompt when CV is available
+    cv_section = ""
+    if cv_text and len(cv_text.strip()) > 50:
+        cv_section = f"""
+    Candidate's CV/Resume:
+    {cv_text[:3000]}  # Limit CV text to prevent token overflow
+    
+    Focus on the overlap between the candidate's experience and the job requirements.
+    """
+    
     prompt = f"""
-    You are an expert interview coach. Generate interview preparation materials for a candidate.
+    You are an expert interview coach. Generate 5 interview preparation questions for a candidate.
     
-    {f"Job Title: {job_title}" if job_title else ""}
-    {f"Company: {company}" if company else ""}
-    {f"Job Description: {job_description}" if job_description else ""}
+    Job Title: {job_title if job_title else "Not specified"}
+    Company: {company if company else "Not specified"}
     
-    Provide 5-7 likely interview questions in the following JSON format:
+    Job Description:
+    {job_description[:4000]}  # Limit to prevent token overflow
+    {cv_section}
+    
+    Generate exactly 5 questions that are likely to be asked in an interview for this position.
+    Include a mix of:
+    - 2 behavioral questions (STAR format situations)
+    - 2 technical/role-specific questions
+    - 1 situational/problem-solving question
+    
+    Provide your response in the following JSON format only, no other text:
     {{
         "questions": [
             {{
-                "question": "<interview question>",
-                "what_they_test": "<what this question evaluates>",
-                "talking_points": ["<point 1>", "<point 2>", "<point 3>"]
+                "question": "<the interview question>",
+                "what_they_test": "<what skill or trait this question evaluates>",
+                "talking_points": ["<suggested answer point 1>", "<suggested answer point 2>", "<suggested answer point 3>"]
             }}
         ]
     }}
     
-    Include a mix of behavioral, technical, and situational questions. Only return valid JSON.
+    Make the talking points specific and actionable. Only return valid JSON.
     """
     
     try:
         response = model.generate_content(prompt)
-        result = json.loads(response.text)
+        response_text = response.text.strip()
         
+        # Try to extract JSON from the response
+        import re
+        json_match = re.search(r'\{[\s\S]*\}', response_text)
+        if json_match:
+            response_text = json_match.group()
+        
+        result = json.loads(response_text)
+        
+        questions = result.get("questions", [])
+        if not questions:
+            raise ValueError("No questions in response")
+        
+        # Ensure we have exactly 5 questions with valid structure
+        validated_questions = []
+        for q in questions[:5]:
+            if isinstance(q, dict) and q.get("question"):
+                validated_questions.append({
+                    "question": str(q.get("question", "")),
+                    "what_they_test": str(q.get("what_they_test", "General assessment")),
+                    "talking_points": [str(tp) for tp in q.get("talking_points", ["Prepare your response"])[:4]]
+                })
+        
+        if len(validated_questions) < 3:
+            raise ValueError("Too few valid questions generated")
+        
+        return {"questions": validated_questions}
+        
+    except json.JSONDecodeError as e:
+        print(f"Gemini JSON parse error: {e}")
+        print(f"Response was: {response.text[:500] if response else 'No response'}")
         return {
-            "questions": result.get("questions", [])[:7]
+            "questions": [
+                {
+                    "question": "Tell me about yourself and your experience relevant to this role.",
+                    "what_they_test": "Communication and self-presentation",
+                    "talking_points": ["Professional background summary", "Key achievements relevant to the role", "Why you're interested in this position"]
+                },
+                {
+                    "question": "What interests you about this position?",
+                    "what_they_test": "Motivation and company research",
+                    "talking_points": ["Specific aspects of the role that excite you", "How it aligns with your career goals", "What you know about the company"]
+                },
+                {
+                    "question": "Describe a challenging situation you faced and how you handled it.",
+                    "what_they_test": "Problem-solving and resilience",
+                    "talking_points": ["Situation context", "Actions you took", "Results achieved"]
+                },
+                {
+                    "question": "Where do you see yourself in 5 years?",
+                    "what_they_test": "Career planning and ambition",
+                    "talking_points": ["Growth trajectory", "Skills you want to develop", "How this role fits your plans"]
+                },
+                {
+                    "question": "Do you have any questions for us?",
+                    "what_they_test": "Engagement and preparation",
+                    "talking_points": ["Ask about team culture", "Inquire about growth opportunities", "Ask about success metrics"]
+                }
+            ]
         }
     except Exception as e:
         print(f"Gemini interview prep error: {e}")

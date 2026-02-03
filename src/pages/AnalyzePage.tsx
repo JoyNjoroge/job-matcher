@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { FileSearch, Link as LinkIcon, FileText, X, ArrowRight } from "lucide-react";
+import { FileSearch, Link as LinkIcon, FileText, X, ArrowRight, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { FileUpload } from "@/components/FileUpload";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { ApplyConfirmationModal } from "@/components/ApplyConfirmationModal";
+import { useApplications } from "@/contexts/ApplicationContext";
 import { analyzeJob } from "@/api";
 import { cn } from "@/lib/utils";
 import type { Job, AnalysisResult } from "@/types";
@@ -22,8 +24,10 @@ export default function AnalyzePage() {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as LocationState | null;
+  const { addApplication, applications } = useApplications();
   
   const [cvFile, setCvFile] = useState<File | null>(null);
+  const [cvText, setCvText] = useState<string>("");
   const [inputMode, setInputMode] = useState<InputMode>("description");
   const [jobDescription, setJobDescription] = useState("");
   const [jobUrl, setJobUrl] = useState("");
@@ -31,6 +35,7 @@ export default function AnalyzePage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [showApplyModal, setShowApplyModal] = useState(false);
 
   // Handle job coming from Search page
   useEffect(() => {
@@ -51,6 +56,22 @@ export default function AnalyzePage() {
   const canSubmit =
     cvFile && (selectedJob || (inputMode === "description" ? jobDescription.trim() : jobUrl.trim()));
 
+  const isAlreadyApplied = selectedJob && applications.some(
+    (app) => app.job.id === selectedJob.id || (app.job.title === selectedJob.title && app.job.company === selectedJob.company)
+  );
+
+  // Read CV text when file is selected
+  useEffect(() => {
+    if (cvFile) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        // Store raw text for context (actual parsing happens on backend)
+        setCvText(e.target?.result as string || "");
+      };
+      reader.readAsText(cvFile);
+    }
+  }, [cvFile]);
+
   const handleSubmit = async () => {
     if (!cvFile) return;
 
@@ -67,19 +88,28 @@ export default function AnalyzePage() {
       navigate("/results", { 
         state: { 
           analysis: result,
-          job: selectedJob 
+          job: selectedJob,
+          cvText: cvText 
         } 
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to analyze job");
+      setError(err instanceof Error ? err.message : "Failed to analyze job. Please check your inputs and try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleProceedToApply = () => {
-    if (selectedJob && analysisResult) {
-      navigate("/apply", { state: { job: selectedJob, analysis: analysisResult } });
+  const handleApplyClick = () => {
+    if (selectedJob) {
+      window.open(selectedJob.apply_link, "_blank", "noopener,noreferrer");
+      setShowApplyModal(true);
+    }
+  };
+
+  const handleConfirmApplication = () => {
+    if (selectedJob) {
+      addApplication(selectedJob, analysisResult || undefined, cvText);
+      setShowApplyModal(false);
     }
   };
 
@@ -209,18 +239,31 @@ export default function AnalyzePage() {
         </Button>
 
         {/* Proceed to Apply - shown after successful analysis with good fit */}
-        {showProceedToApply && (
+        {showProceedToApply && !isAlreadyApplied && (
           <Button
-            onClick={handleProceedToApply}
+            onClick={handleApplyClick}
             variant="outline"
             className="w-full"
             size="lg"
           >
-            <ArrowRight className="h-4 w-4 mr-2" />
-            Proceed to Apply (Score: {analysisResult.fit_score}%)
+            <Send className="h-4 w-4 mr-2" />
+            Apply Now (Score: {analysisResult.fit_score}%)
           </Button>
         )}
+        
+        {isAlreadyApplied && (
+          <div className="text-center text-sm text-muted-foreground bg-muted/50 rounded-lg py-3">
+            You've already applied to this position
+          </div>
+        )}
       </div>
+
+      <ApplyConfirmationModal
+        job={selectedJob}
+        isOpen={showApplyModal}
+        onClose={() => setShowApplyModal(false)}
+        onConfirm={handleConfirmApplication}
+      />
     </div>
   );
 }

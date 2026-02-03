@@ -1,15 +1,16 @@
 import { Link, useLocation } from "react-router-dom";
-import { FileSearch, LayoutGrid, MessageSquare, Upload, Moon, Sun, Search, Send } from "lucide-react";
+import { FileSearch, LayoutGrid, MessageSquare, Upload, Moon, Sun, Search, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Footer } from "./Footer";
+import { useApplications } from "@/contexts/ApplicationContext";
+
 const navItems = [
   { path: "/analyze", label: "Analyze", icon: Upload },
   { path: "/search", label: "Search Jobs", icon: Search },
-  { path: "/board", label: "Applications", icon: LayoutGrid },
+  { path: "/applications", label: "My Applications", icon: ClipboardList, showBadge: true },
   { path: "/prep", label: "Interview Prep", icon: MessageSquare },
-  { path: "/apply", label: "Apply", icon: Send },
 ];
 
 interface LayoutProps {
@@ -19,6 +20,7 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const { theme, setTheme } = useTheme();
+  const { applications } = useApplications();
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -48,6 +50,11 @@ export function Layout({ children }: LayoutProps) {
                   >
                     <Icon className="h-4 w-4" />
                     {item.label}
+                    {item.showBadge && applications.length > 0 && (
+                      <span className="ml-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary/20 px-1.5 text-xs font-medium text-primary">
+                        {applications.length}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
