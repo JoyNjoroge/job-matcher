@@ -1,72 +1,52 @@
 import { useState, useEffect } from "react";
-import { MessageSquare, ChevronDown } from "lucide-react";
-import { InterviewQuestion } from "@/components/InterviewQuestion";
-import { LoadingState } from "@/components/LoadingSpinner";
-import { ErrorState } from "@/components/ErrorState";
-import { getInterviewPrep, getApplications } from "@/api";
-import type { InterviewPrepData, Application } from "@/types";
+import { useLocation } from "react-router-dom";
+import { MessageSquare, ChevronDown, AlertCircle } from "lucide-react";
+import { useApplications, TrackedApplication } from "@/contexts/ApplicationContext";
+import { InterviewPrepPanel } from "@/components/InterviewPrepPanel";
 import { cn } from "@/lib/utils";
 
+interface LocationState {
+  applicationId?: string;
+}
+
 export default function PrepPage() {
-  const [applications, setApplications] = useState<Application[]>([]);
-  const [selectedApp, setSelectedApp] = useState<Application | null>(null);
-  const [prepData, setPrepData] = useState<InterviewPrepData | null>(null);
-  const [isLoadingApps, setIsLoadingApps] = useState(true);
-  const [isLoadingPrep, setIsLoadingPrep] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const location = useLocation();
+  const state = location.state as LocationState | null;
+  const { interviewReadyApplications, getApplicationById } = useApplications();
+  
+  const [selectedApp, setSelectedApp] = useState<TrackedApplication | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
+  // Handle navigation from applications table
   useEffect(() => {
-    async function fetchApps() {
-      try {
-        const data = await getApplications();
-        setApplications(data);
-        if (data.length > 0) {
-          setSelectedApp(data[0]);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load applications");
-      } finally {
-        setIsLoadingApps(false);
+    if (state?.applicationId) {
+      const app = getApplicationById(state.applicationId);
+      if (app) {
+        setSelectedApp(app);
       }
+      // Clear the location state
+      window.history.replaceState({}, document.title);
+    } else if (interviewReadyApplications.length > 0 && !selectedApp) {
+      setSelectedApp(interviewReadyApplications[0]);
     }
-    fetchApps();
-  }, []);
+  }, [state?.applicationId, interviewReadyApplications, getApplicationById, selectedApp]);
 
-  useEffect(() => {
-    if (!selectedApp) return;
-
-    async function fetchPrep() {
-      setIsLoadingPrep(true);
-      setError(null);
-      try {
-        const data = await getInterviewPrep(selectedApp!.id);
-        setPrepData(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load prep data");
-      } finally {
-        setIsLoadingPrep(false);
-      }
-    }
-    fetchPrep();
-  }, [selectedApp]);
-
-  if (isLoadingApps) {
-    return <LoadingState message="Loading applications..." />;
-  }
-
-  if (applications.length === 0) {
+  if (interviewReadyApplications.length === 0) {
     return (
       <div className="max-w-2xl mx-auto text-center py-16">
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted mx-auto mb-4">
           <MessageSquare className="h-7 w-7 text-muted-foreground" />
         </div>
         <h2 className="text-xl font-semibold text-foreground mb-2">
-          No Applications Yet
+          No Applications Selected for Interview
         </h2>
-        <p className="text-muted-foreground">
-          Analyze a job first to prepare for interviews
+        <p className="text-muted-foreground mb-4">
+          Go to your Applications page and check "Selected for Interview" on applications you want to prepare for.
         </p>
+        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg p-4">
+          <AlertCircle className="h-4 w-4" />
+          <span>Tip: Click the checkbox in the "Interview" column to select applications</span>
+        </div>
       </div>
     );
   }
@@ -81,68 +61,54 @@ export default function PrepPage() {
           <div>
             <h1 className="text-2xl font-bold text-foreground">Interview Prep</h1>
             <p className="text-sm text-muted-foreground">
-              Practice questions and talking points
+              AI-generated questions based on job & CV
             </p>
           </div>
         </div>
 
         {/* Application Selector */}
-        <div className="relative">
-          <button
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
-          >
-            <span className="max-w-[200px] truncate">
-              {selectedApp?.job_title} at {selectedApp?.company}
-            </span>
-            <ChevronDown
-              className={cn(
-                "h-4 w-4 text-muted-foreground transition-transform",
-                isDropdownOpen && "rotate-180"
-              )}
-            />
-          </button>
+        {interviewReadyApplications.length > 1 && (
+          <div className="relative">
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+            >
+              <span className="max-w-[200px] truncate">
+                {selectedApp?.job.title} at {selectedApp?.job.company}
+              </span>
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 text-muted-foreground transition-transform",
+                  isDropdownOpen && "rotate-180"
+                )}
+              />
+            </button>
 
-          {isDropdownOpen && (
-            <div className="absolute right-0 top-full mt-2 w-72 rounded-lg border border-border bg-card shadow-lg z-10">
-              {applications.map((app) => (
-                <button
-                  key={app.id}
-                  onClick={() => {
-                    setSelectedApp(app);
-                    setIsDropdownOpen(false);
-                  }}
-                  className={cn(
-                    "w-full px-4 py-3 text-left text-sm hover:bg-muted transition-colors first:rounded-t-lg last:rounded-b-lg",
-                    app.id === selectedApp?.id && "bg-muted"
-                  )}
-                >
-                  <p className="font-medium text-foreground truncate">{app.job_title}</p>
-                  <p className="text-muted-foreground truncate">{app.company}</p>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+            {isDropdownOpen && (
+              <div className="absolute right-0 top-full mt-2 w-72 rounded-lg border border-border bg-card shadow-lg z-10">
+                {interviewReadyApplications.map((app) => (
+                  <button
+                    key={app.id}
+                    onClick={() => {
+                      setSelectedApp(app);
+                      setIsDropdownOpen(false);
+                    }}
+                    className={cn(
+                      "w-full px-4 py-3 text-left text-sm hover:bg-muted transition-colors first:rounded-t-lg last:rounded-b-lg",
+                      app.id === selectedApp?.id && "bg-muted"
+                    )}
+                  >
+                    <p className="font-medium text-foreground truncate">{app.job.title}</p>
+                    <p className="text-muted-foreground truncate">{app.job.company}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {isLoadingPrep ? (
-        <LoadingState message="Generating interview prep..." />
-      ) : error ? (
-        <ErrorState message={error} onRetry={() => selectedApp && setSelectedApp({ ...selectedApp })} />
-      ) : prepData ? (
-        <div className="space-y-4">
-          {prepData.questions.map((q, index) => (
-            <InterviewQuestion
-              key={index}
-              index={index}
-              question={q.question}
-              whatTheyTest={q.what_they_test}
-              talkingPoints={q.talking_points}
-            />
-          ))}
-        </div>
-      ) : null}
+      {selectedApp && <InterviewPrepPanel application={selectedApp} />}
     </div>
   );
 }

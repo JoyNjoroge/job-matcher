@@ -8,6 +8,17 @@ from services.gemini import generate_interview_prep
 interview_bp = Blueprint("interview", __name__)
 
 
+def clean_text(text):
+    """Clean and validate text input."""
+    if not text:
+        return ""
+    # Remove excessive whitespace and HTML tags
+    import re
+    cleaned = re.sub(r'<[^>]*>', '', str(text))
+    cleaned = ' '.join(cleaned.split())
+    return cleaned.strip()
+
+
 @interview_bp.route("/interview-prep", methods=["POST"])
 def get_interview_prep():
     """
@@ -15,6 +26,10 @@ def get_interview_prep():
     
     Accepts JSON:
         - application_id: str
+        - job_title: str (optional)
+        - company: str (optional)
+        - job_description: str (required)
+        - cv_text: str (optional)
     
     Returns:
         - questions: list of objects with:
@@ -29,14 +44,32 @@ def get_interview_prep():
             return jsonify({"error": "JSON payload required"}), 400
         
         application_id = data.get("application_id", "")
+        job_title = clean_text(data.get("job_title", ""))
+        company = clean_text(data.get("company", ""))
+        job_description = clean_text(data.get("job_description", ""))
+        cv_text = clean_text(data.get("cv_text", ""))
         
-        if not application_id:
-            return jsonify({"error": "Application ID is required"}), 400
+        # Validate required fields
+        if not job_description:
+            return jsonify({"error": "Job description is required for interview prep"}), 400
         
-        # In production, fetch application details from database
-        result = generate_interview_prep(application_id)
+        if len(job_description) < 50:
+            return jsonify({"error": "Job description is too short. Please provide more details."}), 400
+        
+        result = generate_interview_prep(
+            application_id=application_id,
+            job_title=job_title,
+            company=company,
+            job_description=job_description,
+            cv_text=cv_text
+        )
+        
+        # Validate result
+        if not result.get("questions") or len(result["questions"]) == 0:
+            return jsonify({"error": "Failed to generate interview questions. Please try again."}), 500
         
         return jsonify(result)
     
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"Interview prep error: {e}")
+        return jsonify({"error": f"Unable to generate interview prep: {str(e)}"}), 500
