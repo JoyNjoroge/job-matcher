@@ -11,21 +11,43 @@ import os
 # Load environment variables
 load_dotenv()
 
+# Import config and database
+from config import get_config
+from database import init_db
+
 # Import routes
 from routes.analyze import analyze_bp
 from routes.applications import applications_bp
 from routes.jobs import jobs_bp
 from routes.apply import apply_bp
 from routes.interview import interview_bp
+from routes.auth import auth_bp
+from routes.profile import profile_bp
+from routes.resumes import resumes_bp
+
 
 def create_app():
     """Create and configure the Flask application."""
     app = Flask(__name__)
     
+    # Load configuration
+    config = get_config()
+    app.config.from_object(config)
+    
     # Enable CORS for frontend communication
-    CORS(app, origins=["http://localhost:5173", "http://localhost:8080"])
+    CORS(app, origins=[
+        "http://localhost:5173",
+        "http://localhost:8080",
+        "http://localhost:3000"
+    ], supports_credentials=True)
+    
+    # Initialize database
+    init_db(app)
     
     # Register blueprints
+    app.register_blueprint(auth_bp, url_prefix="/api")
+    app.register_blueprint(profile_bp, url_prefix="/api")
+    app.register_blueprint(resumes_bp, url_prefix="/api")
     app.register_blueprint(analyze_bp, url_prefix="/api")
     app.register_blueprint(applications_bp, url_prefix="/api")
     app.register_blueprint(jobs_bp, url_prefix="/api")
@@ -35,7 +57,19 @@ def create_app():
     @app.route("/api/health")
     def health_check():
         """Health check endpoint."""
-        return {"status": "healthy", "service": "ApplyBot Pro API"}
+        from database import db
+        try:
+            # Test database connection
+            db.session.execute(db.text("SELECT 1"))
+            db_status = "connected"
+        except Exception as e:
+            db_status = f"error: {str(e)}"
+        
+        return {
+            "status": "healthy",
+            "service": "ApplyBot Pro API",
+            "database": db_status
+        }
     
     return app
 
