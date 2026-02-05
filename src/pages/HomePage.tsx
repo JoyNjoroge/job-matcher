@@ -1,7 +1,21 @@
 import { Link } from "react-router-dom";
-import { FileSearch, Search, LayoutGrid, Send, ArrowRight, Sparkles, Target, Zap, CheckCircle } from "lucide-react";
+import {
+  FileSearch,
+  Search,
+  LayoutGrid,
+  Send,
+  ArrowRight,
+  Sparkles,
+  Target,
+  Zap,
+  CheckCircle,
+  Check,
+  Brain,
+  Download,
+  Chrome,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Lottie from "lottie-react";
 
 // Lottie animation data for each feature
@@ -133,22 +147,20 @@ const applyAnimation = {
   layers: [
     {
       ty: 4,
-      nm: "plane",
+      nm: "send",
       sr: 1,
       ks: {
         o: { a: 0, k: 100 },
-        r: { a: 1, k: [{ t: 0, s: [-45], e: [-35] }, { t: 15, s: [-35], e: [-45] }, { t: 30, s: [-45], e: [-55] }, { t: 45, s: [-55], e: [-45] }, { t: 60, s: [-45] }] },
-        p: { a: 1, k: [{ t: 0, s: [50, 50], e: [55, 45] }, { t: 30, s: [55, 45], e: [50, 50] }, { t: 60, s: [50, 50] }] },
+        r: { a: 0, k: 0 },
+        p: { a: 1, k: [{ t: 0, s: [30, 50], e: [70, 30] }, { t: 30, s: [70, 30], e: [30, 50] }, { t: 60, s: [30, 50] }] },
         s: { a: 0, k: [100, 100] }
       },
       shapes: [
         {
-          ty: "sr",
+          ty: "rc",
           p: { a: 0, k: [0, 0] },
-          or: { a: 0, k: 25 },
-          ir: { a: 0, k: 12 },
-          pt: { a: 0, k: 3 },
-          r: { a: 0, k: 0 }
+          s: { a: 0, k: [30, 30] },
+          r: { a: 0, k: 6 }
         },
         {
           ty: "fl",
@@ -205,7 +217,33 @@ const stats = [
   { value: "500+", label: "Jobs Indexed Daily" },
 ];
 
+const extensionSteps = [
+  {
+    step: 1,
+    title: "Install the Extension",
+    description: "Download and install the ApplybotPro extension for your browser",
+  },
+  {
+    step: 2,
+    title: "Click 'Apply' on Any Job",
+    description: "When you find a job you like, click the Apply button to be redirected with tracking",
+  },
+  {
+    step: 3,
+    title: "Auto-Fill Application",
+    description: "On the application page, click the floating ApplybotPro button to automatically fill the form",
+  },
+  {
+    step: 4,
+    title: "Track Your Progress",
+    description: "Mark the job as applied and it will automatically sync to your Applications dashboard",
+  },
+];
+
 export default function HomePage() {
+  const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+  const isFirefox = /Firefox/.test(navigator.userAgent);
+
   return (
     <div className="space-y-24 pb-16">
       {/* Hero Section */}
@@ -241,9 +279,10 @@ export default function HomePage() {
               </Link>
             </Button>
             <Button asChild variant="outline" size="lg" className="gap-2 text-base h-12 px-8">
-              <Link to="/search">
-                Browse Jobs
-              </Link>
+              <a href="#extension-install">
+                <Download className="mr-2 h-4 w-4" />
+                Get Extension
+              </a>
             </Button>
           </div>
         </div>
@@ -310,6 +349,137 @@ export default function HomePage() {
             );
           })}
         </div>
+      </section>
+
+      {/* Browser Extension Section */}
+      <section id="extension-install" className="space-y-8 scroll-mt-20">
+        <div className="text-center space-y-3">
+          <h2 className="text-3xl md:text-4xl font-bold text-foreground">Browser Extension</h2>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Install our extension to automatically fill job applications and track your progress
+          </p>
+        </div>
+
+        {/* Extension Download Card */}
+        <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+          <CardHeader>
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-primary/10">
+                  <Download className="h-8 w-8 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-2xl">ApplybotPro Extension</CardTitle>
+                  <CardDescription className="text-base mt-1">
+                    Smart auto-fill for job applications
+                  </CardDescription>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                {isChrome && (
+                  <Button size="lg" className="gap-2">
+                    <Chrome className="h-5 w-5" />
+                    Install for Chrome
+                  </Button>
+                )}
+                {isFirefox && (
+                  <Button size="lg" className="gap-2">
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 9.75c-.38.38-1 .38-1.38 0l-3.312-3.312-3.312 3.312c-.38.38-1 .38-1.38 0-.38-.38-.38-1 0-1.38L11.31 5.25c.38-.38 1-.38 1.38 0l3.312 3.312 3.312-3.312c.38-.38 1-.38 1.38 0 .38.38.38 1 0 1.38l-3.312 3.312z"/>
+                    </svg>
+                    Install for Firefox
+                  </Button>
+                )}
+                {!isChrome && !isFirefox && (
+                  <>
+                    <Button size="lg" variant="outline" className="gap-2">
+                      <Chrome className="h-5 w-5" />
+                      Chrome
+                    </Button>
+                    <Button size="lg" variant="outline" className="gap-2">
+                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0z"/>
+                      </svg>
+                      Firefox
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <Check className="h-4 w-4 text-primary" />
+                <span>AI Auto-Fill</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Check className="h-4 w-4 text-primary" />
+                <span>Profile Sync</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Check className="h-4 w-4 text-primary" />
+                <span>Auto Tracking</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* How to Use Steps */}
+        <div className="space-y-6">
+          <h3 className="text-xl font-semibold text-center">How to Use the Extension</h3>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {extensionSteps.map((item) => (
+              <Card key={item.step} className="relative">
+                <div className="absolute -top-3 -left-3 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">
+                  {item.step}
+                </div>
+                <CardHeader>
+                  <CardTitle className="text-base">{item.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">{item.description}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {/* Extension Features */}
+        <Card className="bg-muted/50">
+          <CardHeader>
+            <CardTitle>What the Extension Does</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="mt-1 p-1.5 rounded-lg bg-primary/10">
+                <Sparkles className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium">Smart Form Detection</p>
+                <p className="text-sm text-muted-foreground">Automatically detects job application forms and activates when needed</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="mt-1 p-1.5 rounded-lg bg-primary/10">
+                <Brain className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium">AI-Powered Field Matching</p>
+                <p className="text-sm text-muted-foreground">Uses Gemini AI to intelligently match your profile data to form fields</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="mt-1 p-1.5 rounded-lg bg-primary/10">
+                <Target className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium">Application Tracking</p>
+                <p className="text-sm text-muted-foreground">Automatically syncs applied jobs to your dashboard for easy tracking</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </section>
 
       {/* Benefits Section */}

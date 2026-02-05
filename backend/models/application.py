@@ -5,8 +5,7 @@ Job Application model.
 import enum
 from datetime import datetime
 from uuid import uuid4
-from sqlalchemy import Column, String, DateTime, ForeignKey, Boolean, Text, Integer, Enum
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import Column, String, DateTime, ForeignKey, Boolean, Text, Integer, Enum, JSON
 from sqlalchemy.orm import relationship
 from database import db
 
@@ -26,8 +25,8 @@ class JobApplication(db.Model):
     
     __tablename__ = "job_applications"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     
     # Job Info
     job_title = Column(String(255), nullable=False)
@@ -45,7 +44,7 @@ class JobApplication(db.Model):
     # Analysis Results (cached from Gemini)
     fit_score = Column(Integer, nullable=True)
     interview_likelihood = Column(String(20), nullable=True)  # low, medium, high
-    analysis_json = Column(JSONB, default=dict, nullable=False)
+    analysis_json = Column(JSON, default=dict, nullable=False)
     # Structure: {
     #   "strengths": [...],
     #   "gaps": [...],
@@ -57,14 +56,14 @@ class JobApplication(db.Model):
     # }
     
     # Resume used for this application
-    resume_id = Column(UUID(as_uuid=True), ForeignKey("resumes.id", ondelete="SET NULL"), nullable=True)
+    resume_id = Column(String(36), ForeignKey("resumes.id", ondelete="SET NULL"), nullable=True)
     
     # Extension Tracking
     tracked_by_extension = Column(Boolean, default=False, nullable=False)
     
     # Interview Prep
     selected_for_interview = Column(Boolean, default=False, nullable=False)
-    interview_prep_json = Column(JSONB, nullable=True)
+    interview_prep_json = Column(JSON, nullable=True)
     # Structure: {
     #   "questions": [{"question": str, "what_they_test": str, "talking_points": [...]}]
     # }

@@ -4,8 +4,7 @@ User profile model.
 
 from datetime import datetime
 from uuid import uuid4
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text
-from sqlalchemy.dialects.postgresql import UUID, ARRAY
+from sqlalchemy import Column, String, DateTime, ForeignKey, Text, JSON
 from sqlalchemy.orm import relationship
 from database import db
 
@@ -15,8 +14,8 @@ class UserProfile(db.Model):
     
     __tablename__ = "user_profiles"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
     
     # Basic Info
     full_name = Column(String(255), nullable=True)
@@ -24,8 +23,9 @@ class UserProfile(db.Model):
     location = Column(String(255), nullable=True)
     
     # Professional Info
-    job_titles = Column(ARRAY(String), default=list, nullable=False)
-    skills = Column(ARRAY(String), default=list, nullable=False)
+    # Use JSON arrays for job titles and skills to support multiple DB backends
+    job_titles = Column(JSON, default=list, nullable=False)
+    skills = Column(JSON, default=list, nullable=False)
     experience_level = Column(String(50), nullable=True)  # entry, mid, senior, lead, executive
     
     # Social Links

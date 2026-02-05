@@ -15,7 +15,7 @@ if GEMINI_API_KEY:
 
 def get_model():
     """Get the Gemini model instance."""
-    return genai.GenerativeModel("gemini-pro")
+    return genai.GenerativeModel("gemini-3-flash-preview")
 
 
 def analyze_job_fit(cv_content: str, job_description: str, job_title: str = "", company: str = "") -> dict:
@@ -265,3 +265,193 @@ def generate_interview_prep(application_id: str, job_title: str = "", company: s
                 }
             ]
         }
+
+
+# ---------------------- Additional LinkedIn & Resume Helpers ----------------------
+def get_gemini_model():
+    """Alias to existing get_model for compatibility with other utilities."""
+    return get_model()
+
+
+def extract_profile_from_linkedin(linkedin_url: str) -> dict:
+    """
+    Extract profile information from LinkedIn URL.
+    Simple placeholder: recommend manual paste or resume upload.
+    """
+    try:
+        return {
+            "linkedin_url": linkedin_url,
+            "message": "LinkedIn direct scraping is not available. Please upload your resume or manually enter your information.",
+            "alternative": "You can copy your LinkedIn 'About' section and paste it in the summary field."
+        }
+    except Exception as e:
+        print(f"LinkedIn parsing error: {e}")
+        return {}
+
+
+def parse_linkedin_text(linkedin_text: str) -> dict:
+    """
+    Parse copied LinkedIn profile text using Gemini AI and return structured profile data.
+    """
+    try:
+        model = get_gemini_model()
+
+        prompt = f"""
+        Parse this LinkedIn profile text and extract structured information.
+        Return ONLY valid JSON (no markdown, no explanation) with this exact structure:
+        {{
+            "full_name": "string or null",
+            "location": "string or null",
+            "job_titles": ["string"],
+            "skills": ["string"],
+            "experience_level": "entry|mid|senior|lead|executive or null",
+            "summary": "string or null",
+            "current_position": "string or null",
+            "company": "string or null"
+        }}
+
+        LinkedIn profile text:
+        {linkedin_text[:3000]}
+        """
+
+        response = model.generate_content(prompt)
+        response_text = response.text.strip()
+
+        # Remove markdown fences if present
+        if response_text.startswith("```json"):
+            response_text = response_text[7:]
+        if response_text.startswith("```"):
+            response_text = response_text[3:]
+        if response_text.endswith("```"):
+            response_text = response_text[:-3]
+
+        response_text = response_text.strip()
+        parsed = json.loads(response_text)
+        return parsed
+    except json.JSONDecodeError as e:
+        print(f"JSON decode error: {e}")
+        print(f"Response was: {response_text if 'response_text' in locals() else 'no response'}")
+        return {}
+    except Exception as e:
+        print(f"LinkedIn text parsing error: {e}")
+        return {}
+
+
+def analyze_resume_match(resume_text: str, job_description: str) -> dict:
+    """
+    Analyze how well a resume matches a job description and return structured analysis.
+    """
+    try:
+        model = get_gemini_model()
+
+        prompt = f"""
+        Analyze how well this resume matches the job description.
+        Return ONLY valid JSON with this structure:
+        {{
+            "match_score": 0-100,
+            "matching_skills": ["skill1", "skill2"],
+            "missing_skills": ["skill1", "skill2"],
+            "strengths": ["strength1", "strength2"],
+            "recommendations": ["recommendation1", "recommendation2"],
+            "overall_assessment": "brief summary"
+        }}
+
+        Job Description:
+        {job_description[:2000]}
+
+        Resume:
+        {resume_text[:2000]}
+        """
+
+        response = model.generate_content(prompt)
+        response_text = response.text.strip()
+
+        # Clean markdown
+        if response_text.startswith("```json"):
+            response_text = response_text[7:]
+        if response_text.startswith("```"):
+            response_text = response_text[3:]
+        if response_text.endswith("```"):
+            response_text = response_text[:-3]
+
+        response_text = response_text.strip()
+        return json.loads(response_text)
+    except Exception as e:
+        print(f"Resume analysis error: {e}")
+        return {
+            "match_score": 0,
+            "matching_skills": [],
+            "missing_skills": [],
+            "strengths": [],
+            "recommendations": [],
+            "overall_assessment": "Analysis failed"
+        }
+
+
+def generate_cover_letter(resume_text: str, job_description: str, company_name: str) -> str:
+    """
+    Generate a tailored cover letter using Gemini.
+    """
+    try:
+        model = get_gemini_model()
+
+        prompt = f"""
+        Write a professional cover letter for this job application.
+        Make it personalized, enthusiastic, and highlight relevant experience.
+        Keep it concise (3-4 paragraphs, max 300 words).
+
+        Company: {company_name}
+
+        Job Description:
+        {job_description[:1500]}
+
+        Candidate's Resume:
+        {resume_text[:1500]}
+
+        Write the cover letter:
+        """
+
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        print(f"Cover letter generation error: {e}")
+        return ""
+
+
+def prepare_interview_questions(job_description: str, resume_text: str) -> list:
+    """
+    Generate likely interview questions based on job and resume; returns list of strings.
+    """
+    try:
+        model = get_gemini_model()
+
+        prompt = f"""
+        Based on this job description and resume, generate 10 likely interview questions.
+        Return ONLY valid JSON array of strings (no markdown, no explanation):
+        ["Question 1?", "Question 2?", ...]
+
+        Job Description:
+        {job_description[:1500]}
+
+        Resume:
+        {resume_text[:1500]}
+        """
+
+        response = model.generate_content(prompt)
+        response_text = response.text.strip()
+
+        # Clean markdown
+        if response_text.startswith("```json"):
+            response_text = response_text[7:]
+        if response_text.startswith("```"):
+            response_text = response_text[3:]
+        if response_text.endswith("```"):
+            response_text = response_text[:-3]
+
+        response_text = response_text.strip()
+
+        questions = json.loads(response_text)
+        return questions if isinstance(questions, list) else []
+    except Exception as e:
+        print(f"Interview questions generation error: {e}")
+        return []

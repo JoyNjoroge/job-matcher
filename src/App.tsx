@@ -2,10 +2,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { ApplicationProvider } from "./contexts/ApplicationContext";
+import { AuthProvider } from "./contexts/AuthContext";
 import { Layout } from "./components/Layout";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 import HomePage from "./pages/HomePage";
 import AnalyzePage from "./pages/AnalyzePage";
 import ResultsPage from "./pages/ResultsPage";
@@ -14,34 +16,107 @@ import PrepPage from "./pages/PrepPage";
 import SearchPage from "./pages/SearchPage";
 import ApplyPage from "./pages/ApplyPage";
 import ApplicationsPage from "./pages/ApplicationsPage";
+import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
+import AuthPage from "./pages/AuthPage";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <ApplicationProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Layout>
+      <BrowserRouter>
+        <AuthProvider>
+          <ApplicationProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
               <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/analyze" element={<AnalyzePage />} />
-                <Route path="/results" element={<ResultsPage />} />
-                <Route path="/search" element={<SearchPage />} />
-                <Route path="/board" element={<BoardPage />} />
-                <Route path="/applications" element={<ApplicationsPage />} />
-                <Route path="/prep" element={<PrepPage />} />
-                <Route path="/apply" element={<ApplyPage />} />
+                {/* Public Auth Routes - NO Layout, NO Protection */}
+                <Route path="/login" element={<AuthPage mode="login" />} />
+                <Route path="/register" element={<AuthPage mode="register" />} />
+                
+                {/* Protected App Routes - WITH Layout, REQUIRES Auth */}
+                <Route 
+                  path="/" 
+                  element={
+                    <ProtectedRoute>
+                      <Layout><HomePage /></Layout>
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/analyze" 
+                  element={
+                    <ProtectedRoute>
+                      <Layout><AnalyzePage /></Layout>
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/results" 
+                  element={
+                    <ProtectedRoute>
+                      <Layout><ResultsPage /></Layout>
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/search" 
+                  element={
+                    <ProtectedRoute>
+                      <Layout><SearchPage /></Layout>
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/board" 
+                  element={
+                    <ProtectedRoute>
+                      <Layout><BoardPage /></Layout>
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/applications" 
+                  element={
+                    <ProtectedRoute>
+                      <Layout><ApplicationsPage /></Layout>
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/prep" 
+                  element={
+                    <ProtectedRoute>
+                      <Layout><PrepPage /></Layout>
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/apply" 
+                  element={
+                    <ProtectedRoute>
+                      <Layout><ApplyPage /></Layout>
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/profile" 
+                  element={
+                    <ProtectedRoute>
+                      <Layout><ProfilePage /></Layout>
+                    </ProtectedRoute>
+                  } 
+                />
+                
+                {/* 404 */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
-            </Layout>
-          </BrowserRouter>
-        </TooltipProvider>
-      </ApplicationProvider>
+            </TooltipProvider>
+          </ApplicationProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </ThemeProvider>
   </QueryClientProvider>
 );

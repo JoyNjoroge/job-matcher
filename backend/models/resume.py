@@ -4,8 +4,7 @@ Resume model for CV storage and parsing.
 
 from datetime import datetime
 from uuid import uuid4
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Boolean
-from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
+from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Boolean, JSON
 from sqlalchemy.orm import relationship
 from database import db
 
@@ -15,8 +14,8 @@ class Resume(db.Model):
     
     __tablename__ = "resumes"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     
     # File Storage
     original_file_url = Column(String(1000), nullable=True)
@@ -27,7 +26,7 @@ class Resume(db.Model):
     raw_text = Column(Text, nullable=True)
     
     # Parsed Structured Data
-    parsed_json = Column(JSONB, default=dict, nullable=False)
+    parsed_json = Column(JSON, default=dict, nullable=False)
     # Structure: {
     #   "education": [...],
     #   "experience": [...],
@@ -40,7 +39,8 @@ class Resume(db.Model):
     # }
     
     # Embedding for semantic search (stored as array of floats)
-    embedding_vector = Column(ARRAY(db.Float), nullable=True)
+    # Store embedding vectors as JSON arrays for cross-db compatibility
+    embedding_vector = Column(JSON, nullable=True)
     
     # Metadata
     is_primary = Column(Boolean, default=False, nullable=False)

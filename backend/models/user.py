@@ -6,7 +6,6 @@ import enum
 from datetime import datetime
 from uuid import uuid4
 from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Enum
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from database import db
 import bcrypt
@@ -24,7 +23,8 @@ class User(db.Model):
     
     __tablename__ = "users"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    # Use string UUIDs for cross-database compatibility (SQLite vs Postgres)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -76,8 +76,8 @@ class UserRole(db.Model):
     
     __tablename__ = "user_roles"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     role = Column(Enum(RoleType), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     

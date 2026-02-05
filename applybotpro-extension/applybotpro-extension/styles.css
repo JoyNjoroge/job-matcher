@@ -1,0 +1,274 @@
+/* ApplyBotPro Extension Styles */
+
+/* Floating Button */
+.applybotpro-floating-btn {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 16px 24px;
+  border-radius: 50px;
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+  cursor: pointer;
+  z-index: 999999;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.applybotpro-floating-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 30px rgba(102, 126, 234, 0.5);
+}
+
+.applybotpro-btn-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.applybotpro-btn-content svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Main Panel */
+.applybotpro-panel {
+  position: fixed;
+  top: 50%;
+  right: 30px;
+  transform: translateY(-50%);
+  width: 380px;
+  max-height: 600px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 10px 50px rgba(0, 0, 0, 0.15);
+  z-index: 999998;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  overflow: hidden;
+  animation: slideInRight 0.3s ease;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+}
+
+.applybotpro-panel-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.applybotpro-panel-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.applybotpro-close-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.applybotpro-close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.applybotpro-panel-content {
+  padding: 20px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+/* Status Section */
+.applybotpro-status {
+  background: #f8f9fa;
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.applybotpro-status p {
+  margin: 4px 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.applybotpro-user-name {
+  font-weight: 600;
+  color: #333;
+  font-size: 16px !important;
+}
+
+/* Action Buttons */
+.applybotpro-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.applybotpro-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 20px;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.applybotpro-action-btn.primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.applybotpro-action-btn.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.applybotpro-action-btn:not(.primary):not(.success) {
+  background: #f8f9fa;
+  color: #333;
+}
+
+.applybotpro-action-btn:not(.primary):not(.success):hover {
+  background: #e9ecef;
+}
+
+.applybotpro-action-btn.success {
+  background: #28a745;
+  color: white;
+}
+
+.applybotpro-action-btn.success:hover {
+  background: #218838;
+  transform: translateY(-2px);
+}
+
+/* Results Area */
+.applybotpro-results {
+  margin-top: 16px;
+}
+
+.applybotpro-loading,
+.applybotpro-success,
+.applybotpro-error {
+  padding: 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.applybotpro-loading {
+  background: #fff3cd;
+  color: #856404;
+  border-left: 4px solid #ffc107;
+}
+
+.applybotpro-success {
+  background: #d4edda;
+  color: #155724;
+  border-left: 4px solid #28a745;
+}
+
+.applybotpro-error {
+  background: #f8d7da;
+  color: #721c24;
+  border-left: 4px solid #dc3545;
+}
+
+.applybotpro-tip {
+  margin-top: 8px;
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+/* Preview Section */
+.applybotpro-preview {
+  background: #f8f9fa;
+  padding: 16px;
+  border-radius: 10px;
+}
+
+.applybotpro-preview h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.applybotpro-preview pre {
+  background: #fff;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  overflow-x: auto;
+  margin: 0;
+  border: 1px solid #e9ecef;
+}
+
+/* Scrollbar styling */
+.applybotpro-panel-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.applybotpro-panel-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.applybotpro-panel-content::-webkit-scrollbar-thumb {
+  background: #667eea;
+  border-radius: 3px;
+}
+
+.applybotpro-panel-content::-webkit-scrollbar-thumb:hover {
+  background: #764ba2;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .applybotpro-panel {
+    width: calc(100% - 40px);
+    right: 20px;
+    left: 20px;
+  }
+  
+  .applybotpro-floating-btn {
+    right: 20px;
+    bottom: 20px;
+  }
+}

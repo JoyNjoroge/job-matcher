@@ -4,8 +4,7 @@ Freelance Lead model for opportunity discovery.
 
 from datetime import datetime
 from uuid import uuid4
-from sqlalchemy import Column, String, DateTime, Boolean, Text, Float
-from sqlalchemy.dialects.postgresql import UUID, ARRAY
+from sqlalchemy import Column, String, DateTime, Boolean, Text, Float, JSON
 from database import db
 
 
@@ -14,7 +13,7 @@ class FreelanceLead(db.Model):
     
     __tablename__ = "freelance_leads"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
     
     # Source Info
     platform = Column(String(50), nullable=False, index=True)  # linkedin, reddit, twitter
@@ -26,7 +25,8 @@ class FreelanceLead(db.Model):
     original_url = Column(String(2000), nullable=True)
     
     # Analysis
-    detected_skills = Column(ARRAY(String), default=list, nullable=False)
+    # Use JSON array for detected_skills for cross-db compatibility
+    detected_skills = Column(JSON, default=list, nullable=False)
     confidence_score = Column(Float, default=0.0, nullable=False)
     
     # Contact
@@ -63,9 +63,9 @@ class UserSavedLead(db.Model):
     
     __tablename__ = "user_saved_leads"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    lead_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    user_id = Column(String(36), nullable=False, index=True)
+    lead_id = Column(String(36), nullable=False, index=True)
     
     # Status
     contacted = Column(Boolean, default=False, nullable=False)

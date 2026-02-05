@@ -45,7 +45,7 @@ def create_app():
     init_db(app)
     
     # Register blueprints
-    app.register_blueprint(auth_bp, url_prefix="/api")
+    app.register_blueprint(auth_bp, url_prefix="/api/auth")  # FIXED: Added /auth to prefix
     app.register_blueprint(profile_bp, url_prefix="/api")
     app.register_blueprint(resumes_bp, url_prefix="/api")
     app.register_blueprint(analyze_bp, url_prefix="/api")

@@ -1,16 +1,26 @@
 import { Link, useLocation } from "react-router-dom";
-import { FileSearch, LayoutGrid, MessageSquare, Upload, Moon, Sun, Search, ClipboardList } from "lucide-react";
+import { FileSearch, LayoutGrid, MessageSquare, Upload, Moon, Sun, Search, ClipboardList, LogOut, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Footer } from "./Footer";
 import { useApplications } from "@/contexts/ApplicationContext";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const navItems = [
   { path: "/analyze", label: "Analyze", icon: Upload },
   { path: "/search", label: "Search Jobs", icon: Search },
   { path: "/applications", label: "My Applications", icon: ClipboardList, showBadge: true },
   { path: "/prep", label: "Interview Prep", icon: MessageSquare },
+  { path: "/profile", label: "Profile", icon: User },
 ];
 
 interface LayoutProps {
@@ -21,6 +31,7 @@ export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const { theme, setTheme } = useTheme();
   const { applications } = useApplications();
+  const { user, logout } = useAuth();
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -70,6 +81,26 @@ export function Layout({ children }: LayoutProps) {
               <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
               <span className="sr-only">Toggle theme</span>
             </Button>
+
+            {/* User Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9">
+                  <User className="h-4 w-4" />
+                  <span className="sr-only">User menu</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>
+                  {user?.email || "My Account"}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={logout} className="text-destructive cursor-pointer">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Log out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>

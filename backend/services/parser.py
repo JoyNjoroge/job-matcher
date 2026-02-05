@@ -1,5 +1,5 @@
 """
-Parser Service - Handles CV/resume file parsing.
+Parser Service - Enhanced CV/resume file parsing with Gemini AI.
 """
 
 import io
@@ -7,6 +7,8 @@ import re
 import json
 from PyPDF2 import PdfReader
 from docx import Document
+import os
+import google.generativeai as genai
 
 
 def parse_cv(file) -> str:
@@ -28,7 +30,10 @@ def parse_cv(file) -> str:
             return parse_docx(file)
         else:
             # Try to read as plain text
-            return file.read().decode("utf-8")
+            content = file.read()
+            if isinstance(content, bytes):
+                return content.decode("utf-8")
+            return content
     except Exception as e:
         print(f"CV parsing error: {e}")
         return ""
@@ -53,7 +58,7 @@ def parse_resume_file(file, file_ext: str) -> str:
         else:
             content = file.read()
             if isinstance(content, bytes):
-                return content.decode("utf-8")
+                return content.decode("utf-8", errors='ignore')
             return content
     except Exception as e:
         print(f"Resume parsing error: {e}")
@@ -71,6 +76,8 @@ def parse_pdf(file) -> str:
         Extracted text content
     """
     try:
+        # Reset file pointer to beginning
+        file.seek(0)
         reader = PdfReader(io.BytesIO(file.read()))
         text_content = []
         
@@ -96,6 +103,8 @@ def parse_docx(file) -> str:
         Extracted text content
     """
     try:
+        # Reset file pointer to beginning
+        file.seek(0)
         doc = Document(io.BytesIO(file.read()))
         text_content = []
         
@@ -121,8 +130,8 @@ def parse_docx(file) -> str:
 
 def extract_resume_structure(raw_text: str) -> dict:
     """
-    Extract structured data from raw resume text.
-    Uses pattern matching and heuristics.
+    Extract structured data from raw resume text using pattern matching.
+    This is a fallback when Gemini is not available.
     
     Args:
         raw_text: Raw text content from resume
@@ -138,32 +147,50 @@ def extract_resume_structure(raw_text: str) -> dict:
         "tools": [],
         "certifications": [],
         "years_of_experience": None,
-        "seniority_estimation": None,
+        "experience_level": None,
         "summary": None,
+        "full_name": None,
+        "phone": None,
+        "email": None,
+        "location": None,
+        "job_titles": [],
     }
     
     if not raw_text:
         return structure
     
     lines = raw_text.split("\n")
-    current_section = None
     
-    # Common section headers
-    section_patterns = {
-        "education": r"(education|academic|qualification|degree)",
-        "experience": r"(experience|employment|work history|professional)",
-        "skills": r"(skills|technical skills|competencies|expertise)",
-        "projects": r"(projects|portfolio|personal projects)",
-        "certifications": r"(certifications|certificates|licenses)",
-    }
+    # Extract email
+    email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+    emails = re.findall(email_pattern, raw_text)
+    if emails:
+        structure["email"] = emails[0]
+    
+    # Extract phone
+    phone_pattern = r'(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}'
+    phones = re.findall(phone_pattern, raw_text)
+    if phones:
+        structure["phone"] = ''.join(phones[0]) if isinstance(phones[0], tuple) else phones[0]
+    
+    # Try to extract name (usually first line or near top)
+    first_lines = [line.strip() for line in lines[:5] if line.strip()]
+    if first_lines:
+        # Name is usually short, title-cased, and near the top
+        for line in first_lines:
+            if len(line.split()) <= 4 and line[0].isupper() and not any(c.isdigit() for c in line):
+                structure["full_name"] = line
+                break
     
     # Extract skills using common patterns
     skills_patterns = [
-        r"python|javascript|typescript|java|c\+\+|ruby|go|rust|swift|kotlin",
-        r"react|angular|vue|node\.?js|express|django|flask|spring",
-        r"aws|azure|gcp|docker|kubernetes|terraform",
-        r"sql|postgresql|mysql|mongodb|redis",
-        r"git|ci/cd|agile|scrum",
+        r'\b(?:python|javascript|typescript|java|c\+\+|c#|ruby|go|rust|swift|kotlin|php|scala)\b',
+        r'\b(?:react|angular|vue|node\.?js|express|django|flask|spring|laravel)\b',
+        r'\b(?:aws|azure|gcp|docker|kubernetes|terraform|jenkins)\b',
+        r'\b(?:sql|postgresql|mysql|mongodb|redis|elasticsearch)\b',
+        r'\b(?:git|ci/cd|agile|scrum|jira)\b',
+        r'\b(?:html|css|sass|tailwind|bootstrap)\b',
+        r'\b(?:rest|graphql|api|microservices)\b',
     ]
     
     extracted_skills = set()
@@ -173,35 +200,53 @@ def extract_resume_structure(raw_text: str) -> dict:
     
     structure["skills"] = list(extracted_skills)
     
-    # Estimate years of experience
-    year_patterns = re.findall(r"(\d{4})\s*[-–]\s*(\d{4}|present|current)", raw_text.lower())
+    # Estimate years of experience from date ranges
+    year_patterns = re.findall(r'(\d{4})\s*[-–—]\s*(\d{4}|present|current)', raw_text.lower())
     if year_patterns:
         total_years = 0
-        current_year = 2024
+        current_year = 2026
         for start, end in year_patterns:
             start_year = int(start)
             end_year = current_year if end in ["present", "current"] else int(end)
             total_years += max(0, end_year - start_year)
         
-        structure["years_of_experience"] = total_years
+        structure["years_of_experience"] = min(total_years, 50)  # Cap at reasonable max
         
-        # Estimate seniority
+        # Estimate experience level
         if total_years < 2:
-            structure["seniority_estimation"] = "entry"
+            structure["experience_level"] = "entry"
         elif total_years < 5:
-            structure["seniority_estimation"] = "mid"
+            structure["experience_level"] = "mid"
         elif total_years < 10:
-            structure["seniority_estimation"] = "senior"
+            structure["experience_level"] = "senior"
         else:
-            structure["seniority_estimation"] = "lead"
+            structure["experience_level"] = "lead"
     
-    # Extract first paragraph as summary (if looks like a summary)
-    first_lines = " ".join(lines[:5]).strip()
-    if len(first_lines) > 100 and not any(
-        keyword in first_lines.lower() 
-        for keyword in ["education", "experience", "skills"]
-    ):
-        structure["summary"] = first_lines[:500]
+    # Extract job titles (look for lines that might be job titles)
+    title_keywords = ['engineer', 'developer', 'manager', 'analyst', 'designer', 'consultant', 
+                     'architect', 'lead', 'senior', 'junior', 'director', 'specialist']
+    
+    for line in lines:
+        line_lower = line.lower()
+        if any(keyword in line_lower for keyword in title_keywords):
+            # Clean and add as potential job title
+            cleaned = line.strip()
+            if len(cleaned) < 80 and len(cleaned.split()) <= 8:
+                structure["job_titles"].append(cleaned)
+    
+    structure["job_titles"] = list(set(structure["job_titles"]))[:5]  # Limit to 5 unique titles
+    
+    # Extract first meaningful paragraph as summary
+    paragraphs = [p.strip() for p in raw_text.split('\n\n') if len(p.strip()) > 100]
+    if paragraphs:
+        # Find paragraph that looks like a professional summary
+        for para in paragraphs[:3]:
+            if len(para) > 100 and not any(
+                keyword in para.lower() 
+                for keyword in ["education", "university", "degree", "bachelor", "master"]
+            ):
+                structure["summary"] = para[:500]  # First 500 chars
+                break
     
     return structure
 
@@ -218,39 +263,91 @@ def use_gemini_for_parsing(raw_text: str) -> dict:
         Structured dictionary with resume sections
     """
     try:
-        import os
-        import google.generativeai as genai
-        
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
+            print("No Gemini API key, using fallback parser")
             return extract_resume_structure(raw_text)
         
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-pro")
+        model = genai.GenerativeModel("gemini-2.0-flash-exp")
         
         prompt = f"""
-        Parse this resume text and extract structured information.
-        Return only valid JSON with this structure:
+        Parse this resume and extract structured information.
+        Return ONLY valid JSON (no markdown, no explanation) with this exact structure:
         {{
-            "education": [{{"institution": str, "degree": str, "field": str, "year": str}}],
-            "experience": [{{"company": str, "title": str, "duration": str, "description": str}}],
-            "skills": [str],
-            "projects": [{{"name": str, "description": str}}],
-            "tools": [str],
-            "certifications": [str],
-            "years_of_experience": int,
-            "seniority_estimation": "entry|mid|senior|lead",
-            "summary": str
+            "full_name": "string or null",
+            "email": "string or null",
+            "phone": "string or null",
+            "location": "string or null",
+            "summary": "string or null",
+            "job_titles": ["current/recent job titles"],
+            "skills": ["skill1", "skill2"],
+            "tools": ["tool1", "tool2"],
+            "education": [
+                {{"institution": "string", "degree": "string", "field": "string", "year": "string"}}
+            ],
+            "experience": [
+                {{"company": "string", "title": "string", "duration": "string", "description": "string"}}
+            ],
+            "projects": [
+                {{"name": "string", "description": "string"}}
+            ],
+            "certifications": ["cert1", "cert2"],
+            "years_of_experience": 0,
+            "experience_level": "entry|mid|senior|lead|executive"
         }}
         
-        Resume text:
+        Resume text (first 4000 characters):
         {raw_text[:4000]}
         """
         
         response = model.generate_content(prompt)
-        result = json.loads(response.text)
+        response_text = response.text.strip()
+        
+        # Remove markdown code blocks if present
+        if response_text.startswith("```json"):
+            response_text = response_text[7:]
+        if response_text.startswith("```"):
+            response_text = response_text[3:]
+        if response_text.endswith("```"):
+            response_text = response_text[:-3]
+        
+        response_text = response_text.strip()
+        
+        # Parse the JSON
+        result = json.loads(response_text)
+        
+        # Ensure all required fields exist
+        defaults = {
+            "full_name": None,
+            "email": None,
+            "phone": None,
+            "location": None,
+            "summary": None,
+            "job_titles": [],
+            "skills": [],
+            "tools": [],
+            "education": [],
+            "experience": [],
+            "projects": [],
+            "certifications": [],
+            "years_of_experience": None,
+            "experience_level": None,
+        }
+        
+        for key, default_value in defaults.items():
+            if key not in result:
+                result[key] = default_value
+        
+        print(f"Gemini parsing successful: extracted {len(result.get('skills', []))} skills")
         return result
         
+    except json.JSONDecodeError as e:
+        print(f"Gemini JSON decode error: {e}")
+        print(f"Response was: {response_text[:200]}...")
+        return extract_resume_structure(raw_text)
     except Exception as e:
         print(f"Gemini parsing error: {e}")
+        import traceback
+        traceback.print_exc()
         return extract_resume_structure(raw_text)

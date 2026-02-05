@@ -13,9 +13,11 @@ class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
     
     # Database
-    DATABASE_URL = os.getenv(
-        "DATABASE_URL",
-        "postgresql://postgres:postgres@localhost:5432/applybot"
+    # Prefer an explicit DATABASE_URL; fall back to a local SQLite DB for dev
+    DATABASE_URL = os.getenv("DATABASE_URL") or (
+        # Use SQLite by default in development to avoid requiring Postgres locally.
+        # Change in production by setting the DATABASE_URL env var.
+        f"sqlite:///" + os.path.join(os.path.dirname(__file__), "app_dev.db")
     )
     SQLALCHEMY_DATABASE_URI = DATABASE_URL
     SQLALCHEMY_TRACK_MODIFICATIONS = False

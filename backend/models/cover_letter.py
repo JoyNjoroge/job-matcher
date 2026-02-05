@@ -5,7 +5,6 @@ Cover Letter model.
 from datetime import datetime
 from uuid import uuid4
 from sqlalchemy import Column, String, DateTime, ForeignKey, Boolean, Text
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from database import db
 
@@ -15,9 +14,9 @@ class CoverLetter(db.Model):
     
     __tablename__ = "cover_letters"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    job_application_id = Column(UUID(as_uuid=True), ForeignKey("job_applications.id", ondelete="CASCADE"), nullable=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    job_application_id = Column(String(36), ForeignKey("job_applications.id", ondelete="CASCADE"), nullable=True)
     
     # Content
     title = Column(String(255), nullable=True)

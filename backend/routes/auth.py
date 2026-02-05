@@ -4,6 +4,7 @@ Authentication routes - Login, Register, Token management.
 
 from flask import Blueprint, request, jsonify, g
 from sqlalchemy.exc import IntegrityError
+import traceback
 
 from database import db
 from models import User, UserProfile, UserRole, RoleType
@@ -18,7 +19,7 @@ from services.auth import (
 auth_bp = Blueprint("auth", __name__)
 
 
-@auth_bp.route("/auth/register", methods=["POST"])
+@auth_bp.route("/register", methods=["POST"])
 def register():
     """
     Register a new user.
@@ -35,11 +36,13 @@ def register():
     try:
         data = request.get_json()
         
+        
         if not data:
             return jsonify({"error": "Request body required"}), 400
         
         email = data.get("email", "").strip().lower()
         password = data.get("password", "")
+        
         
         # Validation
         if not email:
@@ -60,6 +63,8 @@ def register():
         user = User(email=email)
         user.set_password(password)
         db.session.add(user)
+        db.session.flush()  # Get user.id before committing
+        
         
         # Create empty profile
         profile = UserProfile(user_id=user.id)
@@ -71,6 +76,7 @@ def register():
         
         db.session.commit()
         
+        
         # Generate tokens
         access_token = generate_access_token(str(user.id), user.email)
         refresh_token = generate_refresh_token(str(user.id))
@@ -81,16 +87,15 @@ def register():
             "refresh_token": refresh_token,
         }), 201
         
-    except IntegrityError:
+    except IntegrityError as e:
         db.session.rollback()
         return jsonify({"error": "Email already registered"}), 409
     except Exception as e:
         db.session.rollback()
-        print(f"Registration error: {e}")
         return jsonify({"error": "Registration failed"}), 500
 
 
-@auth_bp.route("/auth/login", methods=["POST"])
+@auth_bp.route("/login", methods=["POST"])
 def login():
     """
     Login with email and password.
@@ -107,11 +112,13 @@ def login():
     try:
         data = request.get_json()
         
+        
         if not data:
             return jsonify({"error": "Request body required"}), 400
         
         email = data.get("email", "").strip().lower()
         password = data.get("password", "")
+        
         
         if not email or not password:
             return jsonify({"error": "Email and password required"}), 400
@@ -119,7 +126,13 @@ def login():
         # Find user
         user = User.query.filter_by(email=email).first()
         
-        if not user or not user.check_password(password):
+        if not user:
+            return jsonify({"error": "Invalid email or password"}), 401
+        
+        
+        password_valid = user.check_password(password)
+        
+        if not password_valid:
             return jsonify({"error": "Invalid email or password"}), 401
         
         if not user.is_active:
@@ -128,6 +141,7 @@ def login():
         # Update last login
         user.update_last_login()
         db.session.commit()
+        
         
         # Generate tokens
         access_token = generate_access_token(str(user.id), user.email)
@@ -140,11 +154,10 @@ def login():
         })
         
     except Exception as e:
-        print(f"Login error: {e}")
         return jsonify({"error": "Login failed"}), 500
 
 
-@auth_bp.route("/auth/refresh", methods=["POST"])
+@auth_bp.route("/refresh", methods=["POST"])
 @require_refresh_token
 def refresh_tokens():
     """
@@ -179,7 +192,7 @@ def refresh_tokens():
         return jsonify({"error": "Token refresh failed"}), 500
 
 
-@auth_bp.route("/auth/me", methods=["GET"])
+@auth_bp.route("/me", methods=["GET"])
 @require_auth
 def get_current_user():
     """
@@ -205,7 +218,7 @@ def get_current_user():
         return jsonify({"error": "Failed to get user"}), 500
 
 
-@auth_bp.route("/auth/extension-login", methods=["POST"])
+@auth_bp.route("/extension-login", methods=["POST"])
 @require_auth
 def extension_login():
     """
@@ -230,7 +243,7 @@ def extension_login():
         return jsonify({"error": "Failed to generate extension token"}), 500
 
 
-@auth_bp.route("/auth/logout", methods=["POST"])
+@auth_bp.route("/logout", methods=["POST"])
 @require_auth
 def logout():
     """
