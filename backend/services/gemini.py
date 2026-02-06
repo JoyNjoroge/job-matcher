@@ -15,11 +15,7 @@ if GEMINI_API_KEY:
 
 def get_model():
     """Get the Gemini model instance."""
-<<<<<<< HEAD
     return genai.GenerativeModel("gemini-3-pro-preview")
-=======
-    return genai.GenerativeModel("gemini-3-pro-preview")
->>>>>>> 1786718792e276558c6a7d702d96298408e7fcdc
 
 
 def analyze_job_fit(cv_content: str, job_description: str, job_title: str = "", company: str = "") -> dict:
