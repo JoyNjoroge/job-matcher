@@ -22,9 +22,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useApplications, TrackedApplication } from "@/contexts/ApplicationContext";
+import { useApplications } from "@/contexts/ApplicationContext";
 import { FitScoreRing } from "@/components/FitScoreRing";
 import { format } from "date-fns";
+import type { TrackedApplication } from "@/types";
 
 export function ApplicationsTable() {
   const navigate = useNavigate();
