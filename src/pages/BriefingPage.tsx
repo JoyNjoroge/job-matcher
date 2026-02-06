@@ -24,7 +24,8 @@ interface JobData {
   id: string;
   title: string;
   company: string;
-  application_url: string;
+  application_url?: string;
+  apply_link?: string;
   description: string;
   requirements?: string;
   location?: string;
@@ -197,8 +198,15 @@ export default function ApplyBriefingPage() {
   const handleProceedToApplication = () => {
     if (!jobData) return;
 
+    // Get the application URL (prefer application_url, fallback to apply_link)
+    const applicationUrl = jobData.application_url || jobData.apply_link;
+    if (!applicationUrl) {
+      setError("No application URL available for this job");
+      return;
+    }
+
     // Add tracking parameter for extension
-    const url = new URL(jobData.application_url);
+    const url = new URL(applicationUrl);
     url.searchParams.set("applybotpro_job_id", jobData.id);
     
     // Open in new tab

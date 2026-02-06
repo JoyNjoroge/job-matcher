@@ -43,6 +43,11 @@ export interface Job {
   description: string;
   apply_link: string;
   source?: string;
+  job_type?: string;
+  experience_level?: string;
+  salary_range?: string;
+  posted_date?: string;
+  application_url?: string;
 }
 
 export interface JobSearchParams {
@@ -88,4 +93,14 @@ export interface ApplyPrepData {
 export interface SelectedJobState {
   job: Job;
   analysis?: AnalysisResult;
+}
+
+// Tracked Application Type (for frontend context)
+export interface TrackedApplication {
+  id: string;
+  job: Job;
+  analysis?: AnalysisResult;
+  cvText?: string;
+  appliedAt: string;
+  selectedForInterview: boolean;
 }

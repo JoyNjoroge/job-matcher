@@ -19,8 +19,8 @@ export default function SearchPage() {
   // Initialize from cached results if available
   const [query, setQuery] = useState(searchResults?.query || "");
   const [location, setLocation] = useState(searchResults?.filters?.location || "");
-  const [jobType, setJobType] = useState<JobType[]>(searchResults?.filters?.job_type || []);
-  const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel[]>(searchResults?.filters?.experience_level || []);
+  const [jobType, setJobType] = useState<JobType[]>((searchResults?.filters?.job_type as JobType[]) || []);
+  const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel[]>((searchResults?.filters?.experience_level as ExperienceLevel[]) || []);
   
   const [jobs, setJobs] = useState(searchResults?.jobs || []);
   const [loading, setLoading] = useState(false);

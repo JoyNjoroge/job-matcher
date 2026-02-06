@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { MessageSquare, ChevronDown, AlertCircle } from "lucide-react";
-import { useApplications, TrackedApplication } from "@/contexts/ApplicationContext";
+import { useApplications } from "@/contexts/ApplicationContext";
 import { InterviewPrepPanel } from "@/components/InterviewPrepPanel";
 import { cn } from "@/lib/utils";
+import type { TrackedApplication } from "@/types";
 
 interface LocationState {
   applicationId?: string;

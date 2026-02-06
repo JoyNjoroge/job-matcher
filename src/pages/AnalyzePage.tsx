@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { FileSearch, Link as LinkIcon, FileText, X, ArrowRight, Send } from "lucide-react";
+import { FileSearch, Link as LinkIcon, FileText, X, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
