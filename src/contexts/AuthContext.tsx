@@ -68,20 +68,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password: string) => {
-    const res = await loginUser(email, password);
-    if (res.access_token) {
-      setTokens(res.access_token, res.refresh_token);
-      setUser(res.user ?? null);
-      navigate("/");
+    try {
+      const res = await loginUser(email, password);
+      if (res.access_token) {
+        setTokens(res.access_token, res.refresh_token);
+        setUser(res.user ?? null);
+        navigate("/");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      throw error;
     }
   };
 
   const register = async (email: string, password: string) => {
-    const res = await registerUser(email, password);
-    if (res.access_token) {
-      setTokens(res.access_token, res.refresh_token);
-      setUser(res.user ?? null);
-      navigate("/");
+    try {
+      const res = await registerUser(email, password);
+      if (res.access_token) {
+        setTokens(res.access_token, res.refresh_token);
+        setUser(res.user ?? null);
+        navigate("/");
+      }
+    } catch (error) {
+      console.error("Register error:", error);
+      throw error;
     }
   };
 

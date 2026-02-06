@@ -455,3 +455,103 @@ def prepare_interview_questions(job_description: str, resume_text: str) -> list:
     except Exception as e:
         print(f"Interview questions generation error: {e}")
         return []
+
+# Briefing page
+def analyze_job_fit(resume_text: str, job_description: str) -> dict:
+    """
+    Analyze how well a candidate fits a job using Gemini AI.
+    
+    Returns comprehensive fit analysis with recommendations.
+    """
+    import google.generativeai as genai
+    import os
+    import json
+    
+    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+    model = genai.GenerativeModel("gemini-1.5-flash")
+    
+    prompt = f"""You are an expert career counselor and recruiter. Analyze how well this candidate's resume matches the job description.
+
+RESUME:
+{resume_text}
+
+JOB DESCRIPTION:
+{job_description}
+
+Provide a detailed fit analysis in the following JSON format:
+{{
+  "fit_score": <number 0-100>,
+  "recommendation": "<strong_fit|good_fit|fair_fit|poor_fit>",
+  "strengths": [<list of 3-5 matching qualifications>],
+  "gaps": [<list of missing or weak qualifications>],
+  "skill_recommendations": [<specific things to add/emphasize in application>],
+  "experience_match": "<brief assessment of experience level match>",
+  "message": "<personalized message to the candidate>",
+  "should_apply": <true|false>
+}}
+
+SCORING GUIDELINES:
+- 80-100: strong_fit - Excellent match, highly qualified
+- 60-79: good_fit - Good match with some gaps
+- 40-59: fair_fit - Moderate match, significant skill gaps
+- 0-39: poor_fit - Poor match, underqualified
+
+MESSAGE EXAMPLES:
+- strong_fit: "You're an excellent match for this role! Your experience aligns perfectly with what they're looking for."
+- good_fit: "You're a good candidate for this position. While there are some areas to strengthen, your core skills match well."
+- fair_fit: "This role is a bit of a stretch, but you have some transferable skills. Consider emphasizing [specific skills] in your application."
+- poor_fit: "You're significantly underqualified for this position. While you can still apply, we recommend focusing on roles that better match your current experience level. Here's what you'd need to develop..."
+
+IMPORTANT RULES:
+1. Be honest but encouraging and supportive
+2. For poor_fit: Give a gentle, supportive message. Don't discourage them completely, but be realistic
+3. For skill mismatches that are just naming differences (e.g., "React" vs "React.js", "Python" vs "Python 3"), don't count as gaps
+4. Focus on substantial gaps like missing years of experience, entirely different tech stacks, or lack of required certifications
+5. If someone has 2 years experience for a 5+ year role, that's a gap. If they have "JavaScript" but job wants "TypeScript", that's a minor skill recommendation
+6. should_apply should be false ONLY if fit_score < 30 OR they're missing critical requirements like certifications/degrees
+7. skill_recommendations should be actionable (e.g., "Add TypeScript to your resume if you've used it", "Highlight your leadership experience more prominently")
+
+Return ONLY valid JSON, no markdown formatting."""
+
+    try:
+        response = model.generate_content(prompt)
+        response_text = response.text.strip()
+        
+        # Remove markdown code blocks if present
+        if response_text.startswith("```"):
+            response_text = response_text.split("```")[1]
+            if response_text.startswith("json"):
+                response_text = response_text[4:]
+            response_text = response_text.strip()
+        
+        analysis = json.loads(response_text)
+        
+        # Validate and set defaults
+        analysis.setdefault("fit_score", 50)
+        analysis.setdefault("recommendation", "fair_fit")
+        analysis.setdefault("strengths", [])
+        analysis.setdefault("gaps", [])
+        analysis.setdefault("skill_recommendations", [])
+        analysis.setdefault("experience_match", "Unable to assess")
+        analysis.setdefault("message", "Analysis complete")
+        analysis.setdefault("should_apply", analysis["fit_score"] >= 30)
+        
+        return analysis
+        
+    except json.JSONDecodeError as e:
+        print(f"Failed to parse Gemini response: {e}")
+        print(f"Response text: {response_text}")
+        # Return fallback analysis
+        return {
+            "fit_score": 50,
+            "recommendation": "fair_fit",
+            "strengths": ["Unable to analyze - please try again"],
+            "gaps": [],
+            "skill_recommendations": [],
+            "experience_match": "Unable to assess",
+            "message": "We encountered an issue analyzing your fit. Please try again.",
+            "should_apply": True
+        }
+    except Exception as e:
+        print(f"Gemini API error: {e}")
+        raise

@@ -119,33 +119,45 @@ export async function prepareApplication(jobId: string): Promise<ApplyPrepData> 
 
 // -------------------- Auth APIs --------------------
 export async function registerUser(email: string, password: string) {
-  const response = await fetch(`${API_BASE}/auth/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
+  try {
+    const response = await fetch(`${API_BASE}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+      credentials: "include",
+    });
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err?.error || "Registration failed");
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err?.error || "Registration failed");
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error("Register fetch error:", error);
+    throw error;
   }
-
-  return response.json();
 }
 
 export async function loginUser(email: string, password: string) {
-  const response = await fetch(`${API_BASE}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
+  try {
+    const response = await fetch(`${API_BASE}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+      credentials: "include",
+    });
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err?.error || "Login failed");
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err?.error || "Login failed");
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error("Login fetch error:", error);
+    throw error;
   }
-
-  return response.json();
 }
 
 export async function getCurrentUser(accessToken: string) {
@@ -233,6 +245,27 @@ export async function parseResumeForProfile(accessToken: string, file: File, aut
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
     throw new Error(err?.error || "Failed to parse resume");
+  }
+
+  return response.json();
+}
+
+export async function parseLinkedInForProfile(accessToken: string, linkedinUrl: string, autoApply: boolean = false) {
+  const response = await fetch(`${API_BASE}/profile/parse-linkedin`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      linkedin_url: linkedinUrl,
+      auto_apply: autoApply,
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err?.error || "Failed to parse LinkedIn profile");
   }
 
   return response.json();

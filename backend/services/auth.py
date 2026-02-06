@@ -86,8 +86,8 @@ def require_auth(f):
             if payload.get("type") not in ["access", "extension"]:
                 return jsonify({"error": "Invalid token type"}), 401
             
-            # Store user info in flask g object
-            g.user_id = UUID(payload["sub"])
+            # Store user info in flask g object (as strings for SQLite compatibility)
+            g.user_id = str(payload["sub"])
             g.user_email = payload.get("email")
             
             return f(*args, **kwargs)
@@ -111,7 +111,8 @@ def require_refresh_token(f):
             if payload.get("type") != "refresh":
                 return jsonify({"error": "Refresh token required"}), 401
             
-            g.user_id = UUID(payload["sub"])
+            # Store as string for SQLite compatibility
+            g.user_id = str(payload["sub"])
             
             return f(*args, **kwargs)
             

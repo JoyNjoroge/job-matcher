@@ -7,7 +7,7 @@ from werkzeug.utils import secure_filename
 import os
 
 from database import db
-from models import UserProfile
+from models import UserProfile, Resume
 from services.auth import require_auth
 from services.parser import parse_resume_file, use_gemini_for_parsing
 from services.gemini import extract_profile_from_linkedin
@@ -130,6 +130,7 @@ def parse_resume_for_profile():
         
         # Get file extension
         file_ext = file.filename.rsplit('.', 1)[1].lower()
+        original_filename = secure_filename(file.filename)
         
         print(f"[PARSE-RESUME] Parsing {file.filename} for user {g.user_id}")
         
@@ -149,6 +150,24 @@ def parse_resume_for_profile():
         # Check if auto_apply is requested
         auto_apply = request.form.get('auto_apply', 'false').lower() == 'true'
         
+        # CRITICAL: Always create/update Resume record for briefing to work
+        resume = Resume.query.filter_by(user_id=g.user_id, is_primary=True).first()
+        
+        if not resume:
+            resume = Resume(
+                user_id=g.user_id,
+                is_primary=True,
+                source="upload"
+            )
+            db.session.add(resume)
+        
+        # Update resume data
+        resume.raw_text = raw_text
+        resume.original_filename = original_filename
+        resume.file_type = file_ext
+        resume.parsed_json = parsed_data
+        resume.title = f"{parsed_data.get('full_name', 'My')} Resume" if parsed_data.get('full_name') else "My Resume"
+        
         if auto_apply:
             profile = UserProfile.query.filter_by(user_id=g.user_id).first()
             
@@ -157,13 +176,22 @@ def parse_resume_for_profile():
                 db.session.add(profile)
             
             # Auto-fill profile with parsed data
+            if parsed_data.get('full_name') and not profile.full_name:
+                profile.full_name = parsed_data['full_name']
+            
+            if parsed_data.get('phone') and not profile.phone:
+                profile.phone = parsed_data['phone']
+            
+            if parsed_data.get('location') and not profile.location:
+                profile.location = parsed_data['location']
+            
             if parsed_data.get('skills'):
                 # Merge with existing skills
                 existing_skills = set(profile.skills or [])
                 new_skills = set(parsed_data['skills'])
                 profile.skills = list(existing_skills | new_skills)
             
-            if parsed_data.get('experience_level'):
+            if parsed_data.get('experience_level') and not profile.experience_level:
                 profile.experience_level = parsed_data['experience_level']
             
             if parsed_data.get('summary') and not profile.summary:
@@ -175,19 +203,24 @@ def parse_resume_for_profile():
                 if job_titles:
                     existing_titles = set(profile.job_titles or [])
                     profile.job_titles = list(existing_titles | set(job_titles))
-            
-            db.session.commit()
-            
-            return jsonify({
-                "parsed_data": parsed_data,
-                "profile": profile.to_dict(),
-                "message": "Profile updated successfully"
-            })
+            elif parsed_data.get('job_titles'):
+                # Use job_titles directly if available
+                existing_titles = set(profile.job_titles or [])
+                profile.job_titles = list(existing_titles | set(parsed_data['job_titles']))
         
-        return jsonify({
+        db.session.commit()
+        
+        response_data = {
             "parsed_data": parsed_data,
-            "message": "Resume parsed successfully. Use the data to update your profile."
-        })
+            "message": "Resume parsed and saved successfully"
+        }
+        
+        if auto_apply:
+            profile = UserProfile.query.filter_by(user_id=g.user_id).first()
+            response_data["profile"] = profile.to_dict() if profile else None
+            response_data["message"] = "Profile updated successfully"
+        
+        return jsonify(response_data)
         
     except Exception as e:
         db.session.rollback()
@@ -232,6 +265,35 @@ def parse_linkedin_for_profile():
         
         print(f"[PARSE-LINKEDIN] Parsed data: {parsed_data}")
         
+        # Create/update Resume record from LinkedIn data
+        resume = Resume.query.filter_by(user_id=g.user_id, is_primary=True).first()
+        
+        if not resume:
+            resume = Resume(
+                user_id=g.user_id,
+                is_primary=True,
+                source="linkedin"
+            )
+            db.session.add(resume)
+        
+        # Build raw text from parsed data for analysis
+        raw_text_parts = []
+        if parsed_data.get('full_name'):
+            raw_text_parts.append(f"Name: {parsed_data['full_name']}")
+        if parsed_data.get('summary'):
+            raw_text_parts.append(f"Summary: {parsed_data['summary']}")
+        if parsed_data.get('experience'):
+            raw_text_parts.append("Experience:")
+            for exp in parsed_data['experience']:
+                raw_text_parts.append(f"- {exp.get('title', '')} at {exp.get('company', '')}")
+        if parsed_data.get('skills'):
+            raw_text_parts.append(f"Skills: {', '.join(parsed_data['skills'])}")
+        
+        resume.raw_text = "\n".join(raw_text_parts)
+        resume.parsed_json = parsed_data
+        resume.title = f"{parsed_data.get('full_name', 'LinkedIn')} Profile"
+        resume.source = "linkedin"
+        
         if auto_apply:
             profile = UserProfile.query.filter_by(user_id=g.user_id).first()
             
@@ -263,19 +325,20 @@ def parse_linkedin_for_profile():
                 profile.experience_level = parsed_data['experience_level']
             
             profile.linkedin_url = linkedin_url
-            
-            db.session.commit()
-            
-            return jsonify({
-                "parsed_data": parsed_data,
-                "profile": profile.to_dict(),
-                "message": "Profile updated successfully from LinkedIn"
-            })
         
-        return jsonify({
+        db.session.commit()
+        
+        response_data = {
             "parsed_data": parsed_data,
-            "message": "LinkedIn profile parsed successfully. Review and apply the data."
-        })
+            "message": "LinkedIn profile parsed and saved successfully"
+        }
+        
+        if auto_apply:
+            profile = UserProfile.query.filter_by(user_id=g.user_id).first()
+            response_data["profile"] = profile.to_dict() if profile else None
+            response_data["message"] = "Profile updated successfully from LinkedIn"
+        
+        return jsonify(response_data)
         
     except Exception as e:
         db.session.rollback()

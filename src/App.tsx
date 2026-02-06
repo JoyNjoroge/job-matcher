@@ -19,6 +19,7 @@ import ApplicationsPage from "./pages/ApplicationsPage";
 import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage";
+import ApplyBriefingPage from "./pages/BriefingPage";
 
 const queryClient = new QueryClient();
 
@@ -101,6 +102,15 @@ const App = () => (
                     </ProtectedRoute>
                   } 
                 />
+                <Route 
+                    path="/apply-briefing" 
+                    element={
+                      <ProtectedRoute>
+                        <Layout><ApplyBriefingPage /></Layout>
+                      </ProtectedRoute>
+                    }
+                      />
+                
                 <Route 
                   path="/profile" 
                   element={

@@ -1,92 +1,111 @@
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
-import type { Job, AnalysisResult, Application } from "@/types";
+import React, { createContext, useContext, useState, useEffect } from "react";
+import type { Application } from "@/types";
 
-export interface TrackedApplication {
-  id: string;
-  job: Job;
-  analysis?: AnalysisResult;
-  status: "applied" | "interviewing" | "rejected" | "offered";
-  selectedForInterview: boolean;
-  cvText?: string;
-  appliedAt: string;
+interface SearchResults {
+  jobs: any[];
+  query: string;
+  filters: any;
+  timestamp: number;
 }
 
 interface ApplicationContextType {
-  applications: TrackedApplication[];
-  addApplication: (job: Job, analysis?: AnalysisResult, cvText?: string) => void;
-  removeApplication: (id: string) => void;
-  toggleSelectedForInterview: (id: string) => void;
-  updateApplicationStatus: (id: string, status: TrackedApplication["status"]) => void;
-  getApplicationById: (id: string) => TrackedApplication | undefined;
-  interviewReadyApplications: TrackedApplication[];
+  applications: Application[];
+  setApplications: (apps: Application[]) => void;
+  addApplication: (app: Application) => void;
+  updateApplication: (id: string, updates: Partial<Application>) => void;
+  deleteApplication: (id: string) => void;
+  // Search results persistence
+  searchResults: SearchResults | null;
+  setSearchResults: (results: SearchResults | null) => void;
+  clearSearchResults: () => void;
 }
 
-const ApplicationContext = createContext<ApplicationContextType | null>(null);
+const ApplicationContext = createContext<ApplicationContextType | undefined>(undefined);
 
-const STORAGE_KEY = "applybot_applications";
+const STORAGE_KEY = "applybotpro_applications";
+const SEARCH_RESULTS_KEY = "applybotpro_search_results";
 
-export function ApplicationProvider({ children }: { children: ReactNode }) {
-  const [applications, setApplications] = useState<TrackedApplication[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
+export function ApplicationProvider({ children }: { children: React.ReactNode }) {
+  const [applications, setApplicationsState] = useState<Application[]>([]);
+  const [searchResults, setSearchResultsState] = useState<SearchResults | null>(null);
 
-  // Persist to localStorage
+  // Load applications from localStorage on mount
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(applications));
-  }, [applications]);
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      try {
+        setApplicationsState(JSON.parse(stored));
+      } catch (error) {
+        console.error("Failed to parse stored applications:", error);
+      }
+    }
 
-  const addApplication = useCallback((job: Job, analysis?: AnalysisResult, cvText?: string) => {
-    const newApp: TrackedApplication = {
-      id: `app_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      job,
-      analysis,
-      status: "applied",
-      selectedForInterview: false,
-      cvText,
-      appliedAt: new Date().toISOString(),
-    };
-    setApplications((prev) => [newApp, ...prev]);
+    // Load search results from localStorage
+    const storedSearch = localStorage.getItem(SEARCH_RESULTS_KEY);
+    if (storedSearch) {
+      try {
+        const parsed = JSON.parse(storedSearch);
+        // Only use if less than 30 minutes old
+        if (Date.now() - parsed.timestamp < 30 * 60 * 1000) {
+          setSearchResultsState(parsed);
+        } else {
+          localStorage.removeItem(SEARCH_RESULTS_KEY);
+        }
+      } catch (error) {
+        console.error("Failed to parse stored search results:", error);
+      }
+    }
   }, []);
 
-  const removeApplication = useCallback((id: string) => {
-    setApplications((prev) => prev.filter((app) => app.id !== id));
-  }, []);
+  // Save applications to localStorage whenever they change
+  const setApplications = (apps: Application[]) => {
+    setApplicationsState(apps);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(apps));
+  };
 
-  const toggleSelectedForInterview = useCallback((id: string) => {
-    setApplications((prev) =>
-      prev.map((app) =>
-        app.id === id ? { ...app, selectedForInterview: !app.selectedForInterview } : app
-      )
+  const addApplication = (app: Application) => {
+    const newApps = [...applications, app];
+    setApplications(newApps);
+  };
+
+  const updateApplication = (id: string, updates: Partial<Application>) => {
+    const newApps = applications.map((app) =>
+      app.id === id ? { ...app, ...updates } : app
     );
-  }, []);
+    setApplications(newApps);
+  };
 
-  const updateApplicationStatus = useCallback((id: string, status: TrackedApplication["status"]) => {
-    setApplications((prev) =>
-      prev.map((app) => (app.id === id ? { ...app, status } : app))
-    );
-  }, []);
+  const deleteApplication = (id: string) => {
+    const newApps = applications.filter((app) => app.id !== id);
+    setApplications(newApps);
+  };
 
-  const getApplicationById = useCallback((id: string) => {
-    return applications.find((app) => app.id === id);
-  }, [applications]);
+  // Search results management
+  const setSearchResults = (results: SearchResults | null) => {
+    setSearchResultsState(results);
+    if (results) {
+      localStorage.setItem(SEARCH_RESULTS_KEY, JSON.stringify(results));
+    } else {
+      localStorage.removeItem(SEARCH_RESULTS_KEY);
+    }
+  };
 
-  const interviewReadyApplications = applications.filter((app) => app.selectedForInterview);
+  const clearSearchResults = () => {
+    setSearchResultsState(null);
+    localStorage.removeItem(SEARCH_RESULTS_KEY);
+  };
 
   return (
     <ApplicationContext.Provider
       value={{
         applications,
+        setApplications,
         addApplication,
-        removeApplication,
-        toggleSelectedForInterview,
-        updateApplicationStatus,
-        getApplicationById,
-        interviewReadyApplications,
+        updateApplication,
+        deleteApplication,
+        searchResults,
+        setSearchResults,
+        clearSearchResults,
       }}
     >
       {children}
@@ -96,8 +115,10 @@ export function ApplicationProvider({ children }: { children: ReactNode }) {
 
 export function useApplications() {
   const context = useContext(ApplicationContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error("useApplications must be used within ApplicationProvider");
   }
   return context;
 }
+
+export default ApplicationContext;

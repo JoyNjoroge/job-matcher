@@ -24,6 +24,7 @@ from routes.interview import interview_bp
 from routes.auth import auth_bp
 from routes.profile import profile_bp
 from routes.resumes import resumes_bp
+from routes.briefing import apply_briefing_bp
 
 
 def create_app():
@@ -53,6 +54,7 @@ def create_app():
     app.register_blueprint(jobs_bp, url_prefix="/api")
     app.register_blueprint(apply_bp, url_prefix="/api")
     app.register_blueprint(interview_bp, url_prefix="/api")
+    app.register_blueprint(apply_briefing_bp, url_prefix="/api")
     
     @app.route("/api/health")
     def health_check():

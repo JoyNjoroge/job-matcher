@@ -2,10 +2,10 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { getProfile, updateProfile, parseResumeForProfile } from "@/api";
-import { Upload, Save, AlertCircle, CheckCircle, Loader } from "lucide-react";
+import { getProfile, updateProfile, parseResumeForProfile, parseLinkedInForProfile } from "@/api";
+import { Upload, Save, AlertCircle, CheckCircle, Loader, Link2, X, Check } from "lucide-react";
 
 interface Profile {
   id: string;
@@ -21,6 +21,20 @@ interface Profile {
   summary: string | null;
 }
 
+interface ParsedData {
+  full_name?: string;
+  email?: string;
+  phone?: string;
+  location?: string;
+  summary?: string;
+  job_titles?: string[];
+  skills?: string[];
+  experience_level?: string;
+  education?: any[];
+  experience?: any[];
+  projects?: any[];
+}
+
 export default function ProfilePage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -30,6 +44,10 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [parsingResume, setParsingResume] = useState(false);
+  const [parsedData, setParsedData] = useState<ParsedData | null>(null);
+  const [showParsedPreview, setShowParsedPreview] = useState(false);
+  const [linkedinUrl, setLinkedinUrl] = useState("");
+  const [parsingLinkedIn, setParsingLinkedIn] = useState(false);
   const [newSkill, setNewSkill] = useState("");
   const [newJobTitle, setNewJobTitle] = useState("");
 
@@ -126,22 +144,24 @@ export default function ProfilePage() {
     try {
       const accessToken = localStorage.getItem("access_token");
       if (!accessToken) throw new Error("No auth token");
-      const result = await parseResumeForProfile(accessToken, resumeFile, true);
       
-      if (result.profile) {
-        setProfile(result.profile);
-        setFormData(result.profile);
+      // Parse without auto-apply to preview first
+      const result = await parseResumeForProfile(accessToken, resumeFile, false);
+      
+      if (result.parsed_data) {
+        setParsedData(result.parsed_data);
+        setShowParsedPreview(true);
         toast({
           title: "Success",
-          description: "Resume parsed and profile updated",
+          description: "Resume parsed successfully. Review the extracted data below.",
         });
       } else {
         toast({
-          title: "Info",
-          description: result.parsed_data ? "Resume parsed. Review and update manually if needed." : "Resume parsing completed",
+          title: "Warning",
+          description: "No data could be extracted from the resume",
+          variant: "destructive",
         });
       }
-      setResumeFile(null);
     } catch (err: any) {
       toast({
         title: "Error",
@@ -151,6 +171,103 @@ export default function ProfilePage() {
     } finally {
       setParsingResume(false);
     }
+  };
+
+  const handleLinkedInParse = async () => {
+    if (!linkedinUrl.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a LinkedIn URL",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setParsingLinkedIn(true);
+    try {
+      const accessToken = localStorage.getItem("access_token");
+      if (!accessToken) throw new Error("No auth token");
+      
+      const result = await parseLinkedInForProfile(accessToken, linkedinUrl, false);
+      
+      if (result.parsed_data) {
+        setParsedData(result.parsed_data);
+        setShowParsedPreview(true);
+        toast({
+          title: "Success",
+          description: "LinkedIn profile parsed successfully. Review the extracted data below.",
+        });
+      } else {
+        toast({
+          title: "Warning",
+          description: "Could not extract data from LinkedIn profile",
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err?.message || "Failed to parse LinkedIn profile",
+        variant: "destructive",
+      });
+    } finally {
+      setParsingLinkedIn(false);
+    }
+  };
+
+  const applyParsedData = () => {
+    if (!parsedData) return;
+
+    const updates: Partial<Profile> = { ...formData };
+
+    // Merge parsed data with existing form data
+    if (parsedData.full_name && !formData.full_name) {
+      updates.full_name = parsedData.full_name;
+    }
+    if (parsedData.phone && !formData.phone) {
+      updates.phone = parsedData.phone;
+    }
+    if (parsedData.location && !formData.location) {
+      updates.location = parsedData.location;
+    }
+    if (parsedData.summary && !formData.summary) {
+      updates.summary = parsedData.summary;
+    }
+    if (parsedData.experience_level && !formData.experience_level) {
+      updates.experience_level = parsedData.experience_level;
+    }
+
+    // Merge skills (avoid duplicates)
+    if (parsedData.skills?.length) {
+      const existingSkills = new Set(formData.skills || []);
+      const newSkills = parsedData.skills.filter(s => !existingSkills.has(s));
+      updates.skills = [...(formData.skills || []), ...newSkills];
+    }
+
+    // Merge job titles (avoid duplicates)
+    if (parsedData.job_titles?.length) {
+      const existingTitles = new Set(formData.job_titles || []);
+      const newTitles = parsedData.job_titles.filter(t => !existingTitles.has(t));
+      updates.job_titles = [...(formData.job_titles || []), ...newTitles];
+    }
+
+    setFormData(updates);
+    setShowParsedPreview(false);
+    setParsedData(null);
+    setResumeFile(null);
+    setLinkedinUrl("");
+    
+    toast({
+      title: "Data Applied",
+      description: "Parsed data has been added to your profile. Don't forget to save!",
+    });
+  };
+
+  const discardParsedData = () => {
+    setParsedData(null);
+    setShowParsedPreview(false);
+    setResumeFile(null);
+    setLinkedinUrl("");
   };
 
   if (loading) {
@@ -169,6 +286,97 @@ export default function ProfilePage() {
         <p className="text-muted-foreground">Manage your professional information and preferences</p>
       </div>
 
+      {/* Parsed Data Preview Modal */}
+      {showParsedPreview && parsedData && (
+        <Card className="border-2 border-primary bg-primary/5">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  Extracted Data Preview
+                </CardTitle>
+                <CardDescription>Review the information extracted from your resume/LinkedIn</CardDescription>
+              </div>
+              <Button variant="ghost" size="sm" onClick={discardParsedData}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid md:grid-cols-2 gap-4 text-sm">
+              {parsedData.full_name && (
+                <div>
+                  <span className="font-medium">Name:</span> {parsedData.full_name}
+                </div>
+              )}
+              {parsedData.phone && (
+                <div>
+                  <span className="font-medium">Phone:</span> {parsedData.phone}
+                </div>
+              )}
+              {parsedData.location && (
+                <div>
+                  <span className="font-medium">Location:</span> {parsedData.location}
+                </div>
+              )}
+              {parsedData.experience_level && (
+                <div>
+                  <span className="font-medium">Experience:</span> {parsedData.experience_level}
+                </div>
+              )}
+            </div>
+
+            {parsedData.job_titles && parsedData.job_titles.length > 0 && (
+              <div>
+                <span className="font-medium text-sm">Job Titles:</span>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {parsedData.job_titles.map((title, idx) => (
+                    <span key={idx} className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs">
+                      {title}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {parsedData.skills && parsedData.skills.length > 0 && (
+              <div>
+                <span className="font-medium text-sm">Skills ({parsedData.skills.length}):</span>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {parsedData.skills.slice(0, 20).map((skill, idx) => (
+                    <span key={idx} className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs">
+                      {skill}
+                    </span>
+                  ))}
+                  {parsedData.skills.length > 20 && (
+                    <span className="text-xs text-muted-foreground">+{parsedData.skills.length - 20} more</span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {parsedData.summary && (
+              <div>
+                <span className="font-medium text-sm">Summary:</span>
+                <p className="text-sm text-muted-foreground mt-1 line-clamp-3">{parsedData.summary}</p>
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-2">
+              <Button onClick={applyParsedData} className="flex-1">
+                <Check className="h-4 w-4 mr-2" />
+                Apply to Profile
+              </Button>
+              <Button onClick={discardParsedData} variant="outline" className="flex-1">
+                <X className="h-4 w-4 mr-2" />
+                Discard
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Resume Upload */}
       <Card>
         <CardHeader>
@@ -176,11 +384,11 @@ export default function ProfilePage() {
             <Upload className="h-5 w-5" />
             Auto-Fill from Resume
           </CardTitle>
+          <CardDescription>
+            Upload your resume (PDF, DOCX, or TXT) to automatically extract and populate your profile information.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Upload your resume (PDF, DOCX, or TXT) to automatically extract and populate your profile information.
-          </p>
           <div className="flex gap-4">
             <div className="flex-1">
               <Input
@@ -200,6 +408,45 @@ export default function ProfilePage() {
                 <>
                   <Upload className="h-4 w-4 mr-2" />
                   Parse Resume
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* LinkedIn Profile Import */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Link2 className="h-5 w-5" />
+            Import from LinkedIn
+          </CardTitle>
+          <CardDescription>
+            Enter your LinkedIn profile URL to extract your professional information.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <Input
+                type="url"
+                placeholder="https://www.linkedin.com/in/yourprofile"
+                value={linkedinUrl}
+                onChange={(e) => setLinkedinUrl(e.target.value)}
+                disabled={parsingLinkedIn}
+              />
+            </div>
+            <Button onClick={handleLinkedInParse} disabled={!linkedinUrl.trim() || parsingLinkedIn}>
+              {parsingLinkedIn ? (
+                <>
+                  <Loader className="h-4 w-4 mr-2 animate-spin" />
+                  Parsing...
+                </>
+              ) : (
+                <>
+                  <Link2 className="h-4 w-4 mr-2" />
+                  Parse LinkedIn
                 </>
               )}
             </Button>
