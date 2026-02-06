@@ -15,7 +15,7 @@ if GEMINI_API_KEY:
 
 def get_model():
     """Get the Gemini model instance."""
-    return genai.GenerativeModel("gemini-3-flash-preview")
+    return genai.GenerativeModel("gemini-2.0-flash-exp")
 
 
 def analyze_job_fit(cv_content: str, job_description: str, job_title: str = "", company: str = "") -> dict:
@@ -456,27 +456,22 @@ def prepare_interview_questions(job_description: str, resume_text: str) -> list:
         print(f"Interview questions generation error: {e}")
         return []
 
-# Briefing page
-def analyze_job_fit(resume_text: str, job_description: str) -> dict:
+# Briefing page - Extended analyze_job_fit for comprehensive analysis
+def analyze_job_fit_for_briefing(resume_text: str, job_description: str) -> dict:
     """
     Analyze how well a candidate fits a job using Gemini AI.
     
     Returns comprehensive fit analysis with recommendations.
     """
-    import google.generativeai as genai
-    import os
-    import json
-    
-    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = get_model()
     
     prompt = f"""You are an expert career counselor and recruiter. Analyze how well this candidate's resume matches the job description.
 
 RESUME:
-{resume_text}
+{resume_text[:4000]}
 
 JOB DESCRIPTION:
-{job_description}
+{job_description[:4000]}
 
 Provide a detailed fit analysis in the following JSON format:
 {{
@@ -540,7 +535,7 @@ Return ONLY valid JSON, no markdown formatting."""
         
     except json.JSONDecodeError as e:
         print(f"Failed to parse Gemini response: {e}")
-        print(f"Response text: {response_text}")
+        print(f"Response text: {response_text if 'response_text' in dir() else 'N/A'}")
         # Return fallback analysis
         return {
             "fit_score": 50,
