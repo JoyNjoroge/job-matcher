@@ -6,7 +6,7 @@ from flask import Blueprint, request, jsonify, g
 from database import db
 from models import User, UserProfile, Resume
 from services.auth import require_auth
-from services.gemini import analyze_job_fit
+from services.gemini import analyze_job_fit_for_briefing
 from services.parser import parse_resume_file
 import os
 
@@ -114,7 +114,7 @@ def analyze_fit():
         print(f"[ANALYZE-FIT] Analyzing fit for user {g.user_id}, resume length: {len(resume_text)} chars")
         
         # Analyze fit with Gemini
-        analysis = analyze_job_fit(resume_text, job_description)
+        analysis = analyze_job_fit_for_briefing(resume_text, job_description)
         
         if not analysis:
             return jsonify({"error": "Failed to generate analysis. Please try again."}), 500

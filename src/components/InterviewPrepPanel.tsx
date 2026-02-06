@@ -3,8 +3,7 @@ import { Sparkles, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InterviewQuestion } from "@/components/InterviewQuestion";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
-import { TrackedApplication } from "@/contexts/ApplicationContext";
-import type { InterviewPrepData } from "@/types";
+import type { InterviewPrepData, TrackedApplication } from "@/types";
 
 interface InterviewPrepPanelProps {
   application: TrackedApplication;
@@ -30,7 +29,7 @@ export function InterviewPrepPanel({ application }: InterviewPrepPanelProps) {
     }
 
     try {
-      const response = await fetch("/api/interview-prep", {
+      const response = await fetch("http://localhost:5000/api/interview-prep", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
