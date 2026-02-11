@@ -35,7 +35,10 @@ def prepare_application():
         # In production, fetch job details from database
         # For now, generate generic materials
         result = generate_application_materials(job_id)
-        
+
+        if result.get("error_code") == "ai_service_unavailable":
+            return jsonify({"error": result.get("error", "Unable to generate application materials right now.")}), 503
+
         return jsonify(result)
     
     except Exception as e:
