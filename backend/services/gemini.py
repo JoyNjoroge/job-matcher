@@ -39,6 +39,7 @@ if _API_KEY:
         _GENAI_SDK.configure(api_key=_API_KEY)
 else:
     _CLIENT = None
+    genai.configure(api_key=_API_KEY)
 
 
 def _is_quota_error(error: Exception) -> bool:
@@ -75,6 +76,10 @@ def _generate_content_text(prompt: str, model_name: str = "gemini-2.5-flash") ->
     model = _GENAI_SDK.GenerativeModel(model_name)
     response = model.generate_content(prompt)
     return (response.text or "").strip()
+    """Get the Gemini model instance."""
+    if not _API_KEY:
+        raise RuntimeError("Gemini API key is not configured. Set GOOGLE_API_KEY or GEMINI_API_KEY.")
+    return genai.GenerativeModel("gemini-3-pro-preview")
 
 
 def analyze_job_fit(cv_content: str, job_description: str, job_title: str = "", company: str = "") -> dict:
