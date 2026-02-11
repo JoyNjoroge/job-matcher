@@ -8,8 +8,17 @@ import json
 from PyPDF2 import PdfReader
 from docx import Document
 import os
-import google.generativeai as genai
+import importlib
+import importlib.util
 
+
+def _load_gemini_sdk():
+    """Load preferred Gemini SDK with fallback for older environments."""
+    if importlib.util.find_spec("google.genai"):
+        return importlib.import_module("google.genai"), True
+    if importlib.util.find_spec("google.generativeai"):
+        return importlib.import_module("google.generativeai"), False
+    return None, False
 
 def parse_cv(file) -> str:
     """
@@ -263,13 +272,21 @@ def use_gemini_for_parsing(raw_text: str) -> dict:
         Structured dictionary with resume sections
     """
     try:
-        api_key = os.getenv("GEMINI_API_KEY")
+        api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
         if not api_key:
             print("No Gemini API key, using fallback parser")
             return extract_resume_structure(raw_text)
-        
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.0-flash-exp")
+
+        genai_sdk, using_new_sdk = _load_gemini_sdk()
+        if not genai_sdk:
+            print("No Gemini SDK installed, using fallback parser")
+            return extract_resume_structure(raw_text)
+
+        if using_new_sdk:
+            client = genai_sdk.Client(api_key=api_key)
+        else:
+            genai_sdk.configure(api_key=api_key)
+            client = None
         
         prompt = f"""
         Parse this resume and extract structured information.
@@ -301,8 +318,13 @@ def use_gemini_for_parsing(raw_text: str) -> dict:
         {raw_text[:4000]}
         """
         
-        response = model.generate_content(prompt)
-        response_text = response.text.strip()
+        if using_new_sdk:
+            response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+            response_text = (response.text or "").strip()
+        else:
+            model = genai_sdk.GenerativeModel("gemini-2.5-flash")
+            response = model.generate_content(prompt)
+            response_text = (response.text or "").strip()
         
         # Remove markdown code blocks if present
         if response_text.startswith("```json"):

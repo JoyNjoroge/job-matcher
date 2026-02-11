@@ -4,18 +4,77 @@ Gemini AI Service - Handles all AI-powered analysis and generation.
 
 import os
 import json
-import google.generativeai as genai
+import importlib.util
+import importlib
 
 # Configure Gemini API
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+
+def _load_gemini_sdk():
+    """Load preferred Gemini SDK with fallback for older environments."""
+    if importlib.util.find_spec("google.genai"):
+        return importlib.import_module("google.genai"), True
+    if importlib.util.find_spec("google.generativeai"):
+        return importlib.import_module("google.generativeai"), False
+    raise RuntimeError("No Gemini SDK installed. Install `google-genai`.")
+
+
+_GENAI_SDK, _USING_NEW_SDK = _load_gemini_sdk()
+
+
+def _resolve_api_key() -> str:
+    """Resolve API key with clear precedence when both env vars are set."""
+    if GOOGLE_API_KEY and GEMINI_API_KEY:
+        print("Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.")
+        return GOOGLE_API_KEY
+    return GOOGLE_API_KEY or GEMINI_API_KEY or ""
+
+
+_API_KEY = _resolve_api_key()
+if _API_KEY:
+    _CLIENT = _GENAI_SDK.Client(api_key=_API_KEY) if _USING_NEW_SDK else None
+    if not _USING_NEW_SDK:
+        _GENAI_SDK.configure(api_key=_API_KEY)
+else:
+    _CLIENT = None
+
+
+def _is_quota_error(error: Exception) -> bool:
+    """Return True when error looks like a Gemini quota/rate-limit issue."""
+    message = str(error).upper()
+    return "429" in message or "RESOURCE_EXHAUSTED" in message or "RATE" in message
+
+
+def _unavailable_response(message: str, include_questions: bool = False) -> dict:
+    """Shared fallback response when Gemini cannot be used (quota/key/API failures)."""
+    payload = {
+        "error": message,
+        "error_code": "ai_service_unavailable"
+    }
+    if include_questions:
+        payload["questions"] = []
+    return payload
 
 
 def get_model():
-    """Get the Gemini model instance."""
-    return genai.GenerativeModel("gemini-3-pro-preview")
+    """Get the Gemini API client."""
+    if not _API_KEY:
+        raise RuntimeError("Gemini API key is not configured. Set GOOGLE_API_KEY or GEMINI_API_KEY.")
+    return _CLIENT
+
+
+def _generate_content_text(prompt: str, model_name: str = "gemini-2.5-flash") -> str:
+    """Generate text via google.genai SDK and normalize response text."""
+    if _USING_NEW_SDK:
+        client = get_model()
+        response = client.models.generate_content(model=model_name, contents=prompt)
+        return (response.text or "").strip()
+
+    model = _GENAI_SDK.GenerativeModel(model_name)
+    response = model.generate_content(prompt)
+    return (response.text or "").strip()
 
 
 def analyze_job_fit(cv_content: str, job_description: str, job_title: str = "", company: str = "") -> dict:
@@ -31,8 +90,6 @@ def analyze_job_fit(cv_content: str, job_description: str, job_title: str = "", 
     Returns:
         dict with fit_score, interview_likelihood, strengths, gaps, red_flags
     """
-    model = get_model()
-    
     prompt = f"""
     You are an expert HR analyst and career coach. Analyze how well this candidate's CV matches the job description.
     
@@ -58,8 +115,8 @@ def analyze_job_fit(cv_content: str, job_description: str, job_title: str = "", 
     """
     
     try:
-        response = model.generate_content(prompt)
-        result = json.loads(response.text)
+        response_text = _generate_content_text(prompt)
+        result = json.loads(response_text)
         
         # Validate and sanitize response
         return {
@@ -71,13 +128,9 @@ def analyze_job_fit(cv_content: str, job_description: str, job_title: str = "", 
         }
     except Exception as e:
         print(f"Gemini analysis error: {e}")
-        return {
-            "fit_score": 50,
-            "interview_likelihood": "medium",
-            "strengths": ["Unable to analyze - please try again"],
-            "gaps": [],
-            "red_flags": []
-        }
+        if _is_quota_error(e):
+            return _unavailable_response("AI quota exceeded. Please try again later or update your Gemini billing/quota settings.")
+        return _unavailable_response("Unable to analyze this job right now. Please try again shortly.")
 
 
 def generate_application_materials(job_id: str, cv_content: str = "", job_description: str = "") -> dict:
@@ -92,8 +145,6 @@ def generate_application_materials(job_id: str, cv_content: str = "", job_descri
     Returns:
         dict with draft_email, resume_suggestions, ats_notes
     """
-    model = get_model()
-    
     prompt = f"""
     You are an expert career coach helping a job applicant. Generate application materials.
     
@@ -111,8 +162,8 @@ def generate_application_materials(job_id: str, cv_content: str = "", job_descri
     """
     
     try:
-        response = model.generate_content(prompt)
-        result = json.loads(response.text)
+        response_text = _generate_content_text(prompt)
+        result = json.loads(response_text)
         
         return {
             "draft_email": result.get("draft_email", ""),
@@ -121,11 +172,9 @@ def generate_application_materials(job_id: str, cv_content: str = "", job_descri
         }
     except Exception as e:
         print(f"Gemini generation error: {e}")
-        return {
-            "draft_email": "Unable to generate email - please try again.",
-            "resume_suggestions": [],
-            "ats_notes": []
-        }
+        if _is_quota_error(e):
+            return _unavailable_response("AI quota exceeded. Please try again later or update your Gemini billing/quota settings.")
+        return _unavailable_response("Unable to generate application materials right now. Please try again shortly.")
 
 
 def generate_interview_prep(application_id: str, job_title: str = "", company: str = "", job_description: str = "", cv_text: str = "") -> dict:
@@ -148,8 +197,6 @@ def generate_interview_prep(application_id: str, job_title: str = "", company: s
             "questions": [],
             "error": "Job description is required and must be at least 50 characters"
         }
-    
-    model = get_model()
     
     # Build a more detailed prompt when CV is available
     cv_section = ""
@@ -192,8 +239,7 @@ def generate_interview_prep(application_id: str, job_title: str = "", company: s
     """
     
     try:
-        response = model.generate_content(prompt)
-        response_text = response.text.strip()
+        response_text = _generate_content_text(prompt)
         
         # Try to extract JSON from the response
         import re
@@ -224,7 +270,7 @@ def generate_interview_prep(application_id: str, job_title: str = "", company: s
         
     except json.JSONDecodeError as e:
         print(f"Gemini JSON parse error: {e}")
-        print(f"Response was: {response.text[:500] if response else 'No response'}")
+        print(f"Response was: {response_text[:500] if 'response_text' in locals() else 'No response'}")
         return {
             "questions": [
                 {
@@ -256,15 +302,12 @@ def generate_interview_prep(application_id: str, job_title: str = "", company: s
         }
     except Exception as e:
         print(f"Gemini interview prep error: {e}")
-        return {
-            "questions": [
-                {
-                    "question": "Tell me about yourself.",
-                    "what_they_test": "Communication and self-presentation",
-                    "talking_points": ["Professional background", "Key achievements", "Why this role"]
-                }
-            ]
-        }
+        if _is_quota_error(e):
+            return _unavailable_response(
+                "AI quota exceeded. Please try again later or update your Gemini billing/quota settings.",
+                include_questions=True,
+            )
+        return _unavailable_response("Unable to generate interview prep right now. Please try again shortly.", include_questions=True)
 
 
 # ---------------------- Additional LinkedIn & Resume Helpers ----------------------
@@ -314,8 +357,7 @@ def parse_linkedin_text(linkedin_text: str) -> dict:
         {linkedin_text[:3000]}
         """
 
-        response = model.generate_content(prompt)
-        response_text = response.text.strip()
+        response_text = _generate_content_text(prompt)
 
         # Remove markdown fences if present
         if response_text.startswith("```json"):
@@ -363,8 +405,7 @@ def analyze_resume_match(resume_text: str, job_description: str) -> dict:
         {resume_text[:2000]}
         """
 
-        response = model.generate_content(prompt)
-        response_text = response.text.strip()
+        response_text = _generate_content_text(prompt)
 
         # Clean markdown
         if response_text.startswith("```json"):
@@ -437,8 +478,7 @@ def prepare_interview_questions(job_description: str, resume_text: str) -> list:
         {resume_text[:1500]}
         """
 
-        response = model.generate_content(prompt)
-        response_text = response.text.strip()
+        response_text = _generate_content_text(prompt)
 
         # Clean markdown
         if response_text.startswith("```json"):
@@ -463,8 +503,6 @@ def analyze_job_fit_for_briefing(resume_text: str, job_description: str) -> dict
     
     Returns comprehensive fit analysis with recommendations.
     """
-    model = get_model()
-    
     prompt = f"""You are an expert career counselor and recruiter. Analyze how well this candidate's resume matches the job description.
 
 RESUME:
@@ -509,8 +547,7 @@ IMPORTANT RULES:
 Return ONLY valid JSON, no markdown formatting."""
 
     try:
-        response = model.generate_content(prompt)
-        response_text = response.text.strip()
+        response_text = _generate_content_text(prompt)
         
         # Remove markdown code blocks if present
         if response_text.startswith("```"):
@@ -549,4 +586,6 @@ Return ONLY valid JSON, no markdown formatting."""
         }
     except Exception as e:
         print(f"Gemini API error: {e}")
-        raise
+        if _is_quota_error(e):
+            return _unavailable_response("AI quota exceeded. Please try again later or update your Gemini billing/quota settings.")
+        return _unavailable_response("Unable to analyze job fit right now. Please try again shortly.")
