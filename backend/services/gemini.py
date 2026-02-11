@@ -8,13 +8,43 @@ import google.generativeai as genai
 
 # Configure Gemini API
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+
+def _resolve_api_key() -> str:
+    """Resolve API key with clear precedence when both env vars are set."""
+    if GOOGLE_API_KEY and GEMINI_API_KEY:
+        print("Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.")
+        return GOOGLE_API_KEY
+    return GOOGLE_API_KEY or GEMINI_API_KEY or ""
+
+
+_API_KEY = _resolve_api_key()
+if _API_KEY:
+    genai.configure(api_key=_API_KEY)
+
+
+def _is_quota_error(error: Exception) -> bool:
+    """Return True when error looks like a Gemini quota/rate-limit issue."""
+    message = str(error).upper()
+    return "429" in message or "RESOURCE_EXHAUSTED" in message or "RATE" in message
+
+
+def _unavailable_response(message: str, include_questions: bool = False) -> dict:
+    """Shared fallback response when Gemini cannot be used (quota/key/API failures)."""
+    payload = {
+        "error": message,
+        "error_code": "ai_service_unavailable"
+    }
+    if include_questions:
+        payload["questions"] = []
+    return payload
 
 
 def get_model():
     """Get the Gemini model instance."""
+    if not _API_KEY:
+        raise RuntimeError("Gemini API key is not configured. Set GOOGLE_API_KEY or GEMINI_API_KEY.")
     return genai.GenerativeModel("gemini-3-pro-preview")
 
 
@@ -71,13 +101,9 @@ def analyze_job_fit(cv_content: str, job_description: str, job_title: str = "", 
         }
     except Exception as e:
         print(f"Gemini analysis error: {e}")
-        return {
-            "fit_score": 50,
-            "interview_likelihood": "medium",
-            "strengths": ["Unable to analyze - please try again"],
-            "gaps": [],
-            "red_flags": []
-        }
+        if _is_quota_error(e):
+            return _unavailable_response("AI quota exceeded. Please try again later or update your Gemini billing/quota settings.")
+        return _unavailable_response("Unable to analyze this job right now. Please try again shortly.")
 
 
 def generate_application_materials(job_id: str, cv_content: str = "", job_description: str = "") -> dict:
@@ -121,11 +147,9 @@ def generate_application_materials(job_id: str, cv_content: str = "", job_descri
         }
     except Exception as e:
         print(f"Gemini generation error: {e}")
-        return {
-            "draft_email": "Unable to generate email - please try again.",
-            "resume_suggestions": [],
-            "ats_notes": []
-        }
+        if _is_quota_error(e):
+            return _unavailable_response("AI quota exceeded. Please try again later or update your Gemini billing/quota settings.")
+        return _unavailable_response("Unable to generate application materials right now. Please try again shortly.")
 
 
 def generate_interview_prep(application_id: str, job_title: str = "", company: str = "", job_description: str = "", cv_text: str = "") -> dict:
@@ -256,15 +280,12 @@ def generate_interview_prep(application_id: str, job_title: str = "", company: s
         }
     except Exception as e:
         print(f"Gemini interview prep error: {e}")
-        return {
-            "questions": [
-                {
-                    "question": "Tell me about yourself.",
-                    "what_they_test": "Communication and self-presentation",
-                    "talking_points": ["Professional background", "Key achievements", "Why this role"]
-                }
-            ]
-        }
+        if _is_quota_error(e):
+            return _unavailable_response(
+                "AI quota exceeded. Please try again later or update your Gemini billing/quota settings.",
+                include_questions=True,
+            )
+        return _unavailable_response("Unable to generate interview prep right now. Please try again shortly.", include_questions=True)
 
 
 # ---------------------- Additional LinkedIn & Resume Helpers ----------------------
@@ -549,4 +570,6 @@ Return ONLY valid JSON, no markdown formatting."""
         }
     except Exception as e:
         print(f"Gemini API error: {e}")
-        raise
+        if _is_quota_error(e):
+            return _unavailable_response("AI quota exceeded. Please try again later or update your Gemini billing/quota settings.")
+        return _unavailable_response("Unable to analyze job fit right now. Please try again shortly.")

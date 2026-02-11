@@ -12,13 +12,15 @@ class Config:
     # Flask
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
     
-    # Database
-    # Prefer an explicit DATABASE_URL; fall back to a local SQLite DB for dev
-    DATABASE_URL = os.getenv("DATABASE_URL") or (
-        # Use SQLite by default in development to avoid requiring Postgres locally.
-        # Change in production by setting the DATABASE_URL env var.
-        f"sqlite:///" + os.path.join(os.path.dirname(__file__), "app_dev.db")
-    )
+    # Database (PostgreSQL only)
+    DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL is required. This backend is configured for PostgreSQL only.")
+    if DATABASE_URL.startswith("sqlite"):
+        raise RuntimeError("SQLite is not supported. Please provide a PostgreSQL DATABASE_URL.")
+    if not (DATABASE_URL.startswith("postgresql://") or DATABASE_URL.startswith("postgres://")):
+        raise RuntimeError("Invalid DATABASE_URL scheme. Use a PostgreSQL URL (postgresql:// or postgres://).")
+
     SQLALCHEMY_DATABASE_URI = DATABASE_URL
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {

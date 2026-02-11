@@ -64,10 +64,13 @@ def get_interview_prep():
             cv_text=cv_text
         )
         
+        if result.get("error_code") == "ai_service_unavailable":
+            return jsonify({"error": result.get("error", "Unable to generate interview prep right now.")}), 503
+
         # Validate result
         if not result.get("questions") or len(result["questions"]) == 0:
             return jsonify({"error": "Failed to generate interview questions. Please try again."}), 500
-        
+
         return jsonify(result)
     
     except Exception as e:
