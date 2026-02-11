@@ -81,10 +81,10 @@ def analyze():
         # Analyze with Gemini
         result = analyze_job_fit(cv_content, job_description)
         
-        # Validate result
-        if result.get("strengths", [""])[0] == "Unable to analyze - please try again":
-            return jsonify({"error": "Unable to analyze this job. Please try again or check your inputs."}), 500
-        
+        # Surface AI service errors clearly
+        if result.get("error_code") == "ai_service_unavailable":
+            return jsonify({"error": result.get("error", "Unable to analyze this job right now.")}), 503
+
         return jsonify(result)
     
     except Exception as e:
@@ -127,7 +127,10 @@ def analyze_from_extension():
             job_title=job_title,
             company=company
         )
-        
+
+        if result.get("error_code") == "ai_service_unavailable":
+            return jsonify({"error": result.get("error", "Unable to analyze this job right now.")}), 503
+
         return jsonify(result)
     
     except Exception as e:

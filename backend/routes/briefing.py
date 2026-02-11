@@ -118,6 +118,9 @@ def analyze_fit():
         
         if not analysis:
             return jsonify({"error": "Failed to generate analysis. Please try again."}), 500
+
+        if analysis.get("error_code") == "ai_service_unavailable":
+            return jsonify({"error": analysis.get("error", "Unable to analyze job fit right now.")}), 503
         
         # Ensure all required fields are present
         analysis.setdefault("fit_score", 0)
