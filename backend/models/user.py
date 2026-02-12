@@ -1,13 +1,11 @@
 """
-User model for authentication.
+User model helper for Supabase.
+No SQLAlchemy - just helper functions for working with user data.
 """
 
 import enum
 from datetime import datetime
 from uuid import uuid4
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Enum
-from sqlalchemy.orm import relationship
-from database import db
 import bcrypt
 
 
@@ -18,72 +16,71 @@ class RoleType(enum.Enum):
     MODERATOR = "moderator"
 
 
-class User(db.Model):
-    """User account model."""
+class User:
+    """Helper class for User operations with Supabase."""
     
-    __tablename__ = "users"
-    
-    # Use string UUIDs for cross-database compatibility (SQLite vs Postgres)
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    email = Column(String(255), unique=True, nullable=False, index=True)
-    password_hash = Column(String(255), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    last_login = Column(DateTime, nullable=True)
-    onboarding_completed = Column(Boolean, default=False, nullable=False)
-    is_active = Column(Boolean, default=True, nullable=False)
-    
-    # Relationships
-    profile = relationship("UserProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
-    resumes = relationship("Resume", back_populates="user", cascade="all, delete-orphan")
-    applications = relationship("JobApplication", back_populates="user", cascade="all, delete-orphan")
-    cover_letters = relationship("CoverLetter", back_populates="user", cascade="all, delete-orphan")
-    roles = relationship("UserRole", back_populates="user", cascade="all, delete-orphan")
-    
-    def set_password(self, password: str):
-        """Hash and set password."""
+    @staticmethod
+    def create_new(email: str, password: str) -> dict:
+        """Create a new user dict ready for Supabase insert."""
         salt = bcrypt.gensalt()
-        self.password_hash = bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
-    
-    def check_password(self, password: str) -> bool:
-        """Verify password."""
-        return bcrypt.checkpw(
-            password.encode("utf-8"),
-            self.password_hash.encode("utf-8")
-        )
-    
-    def update_last_login(self):
-        """Update last login timestamp."""
-        self.last_login = datetime.utcnow()
-    
-    def has_role(self, role: RoleType) -> bool:
-        """Check if user has a specific role."""
-        return any(r.role == role for r in self.roles)
-    
-    def to_dict(self):
-        """Convert to dictionary."""
+        password_hash = bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+        
         return {
-            "id": str(self.id),
-            "email": self.email,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "last_login": self.last_login.isoformat() if self.last_login else None,
-            "onboarding_completed": self.onboarding_completed,
-            "is_active": self.is_active,
+            "id": str(uuid4()),
+            "email": email.strip().lower(),
+            "password_hash": password_hash,
+            "created_at": datetime.utcnow().isoformat(),
+            "last_login": None,
+            "onboarding_completed": False,
+            "is_active": True,
+        }
+    
+    @staticmethod
+    def check_password(user_data: dict, password: str) -> bool:
+        """Verify password against stored hash."""
+        try:
+            return bcrypt.checkpw(
+                password.encode("utf-8"),
+                user_data["password_hash"].encode("utf-8")
+            )
+        except Exception as e:
+            print(f"Password check error: {e}")
+            return False
+    
+    @staticmethod
+    def update_last_login(user_id: str) -> dict:
+        """Get update dict for last login timestamp."""
+        return {
+            "last_login": datetime.utcnow().isoformat()
+        }
+    
+    @staticmethod
+    def to_dict(user_data: dict) -> dict:
+        """Convert Supabase row to API response format."""
+        return {
+            "id": str(user_data.get("id")),
+            "email": user_data.get("email"),
+            "created_at": user_data.get("created_at"),
+            "last_login": user_data.get("last_login"),
+            "onboarding_completed": user_data.get("onboarding_completed", False),
+            "is_active": user_data.get("is_active", True),
         }
 
 
-class UserRole(db.Model):
-    """User roles for authorization (separate table to prevent privilege escalation)."""
+class UserRole:
+    """Helper class for UserRole operations with Supabase."""
     
-    __tablename__ = "user_roles"
+    @staticmethod
+    def create_new(user_id: str, role: RoleType) -> dict:
+        """Create a new user role dict."""
+        return {
+            "id": str(uuid4()),
+            "user_id": user_id,
+            "role": role.value,
+            "created_at": datetime.utcnow().isoformat(),
+        }
     
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    role = Column(Enum(RoleType), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    
-    # Relationships
-    user = relationship("User", back_populates="roles")
-    
-    __table_args__ = (
-        db.UniqueConstraint("user_id", "role", name="unique_user_role"),
-    )
+    @staticmethod
+    def has_role(user_roles: list, role: RoleType) -> bool:
+        """Check if user has a specific role."""
+        return any(r.get("role") == role.value for r in user_roles)

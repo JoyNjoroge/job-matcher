@@ -1,5 +1,9 @@
 """
 Authentication service - JWT token management.
+STEP 3: Updated auth.py for Supabase (services/auth.py)
+
+NOTE: This keeps your existing JWT approach but works with Supabase.
+You can optionally migrate to Supabase Auth later for additional features.
 """
 
 import os
@@ -86,7 +90,8 @@ def require_auth(f):
             if payload.get("type") not in ["access", "extension"]:
                 return jsonify({"error": "Invalid token type"}), 401
             
-            # Store user info in flask g object (as strings for SQLite compatibility)
+            # Store user info in flask g object
+            # Note: Supabase uses UUIDs, so we keep them as strings
             g.user_id = str(payload["sub"])
             g.user_email = payload.get("email")
             
@@ -111,7 +116,6 @@ def require_refresh_token(f):
             if payload.get("type") != "refresh":
                 return jsonify({"error": "Refresh token required"}), 401
             
-            # Store as string for SQLite compatibility
             g.user_id = str(payload["sub"])
             
             return f(*args, **kwargs)
@@ -122,3 +126,31 @@ def require_refresh_token(f):
             return jsonify({"error": "Authentication failed"}), 401
     
     return decorated
+
+
+# OPTIONAL: Helper functions for Supabase Auth (if you want to migrate later)
+# Uncomment these if you decide to use Supabase Auth instead of JWT
+
+# from database import get_supabase
+#
+# def supabase_sign_up(email: str, password: str, metadata: dict = None):
+#     """Sign up using Supabase Auth."""
+#     supabase = get_supabase()
+#     return supabase.auth.sign_up({
+#         "email": email,
+#         "password": password,
+#         "options": {"data": metadata} if metadata else {}
+#     })
+#
+# def supabase_sign_in(email: str, password: str):
+#     """Sign in using Supabase Auth."""
+#     supabase = get_supabase()
+#     return supabase.auth.sign_in_with_password({
+#         "email": email,
+#         "password": password
+#     })
+#
+# def supabase_sign_out():
+#     """Sign out using Supabase Auth."""
+#     supabase = get_supabase()
+#     return supabase.auth.sign_out()

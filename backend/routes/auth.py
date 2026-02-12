@@ -1,12 +1,12 @@
 """
 Authentication routes - Login, Register, Token management.
+UPDATED FOR SUPABASE - No SQLAlchemy
 """
 
 from flask import Blueprint, request, jsonify, g
-from sqlalchemy.exc import IntegrityError
-import traceback
+from datetime import datetime
 
-from database import db
+from database import get_db_helper
 from models import User, UserProfile, UserRole, RoleType
 from services.auth import (
     generate_access_token,
@@ -36,13 +36,11 @@ def register():
     try:
         data = request.get_json()
         
-        
         if not data:
             return jsonify({"error": "Request body required"}), 400
         
         email = data.get("email", "").strip().lower()
         password = data.get("password", "")
-        
         
         # Validation
         if not email:
@@ -54,44 +52,42 @@ def register():
         if len(password) < 8:
             return jsonify({"error": "Password must be at least 8 characters"}), 400
         
+        db = get_db_helper()
+        
         # Check if user exists
-        existing = User.query.filter_by(email=email).first()
+        existing = db.get_user_by_email(email)
         if existing:
             return jsonify({"error": "Email already registered"}), 409
         
         # Create user
-        user = User(email=email)
-        user.set_password(password)
-        db.session.add(user)
-        db.session.flush()  # Get user.id before committing
+        user_data = User.create_new(email, password)
+        user = db.create_user(user_data)
         
+        if not user:
+            return jsonify({"error": "Failed to create user"}), 500
         
         # Create empty profile
-        profile = UserProfile(user_id=user.id)
-        db.session.add(profile)
+        profile_data = UserProfile.create_new(user["id"])
+        db.create_profile(profile_data)
         
         # Assign default user role
-        role = UserRole(user_id=user.id, role=RoleType.USER)
-        db.session.add(role)
-        
-        db.session.commit()
-        
+        role_data = UserRole.create_new(user["id"], RoleType.USER)
+        db.client.table('user_roles').insert(role_data).execute()
         
         # Generate tokens
-        access_token = generate_access_token(str(user.id), user.email)
-        refresh_token = generate_refresh_token(str(user.id))
+        access_token = generate_access_token(str(user["id"]), user["email"])
+        refresh_token = generate_refresh_token(str(user["id"]))
         
         return jsonify({
-            "user": user.to_dict(),
+            "user": User.to_dict(user),
             "access_token": access_token,
             "refresh_token": refresh_token,
         }), 201
         
-    except IntegrityError as e:
-        db.session.rollback()
-        return jsonify({"error": "Email already registered"}), 409
     except Exception as e:
-        db.session.rollback()
+        print(f"Registration error: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": "Registration failed"}), 500
 
 
@@ -112,48 +108,50 @@ def login():
     try:
         data = request.get_json()
         
-        
         if not data:
             return jsonify({"error": "Request body required"}), 400
         
         email = data.get("email", "").strip().lower()
         password = data.get("password", "")
         
-        
         if not email or not password:
             return jsonify({"error": "Email and password required"}), 400
         
+        db = get_db_helper()
+        
         # Find user
-        user = User.query.filter_by(email=email).first()
+        user = db.get_user_by_email(email)
         
         if not user:
             return jsonify({"error": "Invalid email or password"}), 401
         
-        
-        password_valid = user.check_password(password)
+        # Verify password
+        password_valid = User.check_password(user, password)
         
         if not password_valid:
             return jsonify({"error": "Invalid email or password"}), 401
         
-        if not user.is_active:
+        if not user.get("is_active"):
             return jsonify({"error": "Account is deactivated"}), 403
         
         # Update last login
-        user.update_last_login()
-        db.session.commit()
-        
+        update_data = User.update_last_login(user["id"])
+        db.update_user(user["id"], update_data)
         
         # Generate tokens
-        access_token = generate_access_token(str(user.id), user.email)
-        refresh_token = generate_refresh_token(str(user.id))
+        access_token = generate_access_token(str(user["id"]), user["email"])
+        refresh_token = generate_refresh_token(str(user["id"]))
         
         return jsonify({
-            "user": user.to_dict(),
+            "user": User.to_dict(user),
             "access_token": access_token,
             "refresh_token": refresh_token,
         })
         
     except Exception as e:
+        print(f"Login error: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": "Login failed"}), 500
 
 
@@ -171,16 +169,17 @@ def refresh_tokens():
         - refresh_token: New JWT refresh token
     """
     try:
-        user = User.query.get(g.user_id)
+        db = get_db_helper()
+        user = db.get_user_by_id(g.user_id)
         
         if not user:
             return jsonify({"error": "User not found"}), 404
         
-        if not user.is_active:
+        if not user.get("is_active"):
             return jsonify({"error": "Account is deactivated"}), 403
         
-        access_token = generate_access_token(str(user.id), user.email)
-        refresh_token = generate_refresh_token(str(user.id))
+        access_token = generate_access_token(str(user["id"]), user["email"])
+        refresh_token = generate_refresh_token(str(user["id"]))
         
         return jsonify({
             "access_token": access_token,
@@ -202,14 +201,18 @@ def get_current_user():
         - user: User object with profile
     """
     try:
-        user = User.query.get(g.user_id)
+        db = get_db_helper()
+        user = db.get_user_by_id(g.user_id)
         
         if not user:
             return jsonify({"error": "User not found"}), 404
         
-        user_data = user.to_dict()
-        if user.profile:
-            user_data["profile"] = user.profile.to_dict()
+        user_data = User.to_dict(user)
+        
+        # Get profile
+        profile = db.get_profile(g.user_id)
+        if profile:
+            user_data["profile"] = UserProfile.to_dict(profile)
         
         return jsonify({"user": user_data})
         

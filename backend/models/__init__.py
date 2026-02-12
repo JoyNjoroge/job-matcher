@@ -1,17 +1,21 @@
 """
-Database models for ApplyBot Pro.
+Database models for ApplyBot Pro - Supabase version.
+These are helper classes, not SQLAlchemy models.
 """
 
 from .user import User, UserRole, RoleType
-from .profile import UserProfile
-from .resume import Resume
-from .application import JobApplication, ApplicationStatus
-from .cover_letter import CoverLetter
-from .freelance import FreelanceLead
+from .helpers import (
+    UserProfile,
+    Resume,
+    JobApplication,
+    ApplicationStatus,
+    CoverLetter,
+    FreelanceLead,
+)
 
 __all__ = [
     "User",
-    "UserRole", 
+    "UserRole",
     "RoleType",
     "UserProfile",
     "Resume",
