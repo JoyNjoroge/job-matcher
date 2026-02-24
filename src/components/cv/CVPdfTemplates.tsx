@@ -156,3 +156,96 @@ export function CVPdfDocument({ resume, template }: Props) {
     </Document>
   );
 }
+
+/* ─── Cover Letter PDF Templates ─── */
+
+const clAtsStyles = StyleSheet.create({
+  page: { padding: 50, fontSize: 11, fontFamily: "Helvetica", color: "#1a1a1a" },
+  header: { marginBottom: 24 },
+  name: { fontSize: 18, fontFamily: "Helvetica-Bold", marginBottom: 2 },
+  contactRow: { flexDirection: "row", gap: 12, fontSize: 9, color: "#666", marginBottom: 4 },
+  date: { fontSize: 10, color: "#555", marginBottom: 16 },
+  recipient: { fontSize: 10, color: "#333", marginBottom: 20 },
+  body: { fontSize: 11, lineHeight: 1.7, color: "#222", marginBottom: 12 },
+  closing: { fontSize: 11, color: "#222", marginTop: 8 },
+  signature: { fontSize: 11, fontFamily: "Helvetica-Bold", marginTop: 24 },
+});
+
+const clStartupStyles = StyleSheet.create({
+  page: { padding: 40, fontSize: 11, fontFamily: "Helvetica", color: "#1e293b" },
+  header: { backgroundColor: "#4338ca", color: "#fff", padding: 20, marginHorizontal: -40, marginTop: -40, marginBottom: 24 },
+  name: { fontSize: 20, fontFamily: "Helvetica-Bold", color: "#fff" },
+  contactRow: { flexDirection: "row", gap: 14, fontSize: 9, color: "#e0e7ff", marginTop: 6 },
+  date: { fontSize: 10, color: "#64748b", marginBottom: 16 },
+  recipient: { fontSize: 10, color: "#475569", marginBottom: 20 },
+  body: { fontSize: 11, lineHeight: 1.7, color: "#334155", marginBottom: 12 },
+  closing: { fontSize: 11, color: "#334155", marginTop: 8 },
+  signature: { fontSize: 11, fontFamily: "Helvetica-Bold", color: "#4338ca", marginTop: 24 },
+});
+
+const clExecStyles = StyleSheet.create({
+  page: { padding: 56, fontSize: 11, fontFamily: "Times-Roman", color: "#1a1a1a" },
+  header: { textAlign: "center" as any, marginBottom: 28, borderBottomWidth: 2, borderBottomColor: "#1a1a1a", paddingBottom: 14 },
+  name: { fontSize: 20, fontFamily: "Times-Bold", letterSpacing: 2, textTransform: "uppercase" as any },
+  contactRow: { flexDirection: "row", justifyContent: "center", gap: 16, fontSize: 9, color: "#555", marginTop: 8 },
+  date: { fontSize: 10, fontFamily: "Times-Italic", color: "#555", marginBottom: 16 },
+  recipient: { fontSize: 10, color: "#333", marginBottom: 20 },
+  body: { fontSize: 11, lineHeight: 1.8, color: "#222", fontFamily: "Times-Roman", marginBottom: 12, textAlign: "justify" as any },
+  closing: { fontSize: 11, fontFamily: "Times-Italic", color: "#222", marginTop: 8 },
+  signature: { fontSize: 11, fontFamily: "Times-Bold", marginTop: 24 },
+});
+
+const clStyleMap: Record<CVTemplate, any> = {
+  "ats-crusher": clAtsStyles,
+  startup: clStartupStyles,
+  executive: clExecStyles,
+};
+
+interface CoverLetterPdfProps {
+  coverLetter: string;
+  resume: JsonResume;
+  template: CVTemplate;
+  companyName: string;
+}
+
+export function CoverLetterPdfDocument({ coverLetter, resume, template, companyName }: CoverLetterPdfProps) {
+  const s = clStyleMap[template];
+  const b = resume.basics;
+  const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+
+  // Split cover letter into paragraphs
+  const paragraphs = coverLetter.split(/\n\n+/).filter(Boolean);
+
+  return (
+    <Document>
+      <Page size="A4" style={s.page}>
+        {/* Header */}
+        <View style={s.header}>
+          <Text style={s.name}>{b.name || "Your Name"}</Text>
+          <View style={s.contactRow}>
+            {b.email ? <Text>{b.email}</Text> : null}
+            {b.phone ? <Text>{b.phone}</Text> : null}
+            {b.location?.city ? <Text>{b.location.city}</Text> : null}
+          </View>
+        </View>
+
+        {/* Date */}
+        <Text style={s.date}>{today}</Text>
+
+        {/* Recipient */}
+        {companyName ? (
+          <Text style={s.recipient}>Hiring Manager{"\n"}{companyName}</Text>
+        ) : null}
+
+        {/* Body */}
+        {paragraphs.map((p, i) => (
+          <Text key={i} style={s.body}>{p.trim()}</Text>
+        ))}
+
+        {/* Signature */}
+        <Text style={s.closing}>Sincerely,</Text>
+        <Text style={s.signature}>{b.name || "Your Name"}</Text>
+      </Page>
+    </Document>
+  );
+}
