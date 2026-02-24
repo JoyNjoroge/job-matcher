@@ -2,13 +2,15 @@ import { useState, useCallback } from "react";
 import { PDFViewer, pdf } from "@react-pdf/renderer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import { Sparkles, Download, Loader2, FileText } from "lucide-react";
+import { Sparkles, Download, Loader2, FileText, Mail } from "lucide-react";
 import { CVFormEditor } from "@/components/cv/CVFormEditor";
 import { CVPdfDocument } from "@/components/cv/CVPdfTemplates";
 import { TemplateGallery } from "@/components/cv/TemplateGallery";
+import { CoverLetterTab } from "@/components/cv/CoverLetterTab";
 import type { JsonResume, CVTemplate } from "@/types/jsonResume";
 import { emptyResume } from "@/types/jsonResume";
 import { useAuth } from "@/contexts/AuthContext";
@@ -24,6 +26,7 @@ export default function CVGeneratorPage() {
   const [companyName, setCompanyName] = useState("");
   const [isRefining, setIsRefining] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const [activeTab, setActiveTab] = useState("cv");
 
   // Load from existing profile resume
   const loadFromProfile = useCallback(async () => {
@@ -38,7 +41,6 @@ export default function CVGeneratorPage() {
       const profile = data.profile || {};
       const resumeData = data.resume?.parsed_json || {};
 
-      // Map profile/resume data to JsonResume
       const mapped: JsonResume = {
         basics: {
           name: profile.full_name || "",
@@ -47,11 +49,7 @@ export default function CVGeneratorPage() {
           phone: profile.phone || "",
           url: profile.linkedin_url || "",
           summary: profile.bio || "",
-          location: {
-            city: profile.location || "",
-            region: "",
-            countryCode: "",
-          },
+          location: { city: profile.location || "", region: "", countryCode: "" },
         },
         work: (resumeData.experience || []).map((exp: any) => ({
           name: exp.company || "",
@@ -85,7 +83,6 @@ export default function CVGeneratorPage() {
         ),
       };
 
-      // Consolidate string skills into one group
       const stringSkills = mapped.skills.filter((s) => s.name === "Skills");
       const namedSkills = mapped.skills.filter((s) => s.name !== "Skills");
       if (stringSkills.length > 0) {
@@ -117,30 +114,17 @@ export default function CVGeneratorPage() {
           "Content-Type": "application/json",
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
-        body: JSON.stringify({
-          current_cv: resume,
-          job_description: jobDescription,
-          company_name: companyName,
-        }),
+        body: JSON.stringify({ current_cv: resume, job_description: jobDescription, company_name: companyName }),
       });
       if (!res.ok) throw new Error("Gemini refinement failed");
       const data = await res.json();
-
-      if (data.refined_cv) {
-        setResume(data.refined_cv);
-      }
-
-      // Changelog toast
-      if (data.changelog && data.changelog.length > 0) {
-        const changeStr = data.changelog.join(". ");
-        toast({
-          title: "✨ Gemini refined your CV",
-          description: changeStr,
-        });
+      if (data.refined_cv) setResume(data.refined_cv);
+      if (data.changelog?.length > 0) {
+        toast({ title: "✨ Gemini refined your CV", description: data.changelog.join(". ") });
       } else {
         toast({ title: "✨ CV refined", description: "Your CV has been optimized for this role." });
       }
-    } catch (err) {
+    } catch {
       toast({ title: "Refinement failed", description: "Could not connect to Gemini. Check your backend.", variant: "destructive" });
     } finally {
       setIsRefining(false);
@@ -154,16 +138,14 @@ export default function CVGeneratorPage() {
       const userName = resume.basics.name.replace(/\s+/g, "_") || "Resume";
       const company = companyName.replace(/\s+/g, "_") || "General";
       const fileName = `${userName}_Resume_${company}.pdf`;
-
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
       link.download = fileName;
       link.click();
       URL.revokeObjectURL(url);
-
       toast({ title: "PDF downloaded", description: fileName });
-    } catch (err) {
+    } catch {
       toast({ title: "Download failed", description: "Could not generate PDF.", variant: "destructive" });
     }
   }, [resume, template, companyName]);
@@ -178,7 +160,7 @@ export default function CVGeneratorPage() {
             Smart CV Generator
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Build, tailor, and export a job-winning resume with AI assistance
+            Build, tailor, and export a job-winning resume & cover letter with AI
           </p>
         </div>
         <div className="flex gap-2">
@@ -186,16 +168,15 @@ export default function CVGeneratorPage() {
             {isLoadingProfile ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
             Import from Profile
           </Button>
-          <Button onClick={downloadPdf}>
-            <Download className="h-4 w-4 mr-1" /> Download PDF
-          </Button>
+          {activeTab === "cv" && (
+            <Button onClick={downloadPdf}>
+              <Download className="h-4 w-4 mr-1" /> Download PDF
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Template Gallery */}
-      <TemplateGallery selected={template} onSelect={setTemplate} />
-
-      {/* AI Refine Section */}
+      {/* AI Refine Section (shared context for both tabs) */}
       <Card className="border-primary/20 bg-primary/5">
         <CardContent className="pt-4 pb-4">
           <div className="flex gap-4 items-end">
@@ -204,7 +185,7 @@ export default function CVGeneratorPage() {
               <Textarea
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
-                placeholder="Paste the job description here for AI-powered CV tailoring..."
+                placeholder="Paste the job description here for AI-powered CV tailoring & cover letter generation..."
                 rows={3}
                 className="text-sm"
               />
@@ -217,45 +198,58 @@ export default function CVGeneratorPage() {
                 onChange={(e) => setCompanyName(e.target.value)}
                 placeholder="Company name"
               />
-              <Button
-                onClick={autoRefine}
-                disabled={isRefining}
-                className="w-full mt-2 bg-primary hover:bg-primary/90"
-              >
-                {isRefining ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Sparkles className="h-4 w-4 mr-1" />}
-                Auto-Refine
-              </Button>
+              {activeTab === "cv" && (
+                <Button onClick={autoRefine} disabled={isRefining} className="w-full mt-2 bg-primary hover:bg-primary/90">
+                  {isRefining ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Sparkles className="h-4 w-4 mr-1" />}
+                  Auto-Refine
+                </Button>
+              )}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Split View: Form | PDF Preview */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left: Form */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Edit Resume</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CVFormEditor resume={resume} onChange={setResume} />
-          </CardContent>
-        </Card>
+      {/* Tabs: CV | Cover Letter */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="cv" className="gap-1.5">
+            <FileText className="h-4 w-4" /> Resume
+          </TabsTrigger>
+          <TabsTrigger value="cover-letter" className="gap-1.5">
+            <Mail className="h-4 w-4" /> Cover Letter
+          </TabsTrigger>
+        </TabsList>
 
-        {/* Right: Live PDF Preview */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Live Preview</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="h-[calc(100vh-340px)] min-h-[500px]">
-              <PDFViewer width="100%" height="100%" showToolbar={false} className="rounded-b-lg">
-                <CVPdfDocument resume={resume} template={template} />
-              </PDFViewer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+        <TabsContent value="cv" className="space-y-6 mt-4">
+          <TemplateGallery selected={template} onSelect={setTemplate} />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Edit Resume</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CVFormEditor resume={resume} onChange={setResume} />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Live Preview</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="h-[calc(100vh-340px)] min-h-[500px]">
+                  <PDFViewer width="100%" height="100%" showToolbar={false} className="rounded-b-lg">
+                    <CVPdfDocument resume={resume} template={template} />
+                  </PDFViewer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="cover-letter" className="mt-4">
+          <CoverLetterTab resume={resume} jobDescription={jobDescription} companyName={companyName} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
