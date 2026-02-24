@@ -20,6 +20,7 @@ import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage";
 import ApplyBriefingPage from "./pages/BriefingPage";
+import CVGeneratorPage from "./pages/CVGeneratorPage";
 
 const queryClient = new QueryClient();
 
@@ -110,6 +111,14 @@ const App = () => (
                       </ProtectedRoute>
                     }
                       />
+                <Route 
+                  path="/cv-generator" 
+                  element={
+                    <ProtectedRoute>
+                      <Layout><CVGeneratorPage /></Layout>
+                    </ProtectedRoute>
+                  } 
+                />
                 
                 <Route 
                   path="/profile" 
