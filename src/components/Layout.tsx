@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { FileSearch, LayoutGrid, MessageSquare, Upload, Moon, Sun, Search, ClipboardList, LogOut, User } from "lucide-react";
+import { FileSearch, LayoutGrid, MessageSquare, Upload, Moon, Sun, Search, ClipboardList, LogOut, User, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ const navItems = [
   { path: "/search", label: "Search Jobs", icon: Search },
   { path: "/applications", label: "My Applications", icon: ClipboardList, showBadge: true },
   { path: "/prep", label: "Interview Prep", icon: MessageSquare },
+  { path: "/cv-generator", label: "CV Generator", icon: FileText },
   { path: "/profile", label: "Profile", icon: User },
 ];
 
