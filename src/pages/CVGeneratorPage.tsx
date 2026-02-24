@@ -6,9 +6,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import { Sparkles, Download, Loader2, FileText, Mail } from "lucide-react";
+import { Sparkles, Download, Loader2, FileText, Mail, Package } from "lucide-react";
 import { CVFormEditor } from "@/components/cv/CVFormEditor";
-import { CVPdfDocument } from "@/components/cv/CVPdfTemplates";
+import { CVPdfDocument, CoverLetterPdfDocument } from "@/components/cv/CVPdfTemplates";
 import { TemplateGallery } from "@/components/cv/TemplateGallery";
 import { CoverLetterTab } from "@/components/cv/CoverLetterTab";
 import type { JsonResume, CVTemplate } from "@/types/jsonResume";
@@ -27,6 +27,7 @@ export default function CVGeneratorPage() {
   const [isRefining, setIsRefining] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [activeTab, setActiveTab] = useState("cv");
+  const [coverLetter, setCoverLetter] = useState("");
 
   // Load from existing profile resume
   const loadFromProfile = useCallback(async () => {
@@ -131,7 +132,7 @@ export default function CVGeneratorPage() {
     }
   }, [resume, jobDescription, companyName, accessToken]);
 
-  // Download PDF
+  // Download CV PDF
   const downloadPdf = useCallback(async () => {
     try {
       const blob = await pdf(<CVPdfDocument resume={resume} template={template} />).toBlob();
@@ -149,6 +150,37 @@ export default function CVGeneratorPage() {
       toast({ title: "Download failed", description: "Could not generate PDF.", variant: "destructive" });
     }
   }, [resume, template, companyName]);
+
+  // Download bundle (CV + Cover Letter)
+  const downloadBundle = useCallback(async () => {
+    const userName = resume.basics.name.replace(/\s+/g, "_") || "Applicant";
+    const company = companyName.replace(/\s+/g, "_") || "General";
+    try {
+      const cvBlob = await pdf(<CVPdfDocument resume={resume} template={template} />).toBlob();
+      const cvUrl = URL.createObjectURL(cvBlob);
+      const cvLink = document.createElement("a");
+      cvLink.href = cvUrl;
+      cvLink.download = `${userName}_Resume_${company}.pdf`;
+      cvLink.click();
+      URL.revokeObjectURL(cvUrl);
+
+      if (coverLetter) {
+        await new Promise((r) => setTimeout(r, 500));
+        const clBlob = await pdf(
+          <CoverLetterPdfDocument coverLetter={coverLetter} resume={resume} template={template} companyName={companyName} />
+        ).toBlob();
+        const clUrl = URL.createObjectURL(clBlob);
+        const clLink = document.createElement("a");
+        clLink.href = clUrl;
+        clLink.download = `${userName}_CoverLetter_${company}.pdf`;
+        clLink.click();
+        URL.revokeObjectURL(clUrl);
+      }
+      toast({ title: "Bundle downloaded", description: coverLetter ? "CV + Cover Letter exported." : "CV exported (no cover letter generated yet)." });
+    } catch {
+      toast({ title: "Download failed", description: "Could not generate PDFs.", variant: "destructive" });
+    }
+  }, [resume, template, companyName, coverLetter]);
 
   return (
     <div className="space-y-6">
@@ -173,6 +205,9 @@ export default function CVGeneratorPage() {
               <Download className="h-4 w-4 mr-1" /> Download PDF
             </Button>
           )}
+          <Button variant="secondary" onClick={downloadBundle}>
+            <Package className="h-4 w-4 mr-1" /> Download Bundle
+          </Button>
         </div>
       </div>
 
@@ -247,7 +282,14 @@ export default function CVGeneratorPage() {
         </TabsContent>
 
         <TabsContent value="cover-letter" className="mt-4">
-          <CoverLetterTab resume={resume} jobDescription={jobDescription} companyName={companyName} />
+          <CoverLetterTab
+            resume={resume}
+            jobDescription={jobDescription}
+            companyName={companyName}
+            template={template}
+            coverLetter={coverLetter}
+            onCoverLetterChange={setCoverLetter}
+          />
         </TabsContent>
       </Tabs>
     </div>

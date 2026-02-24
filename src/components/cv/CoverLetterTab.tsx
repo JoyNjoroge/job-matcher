@@ -1,11 +1,13 @@
 import { useState, useCallback } from "react";
+import { PDFViewer, pdf } from "@react-pdf/renderer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { Sparkles, Loader2, Copy, Download } from "lucide-react";
-import type { JsonResume } from "@/types/jsonResume";
+import { CoverLetterPdfDocument } from "@/components/cv/CVPdfTemplates";
+import type { JsonResume, CVTemplate } from "@/types/jsonResume";
 
 const API_BASE = "http://localhost:5000/api";
 
@@ -13,11 +15,13 @@ interface CoverLetterTabProps {
   resume: JsonResume;
   jobDescription: string;
   companyName: string;
+  template: CVTemplate;
+  coverLetter: string;
+  onCoverLetterChange: (value: string) => void;
 }
 
-export function CoverLetterTab({ resume, jobDescription, companyName }: CoverLetterTabProps) {
+export function CoverLetterTab({ resume, jobDescription, companyName, template, coverLetter, onCoverLetterChange }: CoverLetterTabProps) {
   const accessToken = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-  const [coverLetter, setCoverLetter] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [tone, setTone] = useState<"professional" | "enthusiastic" | "concise">("professional");
 
@@ -38,46 +42,47 @@ export function CoverLetterTab({ resume, jobDescription, companyName }: CoverLet
           "Content-Type": "application/json",
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
-        body: JSON.stringify({
-          resume,
-          job_description: jobDescription,
-          company_name: companyName,
-          tone,
-        }),
+        body: JSON.stringify({ resume, job_description: jobDescription, company_name: companyName, tone }),
       });
       if (!res.ok) throw new Error("Generation failed");
       const data = await res.json();
-      setCoverLetter(data.cover_letter || "");
+      onCoverLetterChange(data.cover_letter || "");
       toast({ title: "✨ Cover letter generated", description: "Tailored to the job description and your CV." });
     } catch {
       toast({ title: "Generation failed", description: "Could not generate cover letter.", variant: "destructive" });
     } finally {
       setIsGenerating(false);
     }
-  }, [resume, jobDescription, companyName, tone, accessToken]);
+  }, [resume, jobDescription, companyName, tone, accessToken, onCoverLetterChange]);
 
   const copyToClipboard = useCallback(() => {
     navigator.clipboard.writeText(coverLetter);
     toast({ title: "Copied!", description: "Cover letter copied to clipboard." });
   }, [coverLetter]);
 
-  const downloadTxt = useCallback(() => {
-    const userName = resume.basics.name.replace(/\s+/g, "_") || "Cover_Letter";
-    const company = companyName.replace(/\s+/g, "_") || "General";
-    const fileName = `${userName}_CoverLetter_${company}.txt`;
-    const blob = new Blob([coverLetter], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName;
-    link.click();
-    URL.revokeObjectURL(url);
-    toast({ title: "Downloaded", description: fileName });
-  }, [coverLetter, resume.basics.name, companyName]);
+  const downloadPdf = useCallback(async () => {
+    try {
+      const blob = await pdf(
+        <CoverLetterPdfDocument coverLetter={coverLetter} resume={resume} template={template} companyName={companyName} />
+      ).toBlob();
+      const userName = resume.basics.name.replace(/\s+/g, "_") || "Cover_Letter";
+      const company = companyName.replace(/\s+/g, "_") || "General";
+      const fileName = `${userName}_CoverLetter_${company}.pdf`;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "PDF downloaded", description: fileName });
+    } catch {
+      toast({ title: "Download failed", description: "Could not generate PDF.", variant: "destructive" });
+    }
+  }, [coverLetter, resume, template, companyName]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Left: Controls */}
+      {/* Left: Controls + Editor */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Generate Cover Letter</CardTitle>
@@ -87,13 +92,7 @@ export function CoverLetterTab({ resume, jobDescription, companyName }: CoverLet
             <Label className="text-xs font-semibold text-muted-foreground">Tone</Label>
             <div className="flex gap-2">
               {(["professional", "enthusiastic", "concise"] as const).map((t) => (
-                <Button
-                  key={t}
-                  size="sm"
-                  variant={tone === t ? "default" : "outline"}
-                  onClick={() => setTone(t)}
-                  className="capitalize text-xs"
-                >
+                <Button key={t} size="sm" variant={tone === t ? "default" : "outline"} onClick={() => setTone(t)} className="capitalize text-xs">
                   {t}
                 </Button>
               ))}
@@ -110,37 +109,45 @@ export function CoverLetterTab({ resume, jobDescription, companyName }: CoverLet
             {isGenerating ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Sparkles className="h-4 w-4 mr-1" />}
             Generate with AI
           </Button>
+
+          {coverLetter && (
+            <>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" className="flex-1" onClick={copyToClipboard}>
+                  <Copy className="h-3.5 w-3.5 mr-1" /> Copy Text
+                </Button>
+                <Button size="sm" variant="outline" className="flex-1" onClick={downloadPdf}>
+                  <Download className="h-3.5 w-3.5 mr-1" /> Download PDF
+                </Button>
+              </div>
+              <Textarea
+                value={coverLetter}
+                onChange={(e) => onCoverLetterChange(e.target.value)}
+                rows={14}
+                className="text-sm leading-relaxed"
+              />
+            </>
+          )}
         </CardContent>
       </Card>
 
-      {/* Right: Output */}
+      {/* Right: Live PDF Preview */}
       <Card>
-        <CardHeader className="pb-3 flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Cover Letter</CardTitle>
-          {coverLetter && (
-            <div className="flex gap-2">
-              <Button size="sm" variant="ghost" onClick={copyToClipboard}>
-                <Copy className="h-3.5 w-3.5 mr-1" /> Copy
-              </Button>
-              <Button size="sm" variant="ghost" onClick={downloadTxt}>
-                <Download className="h-3.5 w-3.5 mr-1" /> Download
-              </Button>
-            </div>
-          )}
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Cover Letter Preview</CardTitle>
         </CardHeader>
-        <CardContent>
-          {coverLetter ? (
-            <Textarea
-              value={coverLetter}
-              onChange={(e) => setCoverLetter(e.target.value)}
-              rows={20}
-              className="text-sm font-serif leading-relaxed"
-            />
-          ) : (
-            <div className="h-[400px] flex items-center justify-center text-muted-foreground text-sm">
-              Click "Generate with AI" to create a tailored cover letter
-            </div>
-          )}
+        <CardContent className="p-0">
+          <div className="h-[calc(100vh-340px)] min-h-[500px]">
+            {coverLetter ? (
+              <PDFViewer width="100%" height="100%" showToolbar={false} className="rounded-b-lg">
+                <CoverLetterPdfDocument coverLetter={coverLetter} resume={resume} template={template} companyName={companyName} />
+              </PDFViewer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+                Generate a cover letter to see the styled preview
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
