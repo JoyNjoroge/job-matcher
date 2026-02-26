@@ -1,514 +1,230 @@
 """
 Gemini AI Service - Handles all AI-powered analysis and generation.
+Models: gemini-2.5-flash (primary) -> gemini-2.5-flash-lite (fallback)
+Caching: Supabase-backed response cache to save quota
 """
 
 import os
 import json
-import importlib.util
+import hashlib
 import importlib
+import importlib.util
+from datetime import datetime, timedelta
 
-# Configure Gemini API
+# ─── API Key Setup ────────────────────────────────────────────────────────────
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
+# ─── Model Names ─────────────────────────────────────────────────────────────
+MODEL_PRIMARY  = "gemini-2.5-flash"
+MODEL_FALLBACK = "gemini-2.5-flash-lite-preview-06-17"  # lite fallback
+CACHE_TTL_DAYS = 7   # how long cached responses stay fresh
 
+
+# ─── SDK Loader ──────────────────────────────────────────────────────────────
 def _load_gemini_sdk():
-    """Load preferred Gemini SDK with fallback for older environments."""
+    """Load google.genai SDK (new) with fallback to google.generativeai (legacy)."""
     if importlib.util.find_spec("google.genai"):
         return importlib.import_module("google.genai"), True
     if importlib.util.find_spec("google.generativeai"):
         return importlib.import_module("google.generativeai"), False
-    raise RuntimeError("No Gemini SDK installed. Install `google-genai`.")
+    raise RuntimeError("No Gemini SDK installed. Run: pip install google-genai")
 
 
 _GENAI_SDK, _USING_NEW_SDK = _load_gemini_sdk()
 
 
 def _resolve_api_key() -> str:
-    """Resolve API key with clear precedence when both env vars are set."""
     if GOOGLE_API_KEY and GEMINI_API_KEY:
-        print("Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.")
+        print("Both GOOGLE_API_KEY and GEMINI_API_KEY set — using GOOGLE_API_KEY.")
         return GOOGLE_API_KEY
     return GOOGLE_API_KEY or GEMINI_API_KEY or ""
 
 
 _API_KEY = _resolve_api_key()
+
 if _API_KEY:
     _CLIENT = _GENAI_SDK.Client(api_key=_API_KEY) if _USING_NEW_SDK else None
     if not _USING_NEW_SDK:
         _GENAI_SDK.configure(api_key=_API_KEY)
 else:
     _CLIENT = None
-    genai.configure(api_key=_API_KEY)
 
 
+# ─── Helpers ─────────────────────────────────────────────────────────────────
 def _is_quota_error(error: Exception) -> bool:
-    """Return True when error looks like a Gemini quota/rate-limit issue."""
-    message = str(error).upper()
-    return "429" in message or "RESOURCE_EXHAUSTED" in message or "RATE" in message
+    """Detect Gemini quota / rate-limit errors."""
+    msg = str(error).upper()
+    return any(k in msg for k in ("429", "RESOURCE_EXHAUSTED", "RATE_LIMIT", "QUOTA"))
 
 
 def _unavailable_response(message: str, include_questions: bool = False) -> dict:
-    """Shared fallback response when Gemini cannot be used (quota/key/API failures)."""
-    payload = {
-        "error": message,
-        "error_code": "ai_service_unavailable"
-    }
+    """Standard error payload when Gemini cannot be reached."""
+    payload = {"error": message, "error_code": "ai_service_unavailable"}
     if include_questions:
         payload["questions"] = []
     return payload
 
 
-def get_model():
-    """Get the Gemini API client."""
-    if not _API_KEY:
-        raise RuntimeError("Gemini API key is not configured. Set GOOGLE_API_KEY or GEMINI_API_KEY.")
-    return _CLIENT
+def _make_cache_key(operation: str, *parts: str) -> str:
+    """SHA-256 hash of the operation name + all input strings."""
+    combined = operation + "|" + "|".join(parts)
+    return hashlib.sha256(combined.encode()).hexdigest()
 
 
-def _generate_content_text(prompt: str, model_name: str = "gemini-2.5-flash") -> str:
-    """Generate text via google.genai SDK and normalize response text."""
-    if _USING_NEW_SDK:
-        client = get_model()
-        response = client.models.generate_content(model=model_name, contents=prompt)
-        return (response.text or "").strip()
-
-    model = _GENAI_SDK.GenerativeModel(model_name)
-    response = model.generate_content(prompt)
-    return (response.text or "").strip()
-    """Get the Gemini model instance."""
-    if not _API_KEY:
-        raise RuntimeError("Gemini API key is not configured. Set GOOGLE_API_KEY or GEMINI_API_KEY.")
-    return genai.GenerativeModel("gemini-3-pro-preview")
-
-
-def analyze_job_fit(cv_content: str, job_description: str, job_title: str = "", company: str = "") -> dict:
-    """
-    Analyze how well a CV matches a job description.
-    
-    Args:
-        cv_content: Parsed text content from CV
-        job_description: Job posting description
-        job_title: Optional job title
-        company: Optional company name
-    
-    Returns:
-        dict with fit_score, interview_likelihood, strengths, gaps, red_flags
-    """
-    prompt = f"""
-    You are an expert HR analyst and career coach. Analyze how well this candidate's CV matches the job description.
-    
-    CV Content:
-    {cv_content}
-    
-    Job Description:
-    {job_description}
-    
-    {f"Job Title: {job_title}" if job_title else ""}
-    {f"Company: {company}" if company else ""}
-    
-    Provide your analysis in the following JSON format:
-    {{
-        "fit_score": <number 0-100>,
-        "interview_likelihood": "<low|medium|high>",
-        "strengths": ["<strength 1>", "<strength 2>", ...],
-        "gaps": ["<gap 1>", "<gap 2>", ...],
-        "red_flags": ["<red flag 1>", "<red flag 2>", ...]
-    }}
-    
-    Be specific and actionable in your feedback. Only return valid JSON.
-    """
-    
+# ─── Supabase Cache ──────────────────────────────────────────────────────────
+def _cache_get(cache_key: str):
+    """Return cached JSON result if it exists and is still fresh, else None."""
     try:
-        response_text = _generate_content_text(prompt)
-        result = json.loads(response_text)
-        
-        # Validate and sanitize response
-        return {
-            "fit_score": min(100, max(0, int(result.get("fit_score", 50)))),
+        from database import get_supabase
+        client = get_supabase()
+        cutoff = (datetime.utcnow() - timedelta(days=CACHE_TTL_DAYS)).isoformat()
+        result = (
+            client.table("ai_response_cache")
+            .select("result")
+            .eq("cache_key", cache_key)
+            .gte("created_at", cutoff)
+            .limit(1)
+            .execute()
+        )
+        if result.data:
+            print(f"[Cache HIT] {cache_key[:16]}…")
+            return result.data[0]["result"]
+    except Exception as e:
+        print(f"[Cache] Read error (non-fatal): {e}")
+    return None
+
+
+def _cache_set(cache_key: str, operation: str, result: dict) -> None:
+    """Upsert a result into the Supabase cache table."""
+    try:
+        from database import get_supabase
+        client = get_supabase()
+        client.table("ai_response_cache").upsert({
+            "cache_key":  cache_key,
+            "operation":  operation,
+            "result":     result,
+            "created_at": datetime.utcnow().isoformat(),
+        }).execute()
+        print(f"[Cache SET] {cache_key[:16]}…")
+    except Exception as e:
+        print(f"[Cache] Write error (non-fatal): {e}")
+
+
+# ─── Core Generation (with model fallback) ───────────────────────────────────
+def _generate_content_text(prompt: str) -> str:
+    """
+    Call Gemini with primary model; fall back to lite on quota errors.
+    Returns raw text string.
+    """
+    if not _API_KEY:
+        raise RuntimeError("Gemini API key not configured. Set GOOGLE_API_KEY or GEMINI_API_KEY.")
+
+    for model_name in (MODEL_PRIMARY, MODEL_FALLBACK):
+        try:
+            print(f"[Gemini] Using model: {model_name}")
+            if _USING_NEW_SDK:
+                response = _CLIENT.models.generate_content(
+                    model=model_name, contents=prompt
+                )
+            else:
+                model = _GENAI_SDK.GenerativeModel(model_name)
+                response = model.generate_content(prompt)
+
+            text = (response.text or "").strip()
+
+            # Strip accidental markdown fences
+            if text.startswith("```json"):
+                text = text[7:]
+            elif text.startswith("```"):
+                text = text[3:]
+            if text.endswith("```"):
+                text = text[:-3]
+
+            return text.strip()
+
+        except Exception as e:
+            if _is_quota_error(e) and model_name == MODEL_PRIMARY:
+                print(f"[Gemini] {MODEL_PRIMARY} quota hit — falling back to {MODEL_FALLBACK}")
+                continue
+            raise  # re-raise for non-quota errors or if fallback also fails
+
+    raise RuntimeError("Both Gemini models exhausted their quota.")
+
+
+def _parse_json_response(text: str) -> dict:
+    """Parse JSON from Gemini response text."""
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        # Sometimes the model wraps in a json key
+        raise ValueError(f"Could not parse Gemini JSON response: {text[:200]}")
+
+
+# ─── Public Functions ─────────────────────────────────────────────────────────
+
+def analyze_job_fit(
+    cv_content: str,
+    job_description: str,
+    job_title: str = "",
+    company: str = "",
+) -> dict:
+    """Analyze how well a CV matches a job description."""
+
+    cache_key = _make_cache_key("analyze_job_fit", cv_content[:500], job_description[:500])
+    cached = _cache_get(cache_key)
+    if cached:
+        return cached
+
+    prompt = f"""You are an expert HR analyst and career coach.
+Analyze how well this candidate's CV matches the job description.
+
+CV Content:
+{cv_content}
+
+Job Description:
+{job_description}
+
+{f"Job Title: {job_title}" if job_title else ""}
+{f"Company: {company}" if company else ""}
+
+Return ONLY valid JSON (no markdown):
+{{
+    "fit_score": <0-100>,
+    "interview_likelihood": "<low|medium|high>",
+    "strengths": ["<strength>", ...],
+    "gaps": ["<gap>", ...],
+    "red_flags": ["<red flag>", ...]
+}}"""
+
+    try:
+        result = _parse_json_response(_generate_content_text(prompt))
+        result = {
+            "fit_score":            min(100, max(0, int(result.get("fit_score", 50)))),
             "interview_likelihood": result.get("interview_likelihood", "medium"),
-            "strengths": result.get("strengths", [])[:5],
-            "gaps": result.get("gaps", [])[:5],
-            "red_flags": result.get("red_flags", [])[:3]
+            "strengths":            result.get("strengths", [])[:5],
+            "gaps":                 result.get("gaps", [])[:5],
+            "red_flags":            result.get("red_flags", [])[:3],
         }
+        _cache_set(cache_key, "analyze_job_fit", result)
+        return result
     except Exception as e:
-        print(f"Gemini analysis error: {e}")
+        print(f"[analyze_job_fit] Error: {e}")
         if _is_quota_error(e):
-            return _unavailable_response("AI quota exceeded. Please try again later or update your Gemini billing/quota settings.")
-        return _unavailable_response("Unable to analyze this job right now. Please try again shortly.")
+            return _unavailable_response("AI quota exceeded. Please try again later.")
+        return _unavailable_response("Unable to analyze this job right now.")
 
 
-def generate_application_materials(job_id: str, cv_content: str = "", job_description: str = "") -> dict:
-    """
-    Generate application materials including email draft and suggestions.
-    
-    Args:
-        job_id: The job identifier
-        cv_content: Optional CV content for personalization
-        job_description: Optional job description
-    
-    Returns:
-        dict with draft_email, resume_suggestions, ats_notes
-    """
-    prompt = f"""
-    You are an expert career coach helping a job applicant. Generate application materials.
-    
-    {"CV Content: " + cv_content if cv_content else ""}
-    {"Job Description: " + job_description if job_description else ""}
-    
-    Provide your response in the following JSON format:
-    {{
-        "draft_email": "<professional cover letter/email text>",
-        "resume_suggestions": ["<suggestion 1>", "<suggestion 2>", ...],
-        "ats_notes": ["<ATS optimization tip 1>", "<ATS optimization tip 2>", ...]
-    }}
-    
-    Make the email professional, personalized, and compelling. Only return valid JSON.
-    """
-    
-    try:
-        response_text = _generate_content_text(prompt)
-        result = json.loads(response_text)
-        
-        return {
-            "draft_email": result.get("draft_email", ""),
-            "resume_suggestions": result.get("resume_suggestions", [])[:5],
-            "ats_notes": result.get("ats_notes", [])[:5]
-        }
-    except Exception as e:
-        print(f"Gemini generation error: {e}")
-        if _is_quota_error(e):
-            return _unavailable_response("AI quota exceeded. Please try again later or update your Gemini billing/quota settings.")
-        return _unavailable_response("Unable to generate application materials right now. Please try again shortly.")
-
-
-def generate_interview_prep(application_id: str, job_title: str = "", company: str = "", job_description: str = "", cv_text: str = "") -> dict:
-    """
-    Generate interview preparation materials based on CV and job description.
-    
-    Args:
-        application_id: The application identifier
-        job_title: Optional job title
-        company: Optional company name
-        job_description: Required job description
-        cv_text: Optional CV content for personalization
-    
-    Returns:
-        dict with questions list
-    """
-    # Input validation
-    if not job_description or len(job_description.strip()) < 50:
-        return {
-            "questions": [],
-            "error": "Job description is required and must be at least 50 characters"
-        }
-    
-    # Build a more detailed prompt when CV is available
-    cv_section = ""
-    if cv_text and len(cv_text.strip()) > 50:
-        cv_section = f"""
-    Candidate's CV/Resume:
-    {cv_text[:3000]}  # Limit CV text to prevent token overflow
-    
-    Focus on the overlap between the candidate's experience and the job requirements.
-    """
-    
-    prompt = f"""
-    You are an expert interview coach. Generate 5 interview preparation questions for a candidate.
-    
-    Job Title: {job_title if job_title else "Not specified"}
-    Company: {company if company else "Not specified"}
-    
-    Job Description:
-    {job_description[:4000]}  # Limit to prevent token overflow
-    {cv_section}
-    
-    Generate exactly 5 questions that are likely to be asked in an interview for this position.
-    Include a mix of:
-    - 2 behavioral questions (STAR format situations)
-    - 2 technical/role-specific questions
-    - 1 situational/problem-solving question
-    
-    Provide your response in the following JSON format only, no other text:
-    {{
-        "questions": [
-            {{
-                "question": "<the interview question>",
-                "what_they_test": "<what skill or trait this question evaluates>",
-                "talking_points": ["<suggested answer point 1>", "<suggested answer point 2>", "<suggested answer point 3>"]
-            }}
-        ]
-    }}
-    
-    Make the talking points specific and actionable. Only return valid JSON.
-    """
-    
-    try:
-        response_text = _generate_content_text(prompt)
-        
-        # Try to extract JSON from the response
-        import re
-        json_match = re.search(r'\{[\s\S]*\}', response_text)
-        if json_match:
-            response_text = json_match.group()
-        
-        result = json.loads(response_text)
-        
-        questions = result.get("questions", [])
-        if not questions:
-            raise ValueError("No questions in response")
-        
-        # Ensure we have exactly 5 questions with valid structure
-        validated_questions = []
-        for q in questions[:5]:
-            if isinstance(q, dict) and q.get("question"):
-                validated_questions.append({
-                    "question": str(q.get("question", "")),
-                    "what_they_test": str(q.get("what_they_test", "General assessment")),
-                    "talking_points": [str(tp) for tp in q.get("talking_points", ["Prepare your response"])[:4]]
-                })
-        
-        if len(validated_questions) < 3:
-            raise ValueError("Too few valid questions generated")
-        
-        return {"questions": validated_questions}
-        
-    except json.JSONDecodeError as e:
-        print(f"Gemini JSON parse error: {e}")
-        print(f"Response was: {response_text[:500] if 'response_text' in locals() else 'No response'}")
-        return {
-            "questions": [
-                {
-                    "question": "Tell me about yourself and your experience relevant to this role.",
-                    "what_they_test": "Communication and self-presentation",
-                    "talking_points": ["Professional background summary", "Key achievements relevant to the role", "Why you're interested in this position"]
-                },
-                {
-                    "question": "What interests you about this position?",
-                    "what_they_test": "Motivation and company research",
-                    "talking_points": ["Specific aspects of the role that excite you", "How it aligns with your career goals", "What you know about the company"]
-                },
-                {
-                    "question": "Describe a challenging situation you faced and how you handled it.",
-                    "what_they_test": "Problem-solving and resilience",
-                    "talking_points": ["Situation context", "Actions you took", "Results achieved"]
-                },
-                {
-                    "question": "Where do you see yourself in 5 years?",
-                    "what_they_test": "Career planning and ambition",
-                    "talking_points": ["Growth trajectory", "Skills you want to develop", "How this role fits your plans"]
-                },
-                {
-                    "question": "Do you have any questions for us?",
-                    "what_they_test": "Engagement and preparation",
-                    "talking_points": ["Ask about team culture", "Inquire about growth opportunities", "Ask about success metrics"]
-                }
-            ]
-        }
-    except Exception as e:
-        print(f"Gemini interview prep error: {e}")
-        if _is_quota_error(e):
-            return _unavailable_response(
-                "AI quota exceeded. Please try again later or update your Gemini billing/quota settings.",
-                include_questions=True,
-            )
-        return _unavailable_response("Unable to generate interview prep right now. Please try again shortly.", include_questions=True)
-
-
-# ---------------------- Additional LinkedIn & Resume Helpers ----------------------
-def get_gemini_model():
-    """Alias to existing get_model for compatibility with other utilities."""
-    return get_model()
-
-
-def extract_profile_from_linkedin(linkedin_url: str) -> dict:
-    """
-    Extract profile information from LinkedIn URL.
-    Simple placeholder: recommend manual paste or resume upload.
-    """
-    try:
-        return {
-            "linkedin_url": linkedin_url,
-            "message": "LinkedIn direct scraping is not available. Please upload your resume or manually enter your information.",
-            "alternative": "You can copy your LinkedIn 'About' section and paste it in the summary field."
-        }
-    except Exception as e:
-        print(f"LinkedIn parsing error: {e}")
-        return {}
-
-
-def parse_linkedin_text(linkedin_text: str) -> dict:
-    """
-    Parse copied LinkedIn profile text using Gemini AI and return structured profile data.
-    """
-    try:
-        model = get_gemini_model()
-
-        prompt = f"""
-        Parse this LinkedIn profile text and extract structured information.
-        Return ONLY valid JSON (no markdown, no explanation) with this exact structure:
-        {{
-            "full_name": "string or null",
-            "location": "string or null",
-            "job_titles": ["string"],
-            "skills": ["string"],
-            "experience_level": "entry|mid|senior|lead|executive or null",
-            "summary": "string or null",
-            "current_position": "string or null",
-            "company": "string or null"
-        }}
-
-        LinkedIn profile text:
-        {linkedin_text[:3000]}
-        """
-
-        response_text = _generate_content_text(prompt)
-
-        # Remove markdown fences if present
-        if response_text.startswith("```json"):
-            response_text = response_text[7:]
-        if response_text.startswith("```"):
-            response_text = response_text[3:]
-        if response_text.endswith("```"):
-            response_text = response_text[:-3]
-
-        response_text = response_text.strip()
-        parsed = json.loads(response_text)
-        return parsed
-    except json.JSONDecodeError as e:
-        print(f"JSON decode error: {e}")
-        print(f"Response was: {response_text if 'response_text' in locals() else 'no response'}")
-        return {}
-    except Exception as e:
-        print(f"LinkedIn text parsing error: {e}")
-        return {}
-
-
-def analyze_resume_match(resume_text: str, job_description: str) -> dict:
-    """
-    Analyze how well a resume matches a job description and return structured analysis.
-    """
-    try:
-        model = get_gemini_model()
-
-        prompt = f"""
-        Analyze how well this resume matches the job description.
-        Return ONLY valid JSON with this structure:
-        {{
-            "match_score": 0-100,
-            "matching_skills": ["skill1", "skill2"],
-            "missing_skills": ["skill1", "skill2"],
-            "strengths": ["strength1", "strength2"],
-            "recommendations": ["recommendation1", "recommendation2"],
-            "overall_assessment": "brief summary"
-        }}
-
-        Job Description:
-        {job_description[:2000]}
-
-        Resume:
-        {resume_text[:2000]}
-        """
-
-        response_text = _generate_content_text(prompt)
-
-        # Clean markdown
-        if response_text.startswith("```json"):
-            response_text = response_text[7:]
-        if response_text.startswith("```"):
-            response_text = response_text[3:]
-        if response_text.endswith("```"):
-            response_text = response_text[:-3]
-
-        response_text = response_text.strip()
-        return json.loads(response_text)
-    except Exception as e:
-        print(f"Resume analysis error: {e}")
-        return {
-            "match_score": 0,
-            "matching_skills": [],
-            "missing_skills": [],
-            "strengths": [],
-            "recommendations": [],
-            "overall_assessment": "Analysis failed"
-        }
-
-
-def generate_cover_letter(resume_text: str, job_description: str, company_name: str) -> str:
-    """
-    Generate a tailored cover letter using Gemini.
-    """
-    try:
-        model = get_gemini_model()
-
-        prompt = f"""
-        Write a professional cover letter for this job application.
-        Make it personalized, enthusiastic, and highlight relevant experience.
-        Keep it concise (3-4 paragraphs, max 300 words).
-
-        Company: {company_name}
-
-        Job Description:
-        {job_description[:1500]}
-
-        Candidate's Resume:
-        {resume_text[:1500]}
-
-        Write the cover letter:
-        """
-
-        response = model.generate_content(prompt)
-        return response.text.strip()
-    except Exception as e:
-        print(f"Cover letter generation error: {e}")
-        return ""
-
-
-def prepare_interview_questions(job_description: str, resume_text: str) -> list:
-    """
-    Generate likely interview questions based on job and resume; returns list of strings.
-    """
-    try:
-        model = get_gemini_model()
-
-        prompt = f"""
-        Based on this job description and resume, generate 10 likely interview questions.
-        Return ONLY valid JSON array of strings (no markdown, no explanation):
-        ["Question 1?", "Question 2?", ...]
-
-        Job Description:
-        {job_description[:1500]}
-
-        Resume:
-        {resume_text[:1500]}
-        """
-
-        response_text = _generate_content_text(prompt)
-
-        # Clean markdown
-        if response_text.startswith("```json"):
-            response_text = response_text[7:]
-        if response_text.startswith("```"):
-            response_text = response_text[3:]
-        if response_text.endswith("```"):
-            response_text = response_text[:-3]
-
-        response_text = response_text.strip()
-
-        questions = json.loads(response_text)
-        return questions if isinstance(questions, list) else []
-    except Exception as e:
-        print(f"Interview questions generation error: {e}")
-        return []
-
-# Briefing page - Extended analyze_job_fit for comprehensive analysis
 def analyze_job_fit_for_briefing(resume_text: str, job_description: str) -> dict:
-    """
-    Analyze how well a candidate fits a job using Gemini AI.
-    
-    Returns comprehensive fit analysis with recommendations.
-    """
-    prompt = f"""You are an expert career counselor and recruiter. Analyze how well this candidate's resume matches the job description.
+    """Extended job fit analysis for the briefing/apply page."""
+
+    cache_key = _make_cache_key("briefing_fit", resume_text[:500], job_description[:500])
+    cached = _cache_get(cache_key)
+    if cached:
+        return cached
+
+    prompt = f"""You are an expert career counselor and recruiter.
+Analyze how well this candidate's resume matches the job description.
 
 RESUME:
 {resume_text[:4000]}
@@ -516,81 +232,233 @@ RESUME:
 JOB DESCRIPTION:
 {job_description[:4000]}
 
-Provide a detailed fit analysis in the following JSON format:
+Return ONLY valid JSON:
 {{
-  "fit_score": <number 0-100>,
+  "fit_score": <0-100>,
   "recommendation": "<strong_fit|good_fit|fair_fit|poor_fit>",
-  "strengths": [<list of 3-5 matching qualifications>],
-  "gaps": [<list of missing or weak qualifications>],
-  "skill_recommendations": [<specific things to add/emphasize in application>],
-  "experience_match": "<brief assessment of experience level match>",
-  "message": "<personalized message to the candidate>",
+  "strengths": ["<3-5 matching qualifications>"],
+  "gaps": ["<missing or weak qualifications>"],
+  "skill_recommendations": ["<actionable suggestions>"],
+  "experience_match": "<brief assessment>",
+  "message": "<personalized message to candidate>",
   "should_apply": <true|false>
 }}
 
-SCORING GUIDELINES:
-- 80-100: strong_fit - Excellent match, highly qualified
-- 60-79: good_fit - Good match with some gaps
-- 40-59: fair_fit - Moderate match, significant skill gaps
-- 0-39: poor_fit - Poor match, underqualified
-
-MESSAGE EXAMPLES:
-- strong_fit: "You're an excellent match for this role! Your experience aligns perfectly with what they're looking for."
-- good_fit: "You're a good candidate for this position. While there are some areas to strengthen, your core skills match well."
-- fair_fit: "This role is a bit of a stretch, but you have some transferable skills. Consider emphasizing [specific skills] in your application."
-- poor_fit: "You're significantly underqualified for this position. While you can still apply, we recommend focusing on roles that better match your current experience level. Here's what you'd need to develop..."
-
-IMPORTANT RULES:
-1. Be honest but encouraging and supportive
-2. For poor_fit: Give a gentle, supportive message. Don't discourage them completely, but be realistic
-3. For skill mismatches that are just naming differences (e.g., "React" vs "React.js", "Python" vs "Python 3"), don't count as gaps
-4. Focus on substantial gaps like missing years of experience, entirely different tech stacks, or lack of required certifications
-5. If someone has 2 years experience for a 5+ year role, that's a gap. If they have "JavaScript" but job wants "TypeScript", that's a minor skill recommendation
-6. should_apply should be false ONLY if fit_score < 30 OR they're missing critical requirements like certifications/degrees
-7. skill_recommendations should be actionable (e.g., "Add TypeScript to your resume if you've used it", "Highlight your leadership experience more prominently")
-
-Return ONLY valid JSON, no markdown formatting."""
+SCORING:
+- 80-100: strong_fit  - 60-79: good_fit  - 40-59: fair_fit  - 0-39: poor_fit
+should_apply = false ONLY if fit_score < 30 OR missing critical certifications/degrees."""
 
     try:
-        response_text = _generate_content_text(prompt)
-        
-        # Remove markdown code blocks if present
-        if response_text.startswith("```"):
-            response_text = response_text.split("```")[1]
-            if response_text.startswith("json"):
-                response_text = response_text[4:]
-            response_text = response_text.strip()
-        
-        analysis = json.loads(response_text)
-        
-        # Validate and set defaults
-        analysis.setdefault("fit_score", 50)
-        analysis.setdefault("recommendation", "fair_fit")
-        analysis.setdefault("strengths", [])
-        analysis.setdefault("gaps", [])
-        analysis.setdefault("skill_recommendations", [])
-        analysis.setdefault("experience_match", "Unable to assess")
-        analysis.setdefault("message", "Analysis complete")
-        analysis.setdefault("should_apply", analysis["fit_score"] >= 30)
-        
-        return analysis
-        
-    except json.JSONDecodeError as e:
-        print(f"Failed to parse Gemini response: {e}")
-        print(f"Response text: {response_text if 'response_text' in dir() else 'N/A'}")
-        # Return fallback analysis
-        return {
-            "fit_score": 50,
-            "recommendation": "fair_fit",
-            "strengths": ["Unable to analyze - please try again"],
-            "gaps": [],
-            "skill_recommendations": [],
-            "experience_match": "Unable to assess",
-            "message": "We encountered an issue analyzing your fit. Please try again.",
-            "should_apply": True
-        }
+        result = _parse_json_response(_generate_content_text(prompt))
+        result.setdefault("fit_score", 50)
+        result.setdefault("recommendation", "fair_fit")
+        result.setdefault("strengths", [])
+        result.setdefault("gaps", [])
+        result.setdefault("skill_recommendations", [])
+        result.setdefault("experience_match", "Unable to assess")
+        result.setdefault("message", "Analysis complete")
+        result.setdefault("should_apply", result["fit_score"] >= 30)
+        _cache_set(cache_key, "briefing_fit", result)
+        return result
     except Exception as e:
-        print(f"Gemini API error: {e}")
+        print(f"[analyze_job_fit_for_briefing] Error: {e}")
         if _is_quota_error(e):
-            return _unavailable_response("AI quota exceeded. Please try again later or update your Gemini billing/quota settings.")
-        return _unavailable_response("Unable to analyze job fit right now. Please try again shortly.")
+            return _unavailable_response("AI quota exceeded. Please try again later.")
+        return {
+            "fit_score": 50, "recommendation": "fair_fit",
+            "strengths": ["Unable to analyze — please try again"],
+            "gaps": [], "skill_recommendations": [],
+            "experience_match": "Unable to assess",
+            "message": "We encountered an issue. Please try again.",
+            "should_apply": True,
+        }
+
+
+def generate_interview_prep(
+    application_id: str,
+    job_title: str = "",
+    company: str = "",
+    job_description: str = "",
+    cv_text: str = "",
+) -> dict:
+    """Generate interview preparation questions and talking points."""
+
+    if not job_description or len(job_description.strip()) < 50:
+        return {"questions": [], "error": "Job description required (min 50 chars)"}
+
+    cache_key = _make_cache_key("interview_prep", job_description[:500], cv_text[:300])
+    cached = _cache_get(cache_key)
+    if cached:
+        return cached
+
+    cv_section = f"\nCandidate CV:\n{cv_text[:3000]}" if cv_text and len(cv_text.strip()) > 50 else ""
+
+    prompt = f"""You are an expert interview coach.
+Generate 8 targeted interview questions for this role.
+{f"Job Title: {job_title}" if job_title else ""}
+{f"Company: {company}" if company else ""}
+
+Job Description:
+{job_description[:3000]}
+{cv_section}
+
+Return ONLY valid JSON:
+{{
+  "questions": [
+    {{
+      "question": "<interview question>",
+      "what_they_test": "<what skill/trait this evaluates>",
+      "talking_points": ["<point 1>", "<point 2>", "<point 3>"]
+    }}
+  ]
+}}"""
+
+    try:
+        result = _parse_json_response(_generate_content_text(prompt))
+        if not result.get("questions"):
+            raise ValueError("Empty questions list")
+        _cache_set(cache_key, "interview_prep", result)
+        return result
+    except Exception as e:
+        print(f"[generate_interview_prep] Error: {e}")
+        if _is_quota_error(e):
+            return _unavailable_response("AI quota exceeded.", include_questions=True)
+        return _unavailable_response("Unable to generate interview prep.", include_questions=True)
+
+
+def generate_application_materials(
+    job_id: str,
+    cv_content: str = "",
+    job_description: str = "",
+) -> dict:
+    """Generate draft email, resume suggestions, and ATS notes."""
+
+    cache_key = _make_cache_key("app_materials", job_id, job_description[:300])
+    cached = _cache_get(cache_key)
+    if cached:
+        return cached
+
+    prompt = f"""You are an expert career coach.
+Generate job application materials.
+{"CV Content: " + cv_content if cv_content else ""}
+{"Job Description: " + job_description if job_description else ""}
+
+Return ONLY valid JSON:
+{{
+    "draft_email": "<professional cover letter text>",
+    "resume_suggestions": ["<suggestion>", ...],
+    "ats_notes": ["<ATS tip>", ...]
+}}"""
+
+    try:
+        result = _parse_json_response(_generate_content_text(prompt))
+        result = {
+            "draft_email":        result.get("draft_email", ""),
+            "resume_suggestions": result.get("resume_suggestions", [])[:5],
+            "ats_notes":          result.get("ats_notes", [])[:5],
+        }
+        _cache_set(cache_key, "app_materials", result)
+        return result
+    except Exception as e:
+        print(f"[generate_application_materials] Error: {e}")
+        if _is_quota_error(e):
+            return _unavailable_response("AI quota exceeded. Please try again later.")
+        return _unavailable_response("Unable to generate application materials.")
+
+
+def analyze_resume_match(resume_text: str, job_description: str) -> dict:
+    """Structured resume vs job description match analysis."""
+
+    cache_key = _make_cache_key("resume_match", resume_text[:400], job_description[:400])
+    cached = _cache_get(cache_key)
+    if cached:
+        return cached
+
+    prompt = f"""Analyze how well this resume matches the job description.
+Return ONLY valid JSON:
+{{
+    "match_score": <0-100>,
+    "matching_skills": ["skill1"],
+    "missing_skills": ["skill1"],
+    "strengths": ["strength1"],
+    "recommendations": ["recommendation1"],
+    "overall_assessment": "<brief summary>"
+}}
+
+Job Description:
+{job_description[:2000]}
+
+Resume:
+{resume_text[:2000]}"""
+
+    try:
+        result = _parse_json_response(_generate_content_text(prompt))
+        _cache_set(cache_key, "resume_match", result)
+        return result
+    except Exception as e:
+        print(f"[analyze_resume_match] Error: {e}")
+        return {
+            "match_score": 0, "matching_skills": [], "missing_skills": [],
+            "strengths": [], "recommendations": [],
+            "overall_assessment": "Analysis failed — please try again.",
+        }
+
+
+def generate_cover_letter(
+    resume_text: str,
+    job_description: str,
+    company_name: str,
+) -> str:
+    """Generate a tailored cover letter. Returns plain text string."""
+
+    cache_key = _make_cache_key("cover_letter", resume_text[:400], job_description[:400], company_name)
+    cached = _cache_get(cache_key)
+    if cached and isinstance(cached, dict):
+        return cached.get("text", "")
+
+    prompt = f"""Write a professional, personalized cover letter (3-4 paragraphs, max 300 words).
+Company: {company_name}
+
+Job Description:
+{job_description[:1500]}
+
+Candidate Resume:
+{resume_text[:1500]}
+
+Return ONLY the cover letter text, no JSON, no markdown."""
+
+    try:
+        text = _generate_content_text(prompt)
+        _cache_set(cache_key, "cover_letter", {"text": text})
+        return text
+    except Exception as e:
+        print(f"[generate_cover_letter] Error: {e}")
+        return ""
+
+
+def prepare_interview_questions(job_description: str, resume_text: str) -> list:
+    """Generate a simple list of 10 interview question strings."""
+
+    cache_key = _make_cache_key("interview_questions", job_description[:400], resume_text[:300])
+    cached = _cache_get(cache_key)
+    if cached and isinstance(cached, dict):
+        return cached.get("questions", [])
+
+    prompt = f"""Generate 10 likely interview questions based on this job and resume.
+Return ONLY a valid JSON array of strings (no markdown):
+["Question 1?", "Question 2?", ...]
+
+Job Description:
+{job_description[:1500]}
+
+Resume:
+{resume_text[:1500]}"""
+
+    try:
+        result = json.loads(_generate_content_text(prompt))
+        questions = result if isinstance(result, list) else []
+        _cache_set(cache_key, "interview_questions", {"questions": questions})
+        return questions
+    except Exception as e:
+        print(f"[prepare_interview_questions] Error: {e}")
+        return []

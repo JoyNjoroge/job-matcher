@@ -14,6 +14,7 @@ dist-ssr
 
 # Python virtualenvs (backend)
 backend/venv
+backend/.env
 
 # Editor directories and files
 .vscode/*

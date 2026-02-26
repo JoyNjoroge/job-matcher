@@ -2,16 +2,27 @@
 CV routes - Refine CV and generate cover letters with Gemini.
 """
 
-from flask import Blueprint, request, jsonify
-from services.gemini import _generate_content_text
 import json
+from flask import Blueprint, request, jsonify, g
+from services.gemini import _generate_content_text
+from services.auth import require_auth
+from services.subscription import require_feature, check_cv_refinement_access
 
 cv_bp = Blueprint("cv", __name__)
 
 
 @cv_bp.route("/cv/refine", methods=["POST"])
+@require_auth
 def refine_cv():
-    """Refine a JSON Resume to better match a job description using Gemini."""
+    """
+    Refine a JSON Resume to better match a job description.
+    Requires Seeker or Pro plan.
+    """
+    # CV refinement is plan-gated (not daily-limited)
+    allowed, error = check_cv_refinement_access(g.user_id)
+    if not allowed:
+        return jsonify(error), 403
+
     data = request.get_json()
     current_cv = data.get("current_cv", {})
     job_description = data.get("job_description", "")
@@ -40,22 +51,13 @@ Please refine the resume to better match the job description. You should:
 
 Return ONLY a valid JSON object with exactly two keys:
 - "refined_cv": the complete refined resume in the exact same JSON Resume schema
-- "changelog": an array of 2-5 short strings describing what was changed (e.g. "Added 'Project Management' to skills", "Quantified last role's impact by 15%")
+- "changelog": an array of 2-5 short strings describing what was changed
 
-Do NOT include any markdown formatting, code blocks, or explanation. Return ONLY the JSON object."""
+Do NOT include any markdown formatting, code blocks, or explanation. Return ONLY the JSON."""
 
     try:
         raw = _generate_content_text(prompt)
-        cleaned = raw
-        if cleaned.startswith("```"):
-            cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned[3:]
-        if cleaned.endswith("```"):
-            cleaned = cleaned[:-3]
-        if cleaned.startswith("json"):
-            cleaned = cleaned[4:]
-        cleaned = cleaned.strip()
-
-        result = json.loads(cleaned)
+        result = json.loads(raw)
         return jsonify({
             "refined_cv": result.get("refined_cv", current_cv),
             "changelog": result.get("changelog", ["CV has been refined for this role"]),
@@ -67,8 +69,13 @@ Do NOT include any markdown formatting, code blocks, or explanation. Return ONLY
 
 
 @cv_bp.route("/cv/cover-letter", methods=["POST"])
+@require_auth
+@require_feature("cover_letter")
 def generate_cover_letter():
-    """Generate a tailored cover letter using Gemini."""
+    """
+    Generate a tailored cover letter.
+    Requires Seeker or Pro plan (cover_letter feature).
+    """
     data = request.get_json()
     resume = data.get("resume", {})
     job_description = data.get("job_description", "")
@@ -89,7 +96,7 @@ def generate_cover_letter():
 
     prompt = f"""You are an expert cover letter writer.
 
-Write a compelling cover letter for {name} applying to {company_name or 'the company'}.
+Write a compelling cover letter for {name} applying to {company_name or "the company"}.
 
 Candidate's resume data:
 {json.dumps(resume, indent=2)}
@@ -111,13 +118,6 @@ Return ONLY the cover letter text, no JSON, no markdown formatting, no extra exp
 
     try:
         cover_letter = _generate_content_text(prompt)
-        # Strip any accidental markdown wrapping
-        if cover_letter.startswith("```"):
-            cover_letter = cover_letter.split("\n", 1)[1] if "\n" in cover_letter else cover_letter[3:]
-        if cover_letter.endswith("```"):
-            cover_letter = cover_letter[:-3]
-        cover_letter = cover_letter.strip()
-
-        return jsonify({"cover_letter": cover_letter})
+        return jsonify({"cover_letter": cover_letter.strip()})
     except Exception as e:
         return jsonify({"error": f"Cover letter generation failed: {str(e)}"}), 500
