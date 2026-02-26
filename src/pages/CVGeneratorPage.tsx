@@ -15,7 +15,7 @@ import type { JsonResume, CVTemplate } from "@/types/jsonResume";
 import { emptyResume } from "@/types/jsonResume";
 import { useAuth } from "@/contexts/AuthContext";
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = "https://job-matcher-rasg.onrender.com/api";
 
 export default function CVGeneratorPage() {
   const auth = useAuth();

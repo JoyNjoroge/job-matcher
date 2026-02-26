@@ -29,7 +29,7 @@ export function InterviewPrepPanel({ application }: InterviewPrepPanelProps) {
     }
 
     try {
-      const response = await fetch("http://localhost:5000/api/interview-prep", {
+      const response = await fetch("https://job-matcher-rasg.onrender.com/api/interview-prep", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

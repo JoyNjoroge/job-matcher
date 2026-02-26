@@ -59,7 +59,7 @@ export default function ApplyBriefingPage() {
 
   const checkResumeStatus = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/apply/get-resume-status", {
+      const response = await fetch("https://job-matcher-rasg.onrender.com/api/apply/get-resume-status", {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("access_token")}`,
@@ -129,7 +129,7 @@ export default function ApplyBriefingPage() {
         formData.append("use_profile_resume", "true");
       }
 
-      const response = await fetch("http://localhost:5000/api/apply/analyze-fit", {
+      const response = await fetch("https://job-matcher-rasg.onrender.com/api/apply/analyze-fit", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("access_token")}`,

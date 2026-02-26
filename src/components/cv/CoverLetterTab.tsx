@@ -9,7 +9,7 @@ import { Sparkles, Loader2, Copy, Download } from "lucide-react";
 import { CoverLetterPdfDocument } from "@/components/cv/CVPdfTemplates";
 import type { JsonResume, CVTemplate } from "@/types/jsonResume";
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = "https://job-matcher-rasg.onrender.com/api";
 
 interface CoverLetterTabProps {
   resume: JsonResume;
