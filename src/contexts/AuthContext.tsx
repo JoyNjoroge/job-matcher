@@ -1,12 +1,26 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { loginUser, registerUser, getCurrentUser, refreshTokens, logoutUser } from "@/api";
+import {
+  loginUser,
+  registerUser,
+  getCurrentUser,
+  refreshTokens,
+  logoutUser,
+  getSubscription,
+} from "@/api";
+import type { UsageSummary, PlanId, Subscription } from "@/types";
 
 type User = any | null;
 
 interface AuthContextType {
   user: User;
   loading: boolean;
+  // Subscription
+  plan: PlanId;
+  subscription: Subscription | null;
+  usage: UsageSummary | null;
+  refreshUsage: () => Promise<void>;
+  // Auth
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -14,16 +28,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const ACCESS_KEY = "access_token";
+const ACCESS_KEY  = "access_token";
 const REFRESH_KEY = "refresh_token";
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser]               = useState<User>(null);
+  const [loading, setLoading]         = useState(true);
+  const [plan, setPlan]               = useState<PlanId>("free");
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [usage, setUsage]             = useState<UsageSummary | null>(null);
   const navigate = useNavigate();
 
   const setTokens = (access: string, refresh?: string) => {
-    if (access) localStorage.setItem(ACCESS_KEY, access);
+    if (access)  localStorage.setItem(ACCESS_KEY, access);
     if (refresh) localStorage.setItem(REFRESH_KEY, refresh);
   };
 
@@ -32,12 +49,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem(REFRESH_KEY);
   };
 
+  // Fetch subscription + usage info
+  const refreshUsage = useCallback(async () => {
+    const token = localStorage.getItem(ACCESS_KEY);
+    if (!token) return;
+    try {
+      const data = await getSubscription(token);
+      setSubscription(data.subscription);
+      setPlan(data.subscription?.plan_id ?? "free");
+      setUsage(data.usage);
+    } catch (e) {
+      // Non-fatal — keep existing state
+      console.warn("Could not refresh usage:", e);
+    }
+  }, []);
+
   const loadCurrentUser = async (accessToken: string) => {
     try {
       const data = await getCurrentUser(accessToken);
       setUser(data.user ?? data);
-    } catch (err) {
-      // try refresh flow
+      await refreshUsage();
+    } catch {
       const refresh = localStorage.getItem(REFRESH_KEY);
       if (refresh) {
         try {
@@ -45,7 +77,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setTokens(newTokens.access_token, newTokens.refresh_token);
           const data = await getCurrentUser(newTokens.access_token);
           setUser(data.user ?? data);
-        } catch (e) {
+          await refreshUsage();
+        } catch {
           clearTokens();
           setUser(null);
         }
@@ -59,39 +92,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     (async () => {
       const access = localStorage.getItem(ACCESS_KEY);
-      if (access) {
-        await loadCurrentUser(access);
-      }
+      if (access) await loadCurrentUser(access);
       setLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = async (email: string, password: string) => {
-    try {
-      const res = await loginUser(email, password);
-      if (res.access_token) {
-        setTokens(res.access_token, res.refresh_token);
-        setUser(res.user ?? null);
-        navigate("/");
-      }
-    } catch (error) {
-      console.error("Login error:", error);
-      throw error;
+    const res = await loginUser(email, password);
+    if (res.access_token) {
+      setTokens(res.access_token, res.refresh_token);
+      setUser(res.user ?? null);
+      await refreshUsage();
+      navigate("/");
     }
   };
 
   const register = async (email: string, password: string) => {
-    try {
-      const res = await registerUser(email, password);
-      if (res.access_token) {
-        setTokens(res.access_token, res.refresh_token);
-        setUser(res.user ?? null);
-        navigate("/");
-      }
-    } catch (error) {
-      console.error("Register error:", error);
-      throw error;
+    const res = await registerUser(email, password);
+    if (res.access_token) {
+      setTokens(res.access_token, res.refresh_token);
+      setUser(res.user ?? null);
+      await refreshUsage();
+      navigate("/");
     }
   };
 
@@ -99,16 +122,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const access = localStorage.getItem(ACCESS_KEY);
     try {
       if (access) await logoutUser(access);
-    } catch (_) {
-      // ignore
-    }
+    } catch (_) {}
     clearTokens();
     setUser(null);
+    setSubscription(null);
+    setPlan("free");
+    setUsage(null);
     navigate("/login");
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        plan,
+        subscription,
+        usage,
+        refreshUsage,
+        login,
+        register,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

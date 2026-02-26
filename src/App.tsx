@@ -21,6 +21,7 @@ import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage";
 import ApplyBriefingPage from "./pages/BriefingPage";
 import CVGeneratorPage from "./pages/CVGeneratorPage";
+import PricingPage from "./pages/PricingPage";
 
 const queryClient = new QueryClient();
 
@@ -128,6 +129,7 @@ const App = () => (
                     </ProtectedRoute>
                   } 
                 />
+                <Route path="/pricing" element={<PricingPage />} />
                 
                 {/* 404 */}
                 <Route path="*" element={<NotFound />} />

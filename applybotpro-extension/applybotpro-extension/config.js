@@ -6,7 +6,7 @@
 const CONFIG = {
   // ============ WEBSITE CONFIGURATION ============
   // Replace with your actual ApplyBotPro domain
-  APPLYBOTPRO_DOMAIN: 'https://applybotpro.com',
+  APPLYBOTPRO_DOMAIN: 'https://applybotpro.netlify.app',
   
   // ============ API ENDPOINTS ============
   // Replace these with your actual API endpoints
@@ -40,8 +40,8 @@ const CONFIG = {
   
   // ============ GEMINI AI CONFIGURATION ============
   // IMPORTANT: Add your Gemini API key here
-  GEMINI_API_KEY: 'YOUR_GEMINI_API_KEY_HERE', // ⚠️ REPLACE THIS
-  GEMINI_MODEL: 'gemini-1.5-flash', // or whatever model you're using
+  GEMINI_API_KEY: 'AIzaSyBdqppoKimzlYs0blN9CeGQjmnLgjudPJk', // ⚠️ REPLACE THIS
+  GEMINI_MODEL: 'gemini-2.5-flash', // or whatever model you're using
   
   // ============ JOB TRACKING ============
   // URL parameter used when redirecting from applybotpro

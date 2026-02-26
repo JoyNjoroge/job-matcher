@@ -6,6 +6,7 @@ export interface AnalysisResult {
   strengths: string[];
   gaps: string[];
   red_flags: string[];
+  usage?: UsageSummary;
 }
 
 export interface Application {
@@ -80,6 +81,11 @@ export interface JobSearchResponse {
   jobs: Job[];
   api_status?: APIStatus[];
   summary?: JobSearchSummary;
+  total_found?: number;
+  results_limit?: number;
+  showing?: number;
+  has_more?: boolean;
+  plan?: PlanId;
 }
 
 // Apply Preparation Types
@@ -103,4 +109,61 @@ export interface TrackedApplication {
   cvText?: string;
   appliedAt: string;
   selectedForInterview: boolean;
+}
+
+// ─── Subscription & Billing Types ────────────────────────────
+
+export type PlanId = "free" | "seeker" | "pro";
+
+export interface PlanLimits {
+  cv_analyses_per_day: number;    // -1 = unlimited
+  cover_letters_per_day: number;  // 0 = locked, -1 = unlimited
+  job_results_limit: number;
+  resumes_limit: number;
+  cv_refinement: boolean;
+}
+
+export interface Plan {
+  id: PlanId;
+  name: string;
+  price: number;
+  limits: PlanLimits;
+  features: string[];
+}
+
+export interface Subscription {
+  plan_id: PlanId;
+  status: "active" | "cancelled" | "past_due";
+  period_end?: string;
+}
+
+export interface FeatureUsage {
+  used: number;
+  limit: number;       // -1 = unlimited
+  remaining: number;   // -1 = unlimited
+  locked: boolean;     // true if feature not on plan
+  unlimited: boolean;
+}
+
+export interface UsageSummary {
+  plan: PlanId;
+  features: {
+    cv_analysis: FeatureUsage;
+    cover_letter: FeatureUsage;
+  };
+}
+
+export interface SubscriptionResponse {
+  subscription: Subscription;
+  usage: UsageSummary;
+}
+
+// Error response when a feature is locked or limit reached
+export interface FeatureBlockedError {
+  error: string;
+  error_code: "feature_locked" | "daily_limit_reached";
+  upgrade_required: boolean;
+  current_plan: PlanId;
+  used?: number;
+  limit?: number;
 }
