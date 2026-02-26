@@ -4,8 +4,8 @@ import { getPlans, cancelSubscription } from "@/api";
 import type { Plan } from "@/types";
 
 const PAYSTACK_LINKS: Record<string, string> = {
-  seeker: "https://paystack.shop/pay/k0yr97mep-", // your actual link
-  pro:    "",  // add your pro link here when you create it on Paystack
+  seeker: "https://paystack.shop/pay/k0yr97mep-",
+  pro:    "https://paystack.shop/pay/63s9eq94lp",  // add your pro link here when you create it on Paystack
 };
 
 const CHECK = (
