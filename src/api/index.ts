@@ -10,7 +10,7 @@ import type {
   Plan,
 } from "@/types";
 
-const API_BASE = import.meta.env.VITE_API_URL || "https://job-matcher-rasg.onrender.com";
+const API_BASE = import.meta.env.VITE_API_URL || "https://job-matcher-rasg.onrender.com/api";
 
 // ─── Auth helper ──────────────────────────────────────────────
 function authHeaders(accessToken: string) {
