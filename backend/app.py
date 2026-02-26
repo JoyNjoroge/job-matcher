@@ -38,7 +38,7 @@ def create_app():
         "http://localhost:5173",
         "http://localhost:8080",
         "http://localhost:3000",
-        "https://applybotpro.netlify.app/login",
+        "https://applybotpro.netlify.app",
         "https://job-matcher-rasg.onrender.com"
     ]
 
