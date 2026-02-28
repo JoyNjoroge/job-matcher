@@ -1,10 +1,48 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { FitScoreRing } from "@/components/FitScoreRing";
-import { LikelihoodBadge } from "@/components/LikelihoodBadge";
-import { AnalysisCard } from "@/components/AnalysisCard";
+import { ArrowLeft, Sparkles, CheckCircle, AlertCircle, XCircle, MessageSquare, LayoutGrid } from "lucide-react";
 import type { AnalysisResult } from "@/types";
+
+function ScoreRing({ score }: { score: number }) {
+  const deg = Math.round((score / 100) * 360);
+  const color = score >= 70 ? "#10B981" : score >= 40 ? "#F59E0B" : "#EF4444";
+  return (
+    <div
+      style={{
+        width: 110, height: 110, borderRadius: "50%", flexShrink: 0, position: "relative",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: `conic-gradient(${color} 0deg, ${color} ${deg}deg, #E5E7EB ${deg}deg)`,
+      }}
+    >
+      <div style={{
+        width: 82, height: 82, background: "white", borderRadius: "50%",
+        position: "absolute", display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center",
+      }}>
+        <span style={{ fontFamily: "Syne, sans-serif", fontWeight: 800, fontSize: 24, color, lineHeight: 1 }}>{score}%</span>
+        <span style={{ fontSize: 10, color: "#9CA3AF", fontWeight: 600, letterSpacing: "0.05em", marginTop: 2 }}>FIT</span>
+      </div>
+    </div>
+  );
+}
+
+function LikelihoodBadge({ likelihood }: { likelihood: string }) {
+  const map: Record<string, { bg: string; color: string; label: string }> = {
+    high: { bg: "rgba(16,185,129,0.1)", color: "#059669", label: "High Interview Chance" },
+    medium: { bg: "rgba(245,158,11,0.1)", color: "#D97706", label: "Medium Interview Chance" },
+    low: { bg: "rgba(239,68,68,0.1)", color: "#DC2626", label: "Low Interview Chance" },
+  };
+  const cfg = map[likelihood?.toLowerCase()] || map.medium;
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 6,
+      padding: "5px 14px", borderRadius: 999,
+      background: cfg.bg, color: cfg.color,
+      fontSize: 12, fontWeight: 700, letterSpacing: "0.03em",
+    }}>
+      {cfg.label}
+    </span>
+  );
+}
 
 export default function ResultsPage() {
   const location = useLocation();
@@ -13,75 +51,201 @@ export default function ResultsPage() {
 
   if (!analysis) {
     return (
-      <div className="max-w-2xl mx-auto text-center py-16">
-        <p className="text-muted-foreground mb-4">No analysis data available</p>
-        <Button onClick={() => navigate("/")}>Go to Analyze</Button>
+      <div style={{ fontFamily: "DM Sans, sans-serif", textAlign: "center", padding: "80px 24px" }}>
+        <p style={{ color: "#6B7280", marginBottom: 24 }}>No analysis data available</p>
+        <button
+          onClick={() => navigate("/")}
+          style={{
+            padding: "12px 24px", background: "#2563EB", color: "white",
+            border: "none", borderRadius: 10, cursor: "pointer",
+            fontFamily: "DM Sans, sans-serif", fontWeight: 600,
+          }}
+        >
+          Go to Analyze
+        </button>
       </div>
     );
   }
 
-  return (
-    <div className="max-w-3xl mx-auto">
-      <Button
-        variant="ghost"
-        onClick={() => navigate("/")}
-        className="mb-6 -ml-2"
-      >
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        New Analysis
-      </Button>
+  const scoreColor = analysis.fit_score >= 70 ? "#10B981" : analysis.fit_score >= 40 ? "#F59E0B" : "#EF4444";
 
-      {/* Score Header */}
-      <div className="rounded-2xl border border-border bg-card p-8 mb-8">
-        <div className="flex flex-col sm:flex-row items-center gap-6">
-          <FitScoreRing score={analysis.fit_score} size="lg" />
-          
-          <div className="text-center sm:text-left">
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-semibold text-foreground">
-                Fit Score Analysis
-              </h2>
-            </div>
-            <p className="text-muted-foreground mb-3">
-              Based on your CV and the job requirements
-            </p>
-            <LikelihoodBadge likelihood={analysis.interview_likelihood} />
+  return (
+    <div className="results-root">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
+        .results-root { font-family: 'DM Sans', sans-serif; max-width: 780px; margin: 0 auto; padding: 48px 24px 80px; }
+
+        .rs-back-btn {
+          display: inline-flex; align-items: center; gap: 7px;
+          background: none; border: none; cursor: pointer;
+          font-family: 'DM Sans', sans-serif; font-size: 14px;
+          color: #6B7280; padding: 0; margin-bottom: 36px;
+          transition: color 0.2s;
+        }
+        .rs-back-btn:hover { color: #0A0A0F; }
+
+        /* Score hero */
+        .rs-hero {
+          background: white; border: 1px solid rgba(0,0,0,0.07);
+          border-radius: 24px; padding: 36px; margin-bottom: 24px;
+          display: flex; align-items: center; gap: 28px;
+          flex-wrap: wrap;
+        }
+        .rs-hero-text { flex: 1; min-width: 200px; }
+        .rs-hero-eyebrow {
+          font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+          text-transform: uppercase; color: #2563EB;
+          display: flex; align-items: center; gap: 6px;
+          margin-bottom: 10px;
+        }
+        .rs-hero-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.6rem; color: #0A0A0F; margin: 0 0 6px; letter-spacing: -0.02em; }
+        .rs-hero-sub { color: #6B7280; font-size: 14px; font-weight: 300; margin: 0 0 14px; }
+
+        /* Analysis Cards */
+        .rs-card {
+          background: white; border: 1px solid rgba(0,0,0,0.07);
+          border-radius: 20px; overflow: hidden; margin-bottom: 16px;
+        }
+        .rs-card-header {
+          padding: 20px 24px 16px;
+          display: flex; align-items: center; gap: 10px;
+        }
+        .rs-card-header-icon {
+          width: 34px; height: 34px; border-radius: 9px;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+        }
+        .rs-card-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; color: #0A0A0F; margin: 0; }
+        .rs-card-body { padding: 0 24px 24px; }
+
+        .rs-item {
+          display: flex; align-items: flex-start; gap: 10px;
+          padding: 10px 0;
+          border-bottom: 1px solid rgba(0,0,0,0.04);
+          font-size: 14px; color: #374151; line-height: 1.6;
+        }
+        .rs-item:last-child { border-bottom: none; }
+        .rs-item-icon { flex-shrink: 0; margin-top: 2px; }
+
+        .rs-empty { color: #9CA3AF; font-size: 14px; font-style: italic; padding: 8px 0; }
+
+        /* Actions */
+        .rs-actions {
+          display: flex; gap: 12px; margin-top: 32px;
+          flex-wrap: wrap;
+        }
+        .rs-btn-primary {
+          flex: 1; min-width: 160px; height: 50px;
+          background: #2563EB; color: white; border: none;
+          border-radius: 12px; font-family: 'DM Sans', sans-serif;
+          font-size: 14px; font-weight: 700; cursor: pointer;
+          transition: all 0.2s; display: flex; align-items: center;
+          justify-content: center; gap: 8px;
+          box-shadow: 0 4px 14px rgba(37,99,235,0.3);
+        }
+        .rs-btn-primary:hover { background: #1D4ED8; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(37,99,235,0.4); }
+        .rs-btn-outline {
+          flex: 1; min-width: 160px; height: 50px;
+          background: white; color: #0A0A0F;
+          border: 1.5px solid rgba(0,0,0,0.12);
+          border-radius: 12px; font-family: 'DM Sans', sans-serif;
+          font-size: 14px; font-weight: 600; cursor: pointer;
+          transition: all 0.2s; display: flex; align-items: center;
+          justify-content: center; gap: 8px;
+        }
+        .rs-btn-outline:hover { border-color: rgba(0,0,0,0.25); background: #F9FAFB; }
+      `}</style>
+
+      <button className="rs-back-btn" onClick={() => navigate("/")}>
+        <ArrowLeft size={16} /> New Analysis
+      </button>
+
+      {/* Score Hero */}
+      <div className="rs-hero">
+        <ScoreRing score={analysis.fit_score} />
+        <div className="rs-hero-text">
+          <div className="rs-hero-eyebrow">
+            <Sparkles size={12} /> AI Fit Analysis
           </div>
+          <h2 className="rs-hero-title">
+            {analysis.fit_score >= 70 ? "Strong Match" : analysis.fit_score >= 40 ? "Moderate Match" : "Weak Match"}
+          </h2>
+          <p className="rs-hero-sub">Based on your CV and the job requirements</p>
+          <LikelihoodBadge likelihood={analysis.interview_likelihood} />
         </div>
       </div>
 
-      {/* Analysis Cards */}
-      <div className="grid gap-6">
-        <AnalysisCard
-          title="Your Strengths"
-          items={analysis.strengths}
-          type="strengths"
-        />
-        <AnalysisCard
-          title="Missing Requirements"
-          items={analysis.gaps}
-          type="gaps"
-        />
-        <AnalysisCard
-          title="Red Flags"
-          items={analysis.red_flags}
-          type="red_flags"
-        />
+      {/* Strengths */}
+      <div className="rs-card">
+        <div className="rs-card-header">
+          <div className="rs-card-header-icon" style={{ background: "rgba(16,185,129,0.1)" }}>
+            <CheckCircle size={18} color="#10B981" />
+          </div>
+          <h3 className="rs-card-title">Your Strengths</h3>
+        </div>
+        <div className="rs-card-body">
+          {analysis.strengths?.length > 0 ? (
+            analysis.strengths.map((s, i) => (
+              <div key={i} className="rs-item">
+                <CheckCircle size={15} color="#10B981" className="rs-item-icon" />
+                {s}
+              </div>
+            ))
+          ) : (
+            <p className="rs-empty">No specific strengths identified</p>
+          )}
+        </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex gap-4 mt-8">
-        <Button onClick={() => navigate("/prep")} className="flex-1">
-          Prepare for Interview
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => navigate("/board")}
-          className="flex-1"
-        >
-          View All Applications
-        </Button>
+      {/* Gaps */}
+      <div className="rs-card">
+        <div className="rs-card-header">
+          <div className="rs-card-header-icon" style={{ background: "rgba(245,158,11,0.1)" }}>
+            <AlertCircle size={18} color="#F59E0B" />
+          </div>
+          <h3 className="rs-card-title">Missing Requirements</h3>
+        </div>
+        <div className="rs-card-body">
+          {analysis.gaps?.length > 0 ? (
+            analysis.gaps.map((g, i) => (
+              <div key={i} className="rs-item">
+                <AlertCircle size={15} color="#F59E0B" className="rs-item-icon" />
+                {g}
+              </div>
+            ))
+          ) : (
+            <p className="rs-empty">No significant gaps identified</p>
+          )}
+        </div>
+      </div>
+
+      {/* Red Flags */}
+      {analysis.red_flags?.length > 0 && (
+        <div className="rs-card">
+          <div className="rs-card-header">
+            <div className="rs-card-header-icon" style={{ background: "rgba(239,68,68,0.1)" }}>
+              <XCircle size={18} color="#EF4444" />
+            </div>
+            <h3 className="rs-card-title">Red Flags</h3>
+          </div>
+          <div className="rs-card-body">
+            {analysis.red_flags.map((r, i) => (
+              <div key={i} className="rs-item">
+                <XCircle size={15} color="#EF4444" className="rs-item-icon" />
+                {r}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="rs-actions">
+        <button className="rs-btn-primary" onClick={() => navigate("/prep")}>
+          <MessageSquare size={16} /> Prepare for Interview
+        </button>
+        <button className="rs-btn-outline" onClick={() => navigate("/board")}>
+          <LayoutGrid size={16} /> View All Applications
+        </button>
       </div>
     </div>
   );

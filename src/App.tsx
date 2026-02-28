@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { ApplicationProvider } from "./contexts/ApplicationContext";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -35,104 +35,28 @@ const App = () => (
               <Toaster />
               <Sonner />
               <Routes>
-                {/* Public Auth Routes - NO Layout, NO Protection */}
-                <Route path="/login" element={<AuthPage mode="login" />} />
+
+                {/* PUBLIC — no auth needed */}
+                <Route path="/"         element={<HomePage />} />
+                <Route path="/login"    element={<AuthPage mode="login" />} />
                 <Route path="/register" element={<AuthPage mode="register" />} />
-                
-                {/* Protected App Routes - WITH Layout, REQUIRES Auth */}
-                <Route 
-                  path="/" 
-                  element={
-                    <ProtectedRoute>
-                      <Layout><HomePage /></Layout>
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/analyze" 
-                  element={
-                    <ProtectedRoute>
-                      <Layout><AnalyzePage /></Layout>
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/results" 
-                  element={
-                    <ProtectedRoute>
-                      <Layout><ResultsPage /></Layout>
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/search" 
-                  element={
-                    <ProtectedRoute>
-                      <Layout><SearchPage /></Layout>
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/board" 
-                  element={
-                    <ProtectedRoute>
-                      <Layout><BoardPage /></Layout>
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/applications" 
-                  element={
-                    <ProtectedRoute>
-                      <Layout><ApplicationsPage /></Layout>
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/prep" 
-                  element={
-                    <ProtectedRoute>
-                      <Layout><PrepPage /></Layout>
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/apply" 
-                  element={
-                    <ProtectedRoute>
-                      <Layout><ApplyPage /></Layout>
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                    path="/apply-briefing" 
-                    element={
-                      <ProtectedRoute>
-                        <Layout><ApplyBriefingPage /></Layout>
-                      </ProtectedRoute>
-                    }
-                      />
-                <Route 
-                  path="/cv-generator" 
-                  element={
-                    <ProtectedRoute>
-                      <Layout><CVGeneratorPage /></Layout>
-                    </ProtectedRoute>
-                  } 
-                />
-                
-                <Route 
-                  path="/profile" 
-                  element={
-                    <ProtectedRoute>
-                      <Layout><ProfilePage /></Layout>
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route path="/pricing" element={<PricingPage />} />
-                
+                <Route path="/pricing"  element={<PricingPage />} />
+
+                {/* PROTECTED — ProtectedRoute redirects to /login if not authed */}
+                <Route path="/analyze"        element={<ProtectedRoute><Layout><AnalyzePage /></Layout></ProtectedRoute>} />
+                <Route path="/results"        element={<ProtectedRoute><Layout><ResultsPage /></Layout></ProtectedRoute>} />
+                <Route path="/search"         element={<ProtectedRoute><Layout><SearchPage /></Layout></ProtectedRoute>} />
+                <Route path="/board"          element={<ProtectedRoute><Layout><BoardPage /></Layout></ProtectedRoute>} />
+                <Route path="/applications"   element={<ProtectedRoute><Layout><ApplicationsPage /></Layout></ProtectedRoute>} />
+                <Route path="/prep"           element={<ProtectedRoute><Layout><PrepPage /></Layout></ProtectedRoute>} />
+                <Route path="/apply"          element={<ProtectedRoute><Layout><ApplyPage /></Layout></ProtectedRoute>} />
+                <Route path="/apply-briefing" element={<ProtectedRoute><Layout><ApplyBriefingPage /></Layout></ProtectedRoute>} />
+                <Route path="/cv-generator"   element={<ProtectedRoute><Layout><CVGeneratorPage /></Layout></ProtectedRoute>} />
+                <Route path="/profile"        element={<ProtectedRoute><Layout><ProfilePage /></Layout></ProtectedRoute>} />
+
                 {/* 404 */}
                 <Route path="*" element={<NotFound />} />
+
               </Routes>
             </TooltipProvider>
           </ApplicationProvider>

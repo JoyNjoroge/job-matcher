@@ -1,13 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, MapPin, Briefcase, TrendingUp, ExternalLink } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Search, MapPin, Briefcase, TrendingUp, ExternalLink, X, SlidersHorizontal, AlertCircle } from "lucide-react";
 import { JobSearchFilters } from "@/components/JobSearchFilters";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
-import { ErrorState } from "@/components/ErrorState";
 import { searchJobs } from "@/api";
 import { useApplications } from "@/contexts/ApplicationContext";
 import type { JobSearchParams, JobType, ExperienceLevel } from "@/types";
@@ -16,40 +10,20 @@ export default function SearchPage() {
   const navigate = useNavigate();
   const { searchResults, setSearchResults, clearSearchResults } = useApplications();
 
-  // Initialize from cached results if available
   const [query, setQuery] = useState(searchResults?.query || "");
   const [location, setLocation] = useState(searchResults?.filters?.location || "");
   const [jobType, setJobType] = useState<JobType[]>((searchResults?.filters?.job_type as JobType[]) || []);
   const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel[]>((searchResults?.filters?.experience_level as ExperienceLevel[]) || []);
-  
   const [jobs, setJobs] = useState(searchResults?.jobs || []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(!!searchResults);
-
-  // Clear cache when component unmounts if user navigated away
-  useEffect(() => {
-    return () => {
-      // Don't clear if we're navigating to apply briefing
-      if (!window.location.pathname.includes('/apply-briefing')) {
-        // Optional: keep results for 30 minutes
-        // clearSearchResults();
-      }
-    };
-  }, []);
+  const [showFilters, setShowFilters] = useState(false);
 
   const handleSearch = async (e?: React.FormEvent) => {
     e?.preventDefault();
-
-    if (!query.trim()) {
-      setError("Please enter a search query");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setHasSearched(true);
-
+    if (!query.trim()) { setError("Please enter a search query"); return; }
+    setLoading(true); setError(null); setHasSearched(true);
     try {
       const params: JobSearchParams = {
         query: query.trim(),
@@ -57,258 +31,279 @@ export default function SearchPage() {
         job_type: jobType.length > 0 ? jobType : undefined,
         experience_level: experienceLevel.length > 0 ? experienceLevel : undefined,
       };
-
       const results = await searchJobs(params);
       setJobs(results.jobs || []);
-
-      // Persist search results
-      setSearchResults({
-        jobs: results.jobs || [],
-        query: query.trim(),
-        filters: {
-          location: location.trim(),
-          job_type: jobType,
-          experience_level: experienceLevel,
-        },
-        timestamp: Date.now(),
-      });
-
+      setSearchResults({ jobs: results.jobs || [], query: query.trim(), filters: { location: location.trim(), job_type: jobType, experience_level: experienceLevel }, timestamp: Date.now() });
     } catch (err: any) {
-      console.error("Search error:", err);
-      setError(err.message || "Failed to search jobs. Please try again.");
+      setError(err.message || "Failed to search jobs.");
       setJobs([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleClearSearch = () => {
-    setQuery("");
-    setLocation("");
-    setJobType([]);
-    setExperienceLevel([]);
-    setJobs([]);
-    setHasSearched(false);
-    setError(null);
-    clearSearchResults();
-  };
-
-  const handleApply = (job: any) => {
-    // Navigate to apply briefing page with job data
-    navigate(`/apply-briefing?job_id=${job.id}`);
+  const handleClear = () => {
+    setQuery(""); setLocation(""); setJobType([]); setExperienceLevel([]);
+    setJobs([]); setHasSearched(false); setError(null); clearSearchResults();
   };
 
   return (
-    <div className="space-y-8">
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold">Search Jobs</h1>
-        <p className="text-muted-foreground">
-          Find your next opportunity from thousands of listings
-        </p>
+    <div className="search-root">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
+        .search-root { font-family: 'DM Sans', sans-serif; max-width: 960px; margin: 0 auto; padding: 48px 24px 80px; }
+
+        /* Header */
+        .sr-header { margin-bottom: 36px; }
+        .sr-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #2563EB; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+        .sr-title { font-family: 'Syne', sans-serif; font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 800; letter-spacing: -0.025em; color: #0A0A0F; margin: 0 0 8px; }
+        .sr-sub { color: #6B7280; font-size: 15px; font-weight: 300; margin: 0; }
+
+        /* Search bar */
+        .sr-form { background: white; border: 1px solid rgba(0,0,0,0.08); border-radius: 20px; padding: 20px 24px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+        .sr-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+        @media (max-width: 600px) { .sr-inputs { grid-template-columns: 1fr; } }
+        .sr-field { position: relative; }
+        .sr-field-icon { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #9CA3AF; pointer-events: none; }
+        .sr-input {
+          width: 100%; height: 46px; padding: 0 14px 0 40px;
+          border: 1.5px solid rgba(0,0,0,0.1); border-radius: 10px;
+          font-family: 'DM Sans', sans-serif; font-size: 14px; color: #0A0A0F;
+          background: #F9FAFB; outline: none; transition: all 0.2s; box-sizing: border-box;
+        }
+        .sr-input:focus { border-color: #2563EB; background: white; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+        .sr-form-actions { display: flex; gap: 10px; }
+        .sr-search-btn {
+          flex: 1; height: 46px; background: #2563EB; color: white; border: none;
+          border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 14px;
+          font-weight: 700; cursor: pointer; transition: all 0.2s;
+          display: flex; align-items: center; justify-content: center; gap: 8px;
+          box-shadow: 0 4px 14px rgba(37,99,235,0.28);
+        }
+        .sr-search-btn:hover:not(:disabled) { background: #1D4ED8; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(37,99,235,0.4); }
+        .sr-search-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+        .sr-filter-btn {
+          height: 46px; width: 46px; border: 1.5px solid rgba(0,0,0,0.1);
+          background: white; border-radius: 10px; cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          transition: all 0.2s; color: #6B7280; flex-shrink: 0;
+        }
+        .sr-filter-btn:hover { border-color: #2563EB; color: #2563EB; }
+        .sr-filter-btn.active { background: rgba(37,99,235,0.08); border-color: rgba(37,99,235,0.3); color: #2563EB; }
+        .sr-clear-btn {
+          height: 46px; padding: 0 16px; border: 1.5px solid rgba(0,0,0,0.1);
+          background: white; border-radius: 10px; cursor: pointer;
+          font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+          color: #6B7280; transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+          flex-shrink: 0;
+        }
+        .sr-clear-btn:hover { color: #EF4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.04); }
+
+        /* Filter panel */
+        .sr-filters-panel { margin-bottom: 20px; animation: fadeDown 0.2s ease; }
+        @keyframes fadeDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Error */
+        .sr-error { display: flex; gap: 10px; align-items: flex-start; background: rgba(239,68,68,0.07); border: 1px solid rgba(239,68,68,0.2); border-radius: 12px; padding: 14px 16px; font-size: 13px; color: #DC2626; margin-bottom: 20px; }
+
+        /* Results header */
+        .sr-results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 8px; }
+        .sr-results-count { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.1rem; color: #0A0A0F; }
+        .sr-results-meta { font-size: 13px; color: #9CA3AF; }
+
+        /* Job card */
+        .sr-job-card {
+          background: white; border: 1px solid rgba(0,0,0,0.07); border-radius: 18px;
+          padding: 24px 28px; margin-bottom: 14px; transition: all 0.2s;
+          position: relative; overflow: hidden;
+        }
+        .sr-job-card::before {
+          content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+          background: linear-gradient(180deg, #2563EB, #7C3AED); opacity: 0; transition: opacity 0.2s;
+        }
+        .sr-job-card:hover { box-shadow: 0 8px 28px rgba(0,0,0,0.08); border-color: rgba(37,99,235,0.2); transform: translateX(2px); }
+        .sr-job-card:hover::before { opacity: 1; }
+        .sr-job-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+        .sr-job-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.05rem; color: #0A0A0F; margin: 0 0 4px; }
+        .sr-job-meta { display: flex; align-items: center; gap: 12px; font-size: 13px; color: #6B7280; flex-wrap: wrap; }
+        .sr-job-meta-item { display: flex; align-items: center; gap: 4px; }
+        .sr-job-actions { display: flex; gap: 8px; flex-shrink: 0; }
+        .sr-apply-btn {
+          height: 38px; padding: 0 18px; background: #2563EB; color: white;
+          border: none; border-radius: 9px; font-family: 'DM Sans', sans-serif;
+          font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+          box-shadow: 0 3px 10px rgba(37,99,235,0.25);
+        }
+        .sr-apply-btn:hover { background: #1D4ED8; transform: translateY(-1px); }
+        .sr-ext-btn {
+          height: 38px; width: 38px; border: 1.5px solid rgba(0,0,0,0.1);
+          background: white; border-radius: 9px; cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          color: #6B7280; transition: all 0.2s;
+          text-decoration: none;
+        }
+        .sr-ext-btn:hover { border-color: rgba(37,99,235,0.3); color: #2563EB; }
+        .sr-job-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+        .sr-tag {
+          display: inline-flex; align-items: center; gap: 5px;
+          padding: 4px 11px; border-radius: 999px;
+          font-size: 12px; font-weight: 600;
+        }
+        .sr-tag-blue { background: rgba(37,99,235,0.08); color: #2563EB; }
+        .sr-tag-purple { background: rgba(124,58,237,0.08); color: #7C3AED; }
+        .sr-tag-green { background: rgba(16,185,129,0.08); color: #059669; }
+        .sr-job-desc { font-size: 13px; color: #6B7280; line-height: 1.65; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .sr-job-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+        .sr-job-date { font-size: 12px; color: #9CA3AF; }
+        .sr-salary { font-size: 13px; font-weight: 600; color: #059669; background: rgba(16,185,129,0.08); padding: 3px 10px; border-radius: 999px; }
+
+        /* Empty / Initial */
+        .sr-empty { text-align: center; padding: 80px 24px; }
+        .sr-empty-icon { width: 72px; height: 72px; background: rgba(37,99,235,0.06); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: #93C5FD; }
+        .sr-empty h3 { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.2rem; color: #0A0A0F; margin: 0 0 8px; }
+        .sr-empty p { color: #6B7280; font-size: 14px; margin: 0; }
+
+        /* Spinner */
+        .sr-spinner { width: 18px; height: 18px; border: 2.5px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Loading skeleton */
+        .sr-skeleton { background: rgba(0,0,0,0.06); border-radius: 18px; margin-bottom: 14px; animation: pulse 1.5s ease-in-out infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+      `}</style>
+
+      <div className="sr-header">
+        <div className="sr-eyebrow">
+          <Search size={12} /> Job Search
+        </div>
+        <h1 className="sr-title">Find Your Next Role</h1>
+        <p className="sr-sub">Search thousands of listings with AI-powered fit matching</p>
       </div>
 
-      {/* Search Form */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Job Search</CardTitle>
-          <CardDescription>
-            Search for jobs by title, company, or keywords
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSearch} className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">What</label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Job title, keywords, or company"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Where</label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="City, state, or remote"
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <JobSearchFilters
-              selectedJobTypes={jobType}
-              selectedExperienceLevels={experienceLevel}
-              onJobTypeChange={setJobType}
-              onExperienceLevelChange={setExperienceLevel}
+      <form className="sr-form" onSubmit={handleSearch}>
+        <div className="sr-inputs">
+          <div className="sr-field">
+            <Search size={16} className="sr-field-icon" />
+            <input
+              className="sr-input"
+              placeholder="Job title, keywords, or company"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
             />
-
-            <div className="flex gap-2">
-              <Button type="submit" disabled={loading} className="flex-1">
-                {loading ? (
-                  <>
-                    <LoadingSpinner className="mr-2" />
-                    Searching...
-                  </>
-                ) : (
-                  <>
-                    <Search className="mr-2 h-4 w-4" />
-                    Search Jobs
-                  </>
-                )}
-              </Button>
-              {hasSearched && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleClearSearch}
-                >
-                  Clear
-                </Button>
-              )}
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Error State */}
-      {error && (
-        <ErrorState
-          title="Search Failed"
-          message={error}
-          action={
-            <Button onClick={handleSearch}>
-              Try Again
-            </Button>
-          }
-        />
-      )}
-
-      {/* Results */}
-      {hasSearched && !loading && !error && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">
-              {jobs.length} {jobs.length === 1 ? "Job" : "Jobs"} Found
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Searched: {query} {location && `in ${location}`}
-            </p>
           </div>
-
-          {jobs.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No jobs found</h3>
-                <p className="text-muted-foreground mb-4">
-                  Try adjusting your search criteria or filters
-                </p>
-                <Button variant="outline" onClick={handleClearSearch}>
-                  Clear Search
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4">
-              {jobs.map((job: any) => (
-                <Card key={job.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-1 flex-1">
-                        <CardTitle className="text-xl">{job.title}</CardTitle>
-                        <CardDescription className="flex items-center gap-4 text-base">
-                          <span className="font-medium">{job.company}</span>
-                          {job.location && (
-                            <span className="flex items-center gap-1">
-                              <MapPin className="h-3 w-3" />
-                              {job.location}
-                            </span>
-                          )}
-                        </CardDescription>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => handleApply(job)}
-                          size="sm"
-                        >
-                          Apply
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          asChild
-                        >
-                          <a
-                            href={job.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                          </a>
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="space-y-3">
-                    <div className="flex flex-wrap gap-2">
-                      {job.job_type && (
-                        <Badge variant="secondary">
-                          <Briefcase className="h-3 w-3 mr-1" />
-                          {job.job_type}
-                        </Badge>
-                      )}
-                      {job.experience_level && (
-                        <Badge variant="secondary">
-                          <TrendingUp className="h-3 w-3 mr-1" />
-                          {job.experience_level}
-                        </Badge>
-                      )}
-                      {job.salary && (
-                        <Badge variant="outline">{job.salary}</Badge>
-                      )}
-                    </div>
-
-                    {job.description && (
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {job.description}
-                      </p>
-                    )}
-
-                    {job.posted_date && (
-                      <p className="text-xs text-muted-foreground">
-                        Posted {job.posted_date}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+          <div className="sr-field">
+            <MapPin size={16} className="sr-field-icon" />
+            <input
+              className="sr-input"
+              placeholder="City, state, or Remote"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="sr-form-actions">
+          <button type="submit" className="sr-search-btn" disabled={loading}>
+            {loading ? <><div className="sr-spinner" /> Searching...</> : <><Search size={16} /> Search Jobs</>}
+          </button>
+          <button
+            type="button"
+            className={`sr-filter-btn ${showFilters ? "active" : ""}`}
+            onClick={() => setShowFilters(!showFilters)}
+            title="Filters"
+          >
+            <SlidersHorizontal size={18} />
+          </button>
+          {hasSearched && (
+            <button type="button" className="sr-clear-btn" onClick={handleClear}>
+              <X size={14} /> Clear
+            </button>
           )}
+        </div>
+      </form>
+
+      {showFilters && (
+        <div className="sr-filters-panel">
+          <JobSearchFilters
+            selectedJobTypes={jobType}
+            selectedExperienceLevels={experienceLevel}
+            onJobTypeChange={setJobType}
+            onExperienceLevelChange={setExperienceLevel}
+          />
         </div>
       )}
 
-      {/* Initial State */}
+      {error && (
+        <div className="sr-error">
+          <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+          {error}
+        </div>
+      )}
+
+      {hasSearched && !loading && !error && (
+        <>
+          <div className="sr-results-header">
+            <div className="sr-results-count">
+              {jobs.length} {jobs.length === 1 ? "Result" : "Results"}
+            </div>
+            <div className="sr-results-meta">
+              "{query}"{location && ` · ${location}`}
+            </div>
+          </div>
+
+          {jobs.length === 0 ? (
+            <div className="sr-empty">
+              <div className="sr-empty-icon"><Search size={28} /></div>
+              <h3>No jobs found</h3>
+              <p>Try adjusting your search or removing filters</p>
+            </div>
+          ) : (
+            jobs.map((job: any) => (
+              <div key={job.id} className="sr-job-card">
+                <div className="sr-job-top">
+                  <div>
+                    <h3 className="sr-job-title">{job.title}</h3>
+                    <div className="sr-job-meta">
+                      <span className="sr-job-meta-item" style={{ fontWeight: 600, color: "#374151" }}>{job.company}</span>
+                      {job.location && <span className="sr-job-meta-item"><MapPin size={12} />{job.location}</span>}
+                    </div>
+                  </div>
+                  <div className="sr-job-actions">
+                    <button className="sr-apply-btn" onClick={() => navigate(`/apply-briefing?job_id=${job.id}`)}>
+                      Analyze & Apply
+                    </button>
+                    <a href={job.url} target="_blank" rel="noopener noreferrer" className="sr-ext-btn">
+                      <ExternalLink size={15} />
+                    </a>
+                  </div>
+                </div>
+
+                <div className="sr-job-tags">
+                  {job.job_type && (
+                    <span className="sr-tag sr-tag-blue"><Briefcase size={11} />{job.job_type}</span>
+                  )}
+                  {job.experience_level && (
+                    <span className="sr-tag sr-tag-purple"><TrendingUp size={11} />{job.experience_level}</span>
+                  )}
+                </div>
+
+                {job.description && <p className="sr-job-desc">{job.description}</p>}
+
+                <div className="sr-job-footer">
+                  {job.posted_date && <span className="sr-job-date">Posted {job.posted_date}</span>}
+                  {job.salary && <span className="sr-salary">{job.salary}</span>}
+                </div>
+              </div>
+            ))
+          )}
+        </>
+      )}
+
       {!hasSearched && !loading && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Start Your Job Search</h3>
-            <p className="text-muted-foreground">
-              Enter a job title or keyword to find opportunities
-            </p>
-          </CardContent>
-        </Card>
+        <div className="sr-empty">
+          <div className="sr-empty-icon"><Search size={28} /></div>
+          <h3>Start Your Search</h3>
+          <p>Enter a job title or keyword above to find matching opportunities</p>
+        </div>
       )}
     </div>
   );

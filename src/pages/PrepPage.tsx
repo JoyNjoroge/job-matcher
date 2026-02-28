@@ -1,31 +1,24 @@
+// PrepPage.tsx
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { MessageSquare, ChevronDown, AlertCircle } from "lucide-react";
 import { useApplications } from "@/contexts/ApplicationContext";
 import { InterviewPrepPanel } from "@/components/InterviewPrepPanel";
-import { cn } from "@/lib/utils";
 import type { TrackedApplication } from "@/types";
 
-interface LocationState {
-  applicationId?: string;
-}
+interface LocationState { applicationId?: string; }
 
 export default function PrepPage() {
   const location = useLocation();
   const state = location.state as LocationState | null;
   const { interviewReadyApplications, getApplicationById } = useApplications();
-  
   const [selectedApp, setSelectedApp] = useState<TrackedApplication | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  // Handle navigation from applications table
   useEffect(() => {
     if (state?.applicationId) {
       const app = getApplicationById(state.applicationId);
-      if (app) {
-        setSelectedApp(app);
-      }
-      // Clear the location state
+      if (app) setSelectedApp(app);
       window.history.replaceState({}, document.title);
     } else if (interviewReadyApplications.length > 0 && !selectedApp) {
       setSelectedApp(interviewReadyApplications[0]);
@@ -34,74 +27,80 @@ export default function PrepPage() {
 
   if (interviewReadyApplications.length === 0) {
     return (
-      <div className="max-w-2xl mx-auto text-center py-16">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted mx-auto mb-4">
-          <MessageSquare className="h-7 w-7 text-muted-foreground" />
-        </div>
-        <h2 className="text-xl font-semibold text-foreground mb-2">
-          No Applications Selected for Interview
-        </h2>
-        <p className="text-muted-foreground mb-4">
-          Go to your Applications page and check "Selected for Interview" on applications you want to prepare for.
-        </p>
-        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg p-4">
-          <AlertCircle className="h-4 w-4" />
-          <span>Tip: Click the checkbox in the "Interview" column to select applications</span>
+      <div className="prep-root">
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
+          .prep-root { font-family: 'DM Sans', sans-serif; max-width: 720px; margin: 0 auto; padding: 48px 24px 80px; }
+        `}</style>
+        <div style={{ textAlign: "center", padding: "80px 24px" }}>
+          <div style={{ width: 72, height: 72, background: "rgba(0,0,0,0.04)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", color: "#9CA3AF" }}>
+            <MessageSquare size={30} />
+          </div>
+          <h2 style={{ fontFamily: "Syne, sans-serif", fontWeight: 800, fontSize: "1.4rem", color: "#0A0A0F", margin: "0 0 10px" }}>No Applications Selected</h2>
+          <p style={{ color: "#6B7280", fontSize: 14, lineHeight: 1.7, maxWidth: 400, margin: "0 auto 24px" }}>
+            Go to your Applications page and check "Selected for Interview" on the roles you want to prepare for.
+          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(37,99,235,0.06)", border: "1px solid rgba(37,99,235,0.15)", borderRadius: 12, padding: "12px 18px", width: "fit-content", margin: "0 auto", fontSize: 13, color: "#2563EB" }}>
+            <AlertCircle size={15} />
+            <span>Tip: Use the checkbox in the "Interview" column to select applications</span>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="flex items-start justify-between gap-4 mb-8">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-            <MessageSquare className="h-5 w-5 text-primary" />
-          </div>
+    <div className="prep-root">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
+        .prep-root { font-family: 'DM Sans', sans-serif; max-width: 840px; margin: 0 auto; padding: 48px 24px 80px; }
+        .prep-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 40px; padding-bottom: 32px; border-bottom: 1px solid rgba(0,0,0,0.07); flex-wrap: wrap; }
+        .prep-header-left { display: flex; align-items: center; gap: 16px; }
+        .prep-header-icon { width: 52px; height: 52px; border-radius: 14px; background: rgba(37,99,235,0.08); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .prep-header h1 { font-family: 'Syne', sans-serif; font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 800; letter-spacing: -0.025em; color: #0A0A0F; margin: 0 0 4px; }
+        .prep-header p { color: #6B7280; font-size: 14px; margin: 0; font-weight: 300; }
+
+        /* Dropdown */
+        .prep-selector { position: relative; }
+        .prep-selector-btn { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: white; border: 1.5px solid rgba(0,0,0,0.1); border-radius: 10px; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; color: #0A0A0F; transition: all 0.2s; }
+        .prep-selector-btn:hover { border-color: rgba(37,99,235,0.3); }
+        .prep-selector-text { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .prep-dropdown { position: absolute; right: 0; top: calc(100% + 8px); width: 280px; background: white; border: 1.5px solid rgba(0,0,0,0.08); border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.12); z-index: 50; overflow: hidden; }
+        .prep-dropdown-item { padding: 12px 16px; cursor: pointer; transition: background 0.15s; border-bottom: 1px solid rgba(0,0,0,0.04); }
+        .prep-dropdown-item:last-child { border-bottom: none; }
+        .prep-dropdown-item:hover { background: rgba(37,99,235,0.04); }
+        .prep-dropdown-item.active { background: rgba(37,99,235,0.06); }
+        .prep-dropdown-title { font-weight: 600; font-size: 14px; color: #0A0A0F; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .prep-dropdown-sub { font-size: 12px; color: #6B7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        .chevron-anim { transition: transform 0.2s; }
+        .chevron-anim.open { transform: rotate(180deg); }
+      `}</style>
+
+      <div className="prep-header">
+        <div className="prep-header-left">
+          <div className="prep-header-icon"><MessageSquare size={24} color="#2563EB" /></div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Interview Prep</h1>
-            <p className="text-sm text-muted-foreground">
-              AI-generated questions based on job & CV
-            </p>
+            <h1>Interview Prep</h1>
+            <p>AI-generated questions tailored to your CV and the role</p>
           </div>
         </div>
 
-        {/* Application Selector */}
         {interviewReadyApplications.length > 1 && (
-          <div className="relative">
-            <button
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
-            >
-              <span className="max-w-[200px] truncate">
-                {selectedApp?.job.title} at {selectedApp?.job.company}
+          <div className="prep-selector">
+            <button className="prep-selector-btn" onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
+              <span className="prep-selector-text">
+                {selectedApp?.job.title} · {selectedApp?.job.company}
               </span>
-              <ChevronDown
-                className={cn(
-                  "h-4 w-4 text-muted-foreground transition-transform",
-                  isDropdownOpen && "rotate-180"
-                )}
-              />
+              <ChevronDown size={16} className={`chevron-anim${isDropdownOpen ? " open" : ""}`} style={{ color: "#9CA3AF" }} />
             </button>
-
             {isDropdownOpen && (
-              <div className="absolute right-0 top-full mt-2 w-72 rounded-lg border border-border bg-card shadow-lg z-10">
+              <div className="prep-dropdown">
                 {interviewReadyApplications.map((app) => (
-                  <button
-                    key={app.id}
-                    onClick={() => {
-                      setSelectedApp(app);
-                      setIsDropdownOpen(false);
-                    }}
-                    className={cn(
-                      "w-full px-4 py-3 text-left text-sm hover:bg-muted transition-colors first:rounded-t-lg last:rounded-b-lg",
-                      app.id === selectedApp?.id && "bg-muted"
-                    )}
-                  >
-                    <p className="font-medium text-foreground truncate">{app.job.title}</p>
-                    <p className="text-muted-foreground truncate">{app.job.company}</p>
-                  </button>
+                  <div key={app.id} className={`prep-dropdown-item${app.id === selectedApp?.id ? " active" : ""}`} onClick={() => { setSelectedApp(app); setIsDropdownOpen(false); }}>
+                    <div className="prep-dropdown-title">{app.job.title}</div>
+                    <div className="prep-dropdown-sub">{app.job.company}</div>
+                  </div>
                 ))}
               </div>
             )}
