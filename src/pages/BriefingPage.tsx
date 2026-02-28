@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowRight, Upload, AlertCircle, CheckCircle, Info, ExternalLink, Sparkles, TrendingUp, TrendingDown, Award, FileText, RefreshCw } from "lucide-react";
+import {
+  ArrowRight, Upload, AlertCircle, CheckCircle, Info,
+  ExternalLink, Sparkles, TrendingUp, TrendingDown, Award, FileText, RefreshCw
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -8,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApplications } from "@/contexts/ApplicationContext";
+import { DidYouApplyModal } from "@/components/DidYouApplyModal";
 
 interface FitAnalysis {
   fit_score: number;
@@ -35,8 +39,8 @@ export default function ApplyBriefingPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { searchResults } = useApplications();
-  
+  const { searchResults, addApplication } = useApplications();
+
   const [jobData, setJobData] = useState<JobData | null>(null);
   const [analysis, setAnalysis] = useState<FitAnalysis | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,14 +50,13 @@ export default function ApplyBriefingPage() {
   const [uploadedResume, setUploadedResume] = useState<File | null>(null);
   const [resumeStatus, setResumeStatus] = useState<{ has_resume: boolean; resume_source: string } | null>(null);
 
+  // ── "Did you apply?" modal state ─────────────────────────────────────────
+  const [showDidYouApply, setShowDidYouApply] = useState(false);
+
   const jobId = searchParams.get("job_id");
 
   useEffect(() => {
-    if (!jobId) {
-      navigate("/search");
-      return;
-    }
-
+    if (!jobId) { navigate("/search"); return; }
     fetchJobAndAnalyze();
   }, [jobId]);
 
@@ -61,11 +64,8 @@ export default function ApplyBriefingPage() {
     try {
       const response = await fetch("https://job-matcher-rasg.onrender.com/api/apply/get-resume-status", {
         method: "GET",
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("access_token")}`,
-        },
+        headers: { "Authorization": `Bearer ${localStorage.getItem("access_token")}` },
       });
-
       if (response.ok) {
         const data = await response.json();
         setResumeStatus(data);
@@ -82,30 +82,16 @@ export default function ApplyBriefingPage() {
     try {
       setLoading(true);
       setError(null);
-
-      // Find job in searchResults
       let job = searchResults?.jobs?.find((j: any) => j.id === jobId);
-      
-      if (!job) {
-        setError("Job not found. Please search again.");
-        setLoading(false);
-        return;
-      }
-      
+      if (!job) { setError("Job not found. Please search again."); setLoading(false); return; }
       setJobData(job);
-
-      // Check if user has a resume
       const hasResume = await checkResumeStatus();
-      
       if (!hasResume) {
         setError("No resume found. Please upload a resume to your profile first or upload one below.");
         setLoading(false);
         return;
       }
-
-      // Analyze fit with profile resume
       await analyzeFit(job, null);
-
     } catch (err: any) {
       console.error("Error:", err);
       setError(err.message || "Failed to load job analysis");
@@ -117,50 +103,33 @@ export default function ApplyBriefingPage() {
     try {
       setAnalyzing(true);
       setError(null);
-      
       const formData = new FormData();
       formData.append("job_id", job.id);
       formData.append("job_description", job.description);
-      
       if (customResume) {
         formData.append("resume", customResume);
         formData.append("use_profile_resume", "false");
       } else {
         formData.append("use_profile_resume", "true");
       }
-
       const response = await fetch("https://job-matcher-rasg.onrender.com/api/apply/analyze-fit", {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("access_token")}`,
-        },
+        headers: { "Authorization": `Bearer ${localStorage.getItem("access_token")}` },
         body: formData,
       });
-
       const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result?.error || `Analysis failed: ${response.status}`);
-      }
-
+      if (!response.ok) throw new Error(result?.error || `Analysis failed: ${response.status}`);
       setAnalysis(result);
       setError(null);
-
     } catch (err: any) {
       console.error("Analysis error:", err);
       const errorMessage = err.message || "Failed to analyze job fit";
-      
-      // Show helpful error messages
       if (errorMessage.includes("No resume found") || errorMessage.includes("doesn't have enough information")) {
         setError(`${errorMessage} You can upload a resume below or add one to your profile.`);
       } else {
         setError(errorMessage);
       }
-      
-      // Don't clear analysis if we already have one
-      if (!analysis) {
-        setAnalysis(null);
-      }
+      if (!analysis) setAnalysis(null);
     } finally {
       setAnalyzing(false);
       setLoading(false);
@@ -170,78 +139,89 @@ export default function ApplyBriefingPage() {
   const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // Validate file type
     const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
     if (!allowedTypes.includes(file.type) && !file.name.match(/\.(pdf|doc|docx)$/i)) {
       setError("Invalid file type. Please upload a PDF or Word document.");
       return;
     }
-
     setUploadedResume(file);
     setUseProfileResume(false);
-    
-    if (jobData) {
-      await analyzeFit(jobData, file);
-    }
+    if (jobData) await analyzeFit(jobData, file);
   };
 
   const handleUseProfileResume = async () => {
     setUploadedResume(null);
     setUseProfileResume(true);
-    
-    if (jobData) {
-      await analyzeFit(jobData, null);
-    }
+    if (jobData) await analyzeFit(jobData, null);
   };
 
+  /**
+   * Opens the external job URL, then shows "Did you apply?" modal.
+   * This fires for both "Proceed to Application" (good fit) and "Apply Anyway" (poor fit).
+   */
   const handleProceedToApplication = () => {
     if (!jobData) return;
-
-    // Get the application URL (prefer application_url, fallback to apply_link)
     const applicationUrl = jobData.application_url || jobData.apply_link;
-    if (!applicationUrl) {
-      setError("No application URL available for this job");
-      return;
-    }
-
-    // Add tracking parameter for extension
+    if (!applicationUrl) { setError("No application URL available for this job"); return; }
     const url = new URL(applicationUrl);
     url.searchParams.set("applybotpro_job_id", jobData.id);
-    
-    // Open in new tab
     window.open(url.toString(), "_blank");
+    // Show "did you apply?" after short delay so the tab opens first
+    setTimeout(() => setShowDidYouApply(true), 800);
   };
+
+  /** Called when user confirms they applied */
+  const handleConfirmApplied = () => {
+    if (jobData) {
+      // Build a minimal Job-like object from jobData so addApplication works
+      const jobForContext = {
+        id: jobData.id,
+        title: jobData.title,
+        company: jobData.company,
+        location: jobData.location || "",
+        description: jobData.description,
+        apply_link: jobData.application_url || jobData.apply_link || "",
+      };
+      // Convert FitAnalysis → AnalysisResult shape for context
+      const analysisForContext = analysis
+        ? {
+            fit_score: analysis.fit_score,
+            interview_likelihood:
+              analysis.fit_score >= 70 ? "high" : analysis.fit_score >= 40 ? "medium" : "low",
+            strengths: analysis.strengths,
+            gaps: analysis.gaps,
+            red_flags: [],
+            recommendation: analysis.message,
+          }
+        : undefined;
+      addApplication(jobForContext as any, analysisForContext as any);
+    }
+    setShowDidYouApply(false);
+  };
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
 
   const getRecommendationColor = (recommendation: string) => {
     switch (recommendation) {
-      case "strong_fit":
-        return "text-green-600 bg-green-50 border-green-200";
-      case "good_fit":
-        return "text-blue-600 bg-blue-50 border-blue-200";
-      case "fair_fit":
-        return "text-yellow-600 bg-yellow-50 border-yellow-200";
-      case "poor_fit":
-        return "text-red-600 bg-red-50 border-red-200";
-      default:
-        return "text-gray-600 bg-gray-50 border-gray-200";
+      case "strong_fit": return "text-green-600 bg-green-50 border-green-200";
+      case "good_fit":   return "text-blue-600 bg-blue-50 border-blue-200";
+      case "fair_fit":   return "text-yellow-600 bg-yellow-50 border-yellow-200";
+      case "poor_fit":   return "text-red-600 bg-red-50 border-red-200";
+      default:           return "text-gray-600 bg-gray-50 border-gray-200";
     }
   };
 
   const getRecommendationIcon = (recommendation: string) => {
     switch (recommendation) {
-      case "strong_fit":
-        return <Award className="h-5 w-5" />;
-      case "good_fit":
-        return <TrendingUp className="h-5 w-5" />;
-      case "fair_fit":
-        return <Info className="h-5 w-5" />;
-      case "poor_fit":
-        return <TrendingDown className="h-5 w-5" />;
-      default:
-        return <Info className="h-5 w-5" />;
+      case "strong_fit": return <Award className="h-5 w-5" />;
+      case "good_fit":   return <TrendingUp className="h-5 w-5" />;
+      case "fair_fit":   return <Info className="h-5 w-5" />;
+      case "poor_fit":   return <TrendingDown className="h-5 w-5" />;
+      default:           return <Info className="h-5 w-5" />;
     }
   };
+
+  // ── Render guards ─────────────────────────────────────────────────────────
 
   if (loading && !jobData) {
     return (
@@ -262,12 +242,12 @@ export default function ApplyBriefingPage() {
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>{error || "Failed to load job data"}</AlertDescription>
         </Alert>
-        <Button onClick={() => navigate("/search")} className="mt-4">
-          Back to Search
-        </Button>
+        <Button onClick={() => navigate("/search")} className="mt-4">Back to Search</Button>
       </div>
     );
   }
+
+  // ── Main render ───────────────────────────────────────────────────────────
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -276,16 +256,12 @@ export default function ApplyBriefingPage() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">{jobData.title}</h1>
           <p className="text-lg text-muted-foreground mt-1">{jobData.company}</p>
-          {jobData.location && (
-            <p className="text-sm text-muted-foreground mt-1">{jobData.location}</p>
-          )}
+          {jobData.location && <p className="text-sm text-muted-foreground mt-1">{jobData.location}</p>}
         </div>
-        <Badge variant="outline" className="text-sm">
-          Pre-Application Analysis
-        </Badge>
+        <Badge variant="outline" className="text-sm">Pre-Application Analysis</Badge>
       </div>
 
-      {/* Error Alert */}
+      {/* Error */}
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -302,7 +278,7 @@ export default function ApplyBriefingPage() {
             Choose Resume to Analyze
           </CardTitle>
           <CardDescription>
-            {resumeStatus?.has_resume 
+            {resumeStatus?.has_resume
               ? `Using resume from ${resumeStatus.resume_source === 'resume_file' ? 'uploaded file' : 'profile data'}`
               : "No resume found - please upload one below"}
           </CardDescription>
@@ -320,9 +296,7 @@ export default function ApplyBriefingPage() {
                 <span className="font-semibold">Use Profile Resume</span>
               </div>
               <span className="text-xs text-left opacity-80">
-                {resumeStatus?.has_resume 
-                  ? "Use the resume saved in your profile" 
-                  : "Upload a resume to your profile first"}
+                {resumeStatus?.has_resume ? "Use the resume saved in your profile" : "Upload a resume to your profile first"}
               </span>
             </Button>
 
@@ -376,16 +350,12 @@ export default function ApplyBriefingPage() {
                   {getRecommendationIcon(analysis.recommendation)}
                   <div>
                     <CardTitle>Fit Analysis</CardTitle>
-                    <CardDescription className="mt-1">
-                      Based on your resume and the job requirements
-                    </CardDescription>
+                    <CardDescription className="mt-1">Based on your resume and the job requirements</CardDescription>
                   </div>
                 </div>
                 <div className="text-center">
                   <div className="text-4xl font-bold">{analysis.fit_score}%</div>
-                  <div className="text-xs uppercase font-medium mt-1">
-                    {analysis.recommendation.replace("_", " ")}
-                  </div>
+                  <div className="text-xs uppercase font-medium mt-1">{analysis.recommendation.replace("_", " ")}</div>
                 </div>
               </div>
             </CardHeader>
@@ -393,9 +363,7 @@ export default function ApplyBriefingPage() {
               <Alert className={getRecommendationColor(analysis.recommendation)}>
                 <Sparkles className="h-4 w-4" />
                 <AlertTitle>AI Recommendation</AlertTitle>
-                <AlertDescription className="mt-2">
-                  {analysis.message}
-                </AlertDescription>
+                <AlertDescription className="mt-2">{analysis.message}</AlertDescription>
               </Alert>
             </CardContent>
           </Card>
@@ -405,8 +373,7 @@ export default function ApplyBriefingPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-green-600">
-                  <CheckCircle className="h-5 w-5" />
-                  Your Strengths
+                  <CheckCircle className="h-5 w-5" />Your Strengths
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -422,13 +389,12 @@ export default function ApplyBriefingPage() {
             </Card>
           )}
 
-          {/* Gaps & Recommendations */}
+          {/* Gaps */}
           {(analysis.gaps.length > 0 || analysis.skill_recommendations.length > 0) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-orange-600">
-                  <Info className="h-5 w-5" />
-                  Areas to Improve
+                  <Info className="h-5 w-5" />Areas to Improve
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -445,7 +411,6 @@ export default function ApplyBriefingPage() {
                     </ul>
                   </div>
                 )}
-
                 {analysis.skill_recommendations.length > 0 && (
                   <div>
                     <h4 className="font-semibold text-sm mb-2">Recommendations:</h4>
@@ -463,26 +428,17 @@ export default function ApplyBriefingPage() {
             </Card>
           )}
 
-          {/* Experience Match */}
+          {/* Experience */}
           {analysis.experience_match && (
             <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Experience Level Match</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">{analysis.experience_match}</p>
-              </CardContent>
+              <CardHeader><CardTitle className="text-base">Experience Level Match</CardTitle></CardHeader>
+              <CardContent><p className="text-sm text-muted-foreground">{analysis.experience_match}</p></CardContent>
             </Card>
           )}
 
           {/* Action Buttons */}
           <div className="flex items-center justify-between gap-4 pt-4">
-            <Button
-              variant="outline"
-              onClick={() => navigate("/search")}
-            >
-              Back to Search
-            </Button>
+            <Button variant="outline" onClick={() => navigate("/search")}>Back to Search</Button>
 
             <div className="flex gap-3">
               {!analysis.should_apply && (
@@ -493,12 +449,8 @@ export default function ApplyBriefingPage() {
                   </AlertDescription>
                 </Alert>
               )}
-              
-              <Button
-                size="lg"
-                onClick={handleProceedToApplication}
-                className="gap-2"
-              >
+              {/* Both "Proceed" and "Apply Anyway" call the same handler */}
+              <Button size="lg" onClick={handleProceedToApplication} className="gap-2">
                 {analysis.should_apply ? "Proceed to Application" : "Apply Anyway"}
                 <ExternalLink className="h-4 w-4" />
               </Button>
@@ -512,12 +464,19 @@ export default function ApplyBriefingPage() {
         <Card>
           <CardContent className="py-12 text-center">
             <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">
-              Upload a resume or use your profile resume to get a fit analysis
-            </p>
+            <p className="text-muted-foreground">Upload a resume or use your profile resume to get a fit analysis</p>
           </CardContent>
         </Card>
       )}
+
+      {/* ── Did You Apply? Modal ── */}
+      <DidYouApplyModal
+        isOpen={showDidYouApply}
+        jobTitle={jobData.title}
+        company={jobData.company}
+        onYes={handleConfirmApplied}
+        onNo={() => setShowDidYouApply(false)}
+      />
     </div>
   );
 }
