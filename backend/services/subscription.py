@@ -1,5 +1,15 @@
 """
 Subscription Service - Plan limits, usage tracking, and enforcement.
+
+BUGFIX (2026-02-28):
+  check_feature_access() was building the limit key with an f-string:
+      limit_key = f"{feature}s_per_day"
+  For feature="cv_analysis" this produced "cv_analysiss_per_day" (double-s),
+  which never matched "cv_analyses_per_day" in PLAN_LIMITS.
+  limits.get("cv_analysiss_per_day", 0) → 0 → "feature locked" for ALL free users.
+
+  Fix: use FEATURE_LIMIT_KEYS dict for exact key names.
+  Also: default to None (not 0) so unknown features fail open, not locked.
 """
 
 from datetime import date
@@ -34,9 +44,17 @@ PLAN_LIMITS = {
 }
 
 FEATURE_LABELS = {
-    "cv_analysis":   "CV analyses",
-    "cover_letter":  "cover letters",
-    "job_search":    "job searches",
+    "cv_analysis":  "CV analyses",
+    "cover_letter": "cover letters",
+    "job_search":   "job searches",
+}
+
+# BUGFIX: Maps feature name → the exact key in PLAN_LIMITS
+# The old code did f"{feature}s_per_day" which gave "cv_analysiss_per_day" — wrong!
+FEATURE_LIMIT_KEYS = {
+    "cv_analysis":  "cv_analyses_per_day",    # note: analyses, not analysiss
+    "cover_letter": "cover_letters_per_day",
+    "job_search":   "job_results_limit",
 }
 
 
@@ -84,9 +102,15 @@ def _ensure_free_subscription(user_id: str) -> dict:
 def get_plan_id(user_id: str) -> str:
     """Return the user's current plan id string."""
     sub = get_user_subscription(user_id)
-    if sub.get("status") not in ("active",):
+    # Allow "trialing" status too — some payment flows use it briefly
+    if sub.get("status") not in ("active", "trialing"):
         return "free"
-    return sub.get("plan_id", "free")
+    plan_id = sub.get("plan_id", "free")
+    # Sanity check — if DB has an unknown plan, default to free
+    if plan_id not in PLAN_LIMITS:
+        print(f"[Subscription] Unknown plan_id '{plan_id}' for user {user_id}, defaulting to free")
+        return "free"
+    return plan_id
 
 
 def get_plan_limits(plan_id: str) -> dict:
@@ -121,7 +145,6 @@ def increment_usage(user_id: str, feature: str) -> int:
         client = get_supabase()
         today = date.today().isoformat()
 
-        # Upsert with increment
         existing = (
             client.table("usage_tracking")
             .select("id, count")
@@ -164,13 +187,13 @@ def get_usage_summary(user_id: str) -> dict:
     summary  = {"plan": plan_id, "features": {}}
 
     for feature in features:
-        limit_key = f"{feature}s_per_day"
+        limit_key = FEATURE_LIMIT_KEYS.get(feature, f"{feature}s_per_day")
         limit     = limits.get(limit_key, 0)
         used      = get_today_usage(user_id, feature)
 
         summary["features"][feature] = {
             "used":      used,
-            "limit":     limit,           # -1 = unlimited
+            "limit":     limit,
             "remaining": max(0, limit - used) if limit != -1 else -1,
             "locked":    limit == 0,
             "unlimited": limit == -1,
@@ -188,36 +211,51 @@ def check_feature_access(user_id: str, feature: str) -> tuple[bool, dict | None]
     Returns:
         (True, None)           — access granted
         (False, error_dict)    — access denied with reason payload
+
+    BUGFIX: old code: limit_key = f"{feature}s_per_day"
+      → "cv_analysis" + "s" = "cv_analysiss_per_day" (double-s, never matched)
+      → limits.get(bad_key, 0) → 0 → feature_locked for ALL free users
+    Now uses FEATURE_LIMIT_KEYS for correct key lookup.
+    Unknown keys now fail OPEN (allow) instead of silently locking users out.
     """
     plan_id = get_plan_id(user_id)
     limits  = get_plan_limits(plan_id)
 
-    limit_key = f"{feature}s_per_day"
-    limit     = limits.get(limit_key, 0)
+    # Use the explicit mapping — no more f-string typo
+    limit_key = FEATURE_LIMIT_KEYS.get(feature, f"{feature}s_per_day")
+    limit     = limits.get(limit_key)  # None if key not found (not 0!)
 
-    # Feature completely locked on this plan
+    # Unknown feature key — fail open rather than silently blocking users
+    if limit is None:
+        print(f"[Subscription] Warning: unknown limit key '{limit_key}' for feature '{feature}' "
+              f"on plan '{plan_id}'. Allowing access to avoid false lockout.")
+        return True, None
+
+    # Feature completely locked on this plan (limit explicitly set to 0)
     if limit == 0:
+        label = FEATURE_LABELS.get(feature, feature)
         return False, {
-            "error":       f"{FEATURE_LABELS.get(feature, feature).capitalize()} are not available on the Free plan.",
-            "error_code":  "feature_locked",
+            "error":            f"{label.capitalize()} are not available on the {plan_id.capitalize()} plan.",
+            "error_code":       "feature_locked",
             "upgrade_required": True,
-            "current_plan": plan_id,
+            "current_plan":     plan_id,
         }
 
-    # Unlimited
+    # Unlimited (-1)
     if limit == -1:
         return True, None
 
     # Check daily quota
     used = get_today_usage(user_id, feature)
     if used >= limit:
+        label = FEATURE_LABELS.get(feature, feature)
         return False, {
-            "error":       f"You've used all {limit} {FEATURE_LABELS.get(feature, feature)} for today. Resets at midnight.",
-            "error_code":  "daily_limit_reached",
-            "used":        used,
-            "limit":       limit,
+            "error":            f"You've used all {limit} {label} for today. Resets at midnight.",
+            "error_code":       "daily_limit_reached",
+            "used":             used,
+            "limit":            limit,
             "upgrade_required": True,
-            "current_plan": plan_id,
+            "current_plan":     plan_id,
         }
 
     return True, None
@@ -230,10 +268,10 @@ def check_cv_refinement_access(user_id: str) -> tuple[bool, dict | None]:
 
     if not limits.get("cv_refinement", False):
         return False, {
-            "error":       "CV refinement is not available on the Free plan.",
-            "error_code":  "feature_locked",
+            "error":            "CV refinement is not available on the Free plan.",
+            "error_code":       "feature_locked",
             "upgrade_required": True,
-            "current_plan": plan_id,
+            "current_plan":     plan_id,
         }
     return True, None
 
