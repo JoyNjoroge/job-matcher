@@ -1,5 +1,6 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { PDFViewer, pdf } from "@react-pdf/renderer";
+import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,15 +20,35 @@ const API_BASE = "https://job-matcher-rasg.onrender.com/api";
 
 export default function CVGeneratorPage() {
   const auth = useAuth();
+  const location = useLocation();
+  const locationState = location.state as {
+    jobDescription?: string;
+    companyName?: string;
+    aiSuggestions?: { strengths: string[]; gaps: string[]; red_flags: string[]; fit_score: number };
+  } | null;
+
   const accessToken = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
   const [resume, setResume] = useState<JsonResume>(emptyResume);
   const [template, setTemplate] = useState<CVTemplate>("ats-crusher");
-  const [jobDescription, setJobDescription] = useState("");
-  const [companyName, setCompanyName] = useState("");
+  const [jobDescription, setJobDescription] = useState(locationState?.jobDescription || "");
+  const [companyName, setCompanyName] = useState(locationState?.companyName || "");
+  const [aiSuggestions] = useState(locationState?.aiSuggestions || null);
   const [isRefining, setIsRefining] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [activeTab, setActiveTab] = useState("cv");
   const [coverLetter, setCoverLetter] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(true);
+
+  // If we arrived from ResultsPage with a JD, auto-trigger profile load so
+  // the user sees their data pre-populated ready to refine
+  useEffect(() => {
+    if (locationState?.jobDescription && accessToken) {
+      loadFromProfile();
+    }
+    // clear location state so refresh doesn't re-trigger
+    window.history.replaceState({}, document.title);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Load from existing profile resume
   const loadFromProfile = useCallback(async () => {
@@ -210,6 +231,43 @@ export default function CVGeneratorPage() {
           </Button>
         </div>
       </div>
+
+      {/* AI Suggestions Banner — shown when arriving from ResultsPage */}
+      {aiSuggestions && showSuggestions && (
+        <Card className="border-violet-200 bg-violet-50 dark:bg-violet-950/20 dark:border-violet-800">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-violet-800 dark:text-violet-300 flex items-center gap-1.5 mb-2">
+                  <Sparkles className="h-4 w-4" /> AI Analysis Suggestions (Fit Score: {aiSuggestions.fit_score}%)
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  {aiSuggestions.gaps.length > 0 && (
+                    <div>
+                      <p className="font-semibold text-amber-700 dark:text-amber-400 mb-1">Gaps to address in your CV:</p>
+                      <ul className="space-y-0.5 text-amber-800 dark:text-amber-300">
+                        {aiSuggestions.gaps.map((g, i) => <li key={i} className="flex gap-1">• {g}</li>)}
+                      </ul>
+                    </div>
+                  )}
+                  {aiSuggestions.strengths.length > 0 && (
+                    <div>
+                      <p className="font-semibold text-emerald-700 dark:text-emerald-400 mb-1">Strengths to highlight:</p>
+                      <ul className="space-y-0.5 text-emerald-800 dark:text-emerald-300">
+                        {aiSuggestions.strengths.map((s, i) => <li key={i} className="flex gap-1">✓ {s}</li>)}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-violet-600 dark:text-violet-400 mt-2">
+                  Hit <strong>Auto-Refine</strong> below to apply these improvements to your CV automatically.
+                </p>
+              </div>
+              <button onClick={() => setShowSuggestions(false)} className="text-violet-400 hover:text-violet-600 text-lg leading-none flex-shrink-0">×</button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* AI Refine Section (shared context for both tabs) */}
       <Card className="border-primary/20 bg-primary/5">

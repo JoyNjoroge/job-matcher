@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Sparkles, CheckCircle, AlertCircle, XCircle, MessageSquare, LayoutGrid, ExternalLink } from "lucide-react";
+import { ArrowLeft, Sparkles, CheckCircle, AlertCircle, XCircle, MessageSquare, LayoutGrid, ExternalLink, FileText } from "lucide-react";
 import type { AnalysisResult } from "@/types";
 import { useApplications } from "@/contexts/ApplicationContext";
 import { DidYouApplyModal } from "@/components/DidYouApplyModal";
@@ -146,6 +146,8 @@ export default function ResultsPage() {
         .rs-btn-outline:hover { border-color: rgba(0,0,0,0.25); background: #F9FAFB; }
         .rs-btn-apply { flex: 1; min-width: 160px; height: 50px; background: #10B981; color: white; border: none; border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(16,185,129,0.3); }
         .rs-btn-apply:hover { background: #059669; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16,185,129,0.4); }
+        .rs-btn-cv { flex: 1; min-width: 160px; height: 50px; background: #7C3AED; color: white; border: none; border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(124,58,237,0.3); }
+        .rs-btn-cv:hover { background: #6D28D9; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(124,58,237,0.4); }
       `}</style>
 
       <button className="rs-back-btn" onClick={() => navigate("/")}>
@@ -228,6 +230,25 @@ export default function ResultsPage() {
         <button className="rs-btn-apply" onClick={handleApplyClick}>
           <ExternalLink size={16} />
           {job?.apply_link ? "Apply & Track" : "Mark as Applied"}
+        </button>
+
+        {/* Generate tailored CV — carries JD + AI suggestions into CV Generator */}
+        <button
+          className="rs-btn-cv"
+          onClick={() => navigate("/cv-generator", {
+            state: {
+              jobDescription: job?.description || "",
+              companyName: job?.company || "",
+              aiSuggestions: {
+                strengths: analysis.strengths || [],
+                gaps: analysis.gaps || [],
+                red_flags: analysis.red_flags || [],
+                fit_score: analysis.fit_score,
+              },
+            },
+          })}
+        >
+          <FileText size={16} /> Generate Tailored CV
         </button>
 
         <button className="rs-btn-primary" onClick={() => navigate("/prep")}>

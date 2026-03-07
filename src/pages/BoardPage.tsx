@@ -1,114 +1,279 @@
-import { useState, useEffect } from "react";
+/**
+ * BoardPage.tsx — Kanban view of tracked applications
+ * Fixed: now reads from ApplicationContext (same source as ApplicationsTable)
+ * instead of calling getApplications() from the API, which was causing errors.
+ */
 import { useNavigate } from "react-router-dom";
-import { LayoutGrid, AlertCircle } from "lucide-react";
-import { KanbanColumn } from "@/components/KanbanColumn";
-import { getApplications } from "@/api";
-import type { Application, FitCategory } from "@/types";
+import { LayoutGrid, Plus } from "lucide-react";
+import { useApplications } from "@/contexts/ApplicationContext";
+import { useState } from "react";
+import { AddApplicationModal } from "@/components/AddApplicationModal";
+import type { TrackedApplication } from "@/types";
 
-function categorizeByFit(score: number): FitCategory {
+function categorize(score: number | undefined): "strong" | "medium" | "low" {
+  if (!score && score !== 0) return "low";
   if (score >= 70) return "strong";
   if (score >= 40) return "medium";
   return "low";
 }
 
-function LoadingState() {
+const COLUMNS = [
+  {
+    key: "strong" as const,
+    title: "Strong Fit",
+    color: "#10B981",
+    bg: "rgba(16,185,129,0.08)",
+    border: "rgba(16,185,129,0.25)",
+    scoreMin: 70,
+  },
+  {
+    key: "medium" as const,
+    title: "Medium Fit",
+    color: "#F59E0B",
+    bg: "rgba(245,158,11,0.08)",
+    border: "rgba(245,158,11,0.25)",
+    scoreMin: 40,
+  },
+  {
+    key: "low" as const,
+    title: "Low / No Score",
+    color: "#EF4444",
+    bg: "rgba(239,68,68,0.07)",
+    border: "rgba(239,68,68,0.2)",
+    scoreMin: 0,
+  },
+];
+
+function KanbanCard({
+  app,
+  onClick,
+}: {
+  app: TrackedApplication;
+  onClick: () => void;
+}) {
+  const score = app.analysis?.fit_score;
+  const color =
+    score === undefined ? "#9CA3AF" : score >= 70 ? "#10B981" : score >= 40 ? "#F59E0B" : "#EF4444";
+  const likelihood = app.analysis?.interview_likelihood;
+
+  const likelihoodMap: Record<string, { bg: string; color: string; label: string }> = {
+    high:   { bg: "rgba(16,185,129,0.1)",  color: "#059669", label: "High chance" },
+    medium: { bg: "rgba(245,158,11,0.1)",  color: "#D97706", label: "Medium chance" },
+    low:    { bg: "rgba(239,68,68,0.1)",   color: "#DC2626", label: "Low chance" },
+  };
+  const lCfg = likelihood ? likelihoodMap[likelihood] : null;
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 24px", gap: 16 }}>
-      <div style={{ width: 36, height: 36, border: "3px solid rgba(37,99,235,0.2)", borderTopColor: "#2563EB", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
-      <p style={{ color: "#6B7280", fontSize: 14, fontFamily: "DM Sans, sans-serif" }}>Loading applications…</p>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    <button
+      onClick={onClick}
+      style={{
+        width: "100%", textAlign: "left", background: "var(--surface, #fff)",
+        border: "1px solid var(--border-color, rgba(0,0,0,0.07))",
+        borderRadius: 14, padding: "14px 16px",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+        cursor: "pointer", transition: "all 0.15s",
+        fontFamily: "'DM Sans', sans-serif",
+        marginBottom: 10,
+      }}
+      onMouseEnter={e => {
+        (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 16px rgba(0,0,0,0.1)";
+        (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)";
+      }}
+      onMouseLeave={e => {
+        (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 1px 3px rgba(0,0,0,0.05)";
+        (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontWeight: 600, fontSize: 13.5, color: "var(--text, #0A0A0F)", margin: "0 0 3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {app.job.title}
+          </p>
+          <p style={{ fontSize: 12.5, color: "var(--text2, #6B7280)", margin: "0 0 10px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {app.job.company}{app.job.location ? ` · ${app.job.location}` : ""}
+          </p>
+          {lCfg && (
+            <span style={{
+              display: "inline-flex", alignItems: "center",
+              padding: "2px 9px", borderRadius: 999,
+              background: lCfg.bg, color: lCfg.color,
+              fontSize: 11.5, fontWeight: 700,
+            }}>
+              {lCfg.label}
+            </span>
+          )}
+        </div>
+
+        {/* Score ring */}
+        <div style={{
+          width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
+          background: score !== undefined
+            ? `conic-gradient(${color} 0deg, ${color} ${Math.round((score / 100) * 360)}deg, #E5E7EB ${Math.round((score / 100) * 360)}deg)`
+            : "#E5E7EB",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          position: "relative",
+        }}>
+          <div style={{
+            width: 32, height: 32, background: "var(--surface, #fff)",
+            borderRadius: "50%", position: "absolute",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color, lineHeight: 1 }}>
+              {score !== undefined ? `${score}%` : "—"}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {app.selectedForInterview && (
+        <div style={{
+          marginTop: 10, padding: "4px 10px", borderRadius: 8,
+          background: "rgba(37,99,235,0.07)", color: "#2563EB",
+          fontSize: 11.5, fontWeight: 600, display: "inline-block",
+        }}>
+          ✓ Selected for interview
+        </div>
+      )}
+    </button>
+  );
+}
+
+function KanbanColumn({
+  col,
+  apps,
+  onCardClick,
+}: {
+  col: typeof COLUMNS[number];
+  apps: TrackedApplication[];
+  onCardClick: (app: TrackedApplication) => void;
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", minWidth: 300, width: 300 }}>
+      {/* Column header */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "10px 14px", borderRadius: 12, marginBottom: 14,
+        background: col.bg, border: `1px solid ${col.border}`,
+      }}>
+        <span style={{ fontWeight: 700, fontSize: 13.5, color: col.color, fontFamily: "'Syne', sans-serif" }}>
+          {col.title}
+        </span>
+        <span style={{
+          background: col.color, color: "white",
+          fontSize: 11.5, fontWeight: 700,
+          padding: "2px 9px", borderRadius: 999,
+        }}>
+          {apps.length}
+        </span>
+      </div>
+
+      {/* Cards */}
+      <div style={{ flex: 1, overflowY: "auto" }}>
+        {apps.map(app => (
+          <KanbanCard key={app.id} app={app} onClick={() => onCardClick(app)} />
+        ))}
+        {apps.length === 0 && (
+          <div style={{
+            border: "1.5px dashed var(--border-color, rgba(0,0,0,0.1))",
+            borderRadius: 12, padding: "28px 16px",
+            textAlign: "center", color: "var(--text3, #9CA3AF)",
+            fontSize: 13, fontFamily: "'DM Sans', sans-serif",
+          }}>
+            No applications here
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 export default function BoardPage() {
   const navigate = useNavigate();
-  const [applications, setApplications] = useState<Application[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { applications } = useApplications();
+  const [showAddModal, setShowAddModal] = useState(false);
 
-  const fetchApplications = async () => {
-    setIsLoading(true); setError(null);
-    try {
-      const data = await getApplications();
-      setApplications(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load applications");
-    } finally {
-      setIsLoading(false);
+  const strong = applications.filter(a => categorize(a.analysis?.fit_score) === "strong");
+  const medium = applications.filter(a => categorize(a.analysis?.fit_score) === "medium");
+  const low    = applications.filter(a => categorize(a.analysis?.fit_score) === "low");
+  const byCol  = { strong, medium, low };
+
+  const handleCardClick = (app: TrackedApplication) => {
+    if (app.analysis) {
+      navigate("/results", { state: { analysis: app.analysis, job: app.job, cvText: app.cvText } });
     }
   };
 
-  useEffect(() => { fetchApplications(); }, []);
-
-  const handleApplicationClick = (app: Application) => {
-    navigate("/results", {
-      state: {
-        analysis: app.analysis || { fit_score: app.fit_score, interview_likelihood: app.interview_likelihood, strengths: [], gaps: [], red_flags: [] },
-      },
-    });
-  };
-
-  const strong = applications.filter((a) => categorizeByFit(a.fit_score) === "strong");
-  const medium = applications.filter((a) => categorizeByFit(a.fit_score) === "medium");
-  const low = applications.filter((a) => categorizeByFit(a.fit_score) === "low");
-
   return (
-    <div className="board-root">
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
-        .board-root { font-family: 'DM Sans', sans-serif; padding: 48px 24px 80px; }
-        .board-header { display: flex; align-items: center; gap: 18px; margin-bottom: 40px; }
-        .board-header-icon { width: 52px; height: 52px; border-radius: 14px; background: rgba(37,99,235,0.08); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        .board-header h1 { font-family: 'Syne', sans-serif; font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 800; letter-spacing: -0.025em; color: #0A0A0F; margin: 0 0 4px; }
-        .board-header p { color: #6B7280; font-size: 14px; margin: 0; }
-        .board-cols { display: flex; gap: 20px; overflow-x: auto; padding-bottom: 16px; align-items: flex-start; }
-        .board-cols::-webkit-scrollbar { height: 6px; }
-        .board-cols::-webkit-scrollbar-track { background: transparent; }
-        .board-cols::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 999px; }
+    <div style={{ fontFamily: "'DM Sans', sans-serif", padding: "48px 24px 80px" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');`}</style>
 
-        .board-error {
-          display: flex; gap: 12px; align-items: center;
-          background: rgba(239,68,68,0.07); border: 1px solid rgba(239,68,68,0.2);
-          border-radius: 14px; padding: 16px 20px;
-          color: #DC2626; font-size: 14px;
-        }
-        .board-retry-btn {
-          margin-left: auto; padding: 8px 16px; background: white;
-          border: 1.5px solid rgba(239,68,68,0.3); border-radius: 8px;
-          color: #DC2626; font-family: 'DM Sans', sans-serif;
-          font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;
-        }
-        .board-retry-btn:hover { background: rgba(239,68,68,0.06); }
-      `}</style>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 40, flexWrap: "wrap", gap: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: "rgba(37,99,235,0.08)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <LayoutGrid size={24} color="#2563EB" />
+          </div>
+          <div>
+            <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(1.6rem, 3vw, 2.2rem)", fontWeight: 800, letterSpacing: "-0.025em", color: "var(--text, #0A0A0F)", margin: "0 0 4px" }}>
+              Application Board
+            </h1>
+            <p style={{ color: "var(--text2, #6B7280)", fontSize: 14, margin: 0 }}>
+              {applications.length} application{applications.length !== 1 ? "s" : ""} tracked
+            </p>
+          </div>
+        </div>
 
-      <div className="board-header">
-        <div className="board-header-icon">
-          <LayoutGrid size={24} color="#2563EB" />
-        </div>
-        <div>
-          <h1>Application Board</h1>
-          <p>{applications.length} application{applications.length !== 1 ? "s" : ""} tracked</p>
-        </div>
+        <button
+          onClick={() => setShowAddModal(true)}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 8,
+            padding: "11px 20px", borderRadius: 12, border: "none",
+            background: "#2563EB", color: "white",
+            fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 700,
+            cursor: "pointer", boxShadow: "0 4px 14px rgba(37,99,235,0.28)",
+            transition: "all 0.2s",
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#1D4ED8"; (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "#2563EB"; (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)"; }}
+        >
+          <Plus size={16} /> Add Application
+        </button>
       </div>
 
-      {isLoading && <LoadingState />}
-
-      {error && (
-        <div className="board-error">
-          <AlertCircle size={18} style={{ flexShrink: 0 }} />
-          {error}
-          <button className="board-retry-btn" onClick={fetchApplications}>Retry</button>
+      {/* Empty state */}
+      {applications.length === 0 && (
+        <div style={{ textAlign: "center", padding: "80px 24px" }}>
+          <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(0,0,0,0.04)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+            <LayoutGrid size={28} color="#9CA3AF" />
+          </div>
+          <h3 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: "1.2rem", color: "var(--text, #0A0A0F)", margin: "0 0 8px" }}>No applications yet</h3>
+          <p style={{ color: "var(--text2, #6B7280)", fontSize: 14, margin: "0 0 24px" }}>
+            Apply to jobs or add them manually to see them here.
+          </p>
+          <button
+            onClick={() => setShowAddModal(true)}
+            style={{ padding: "11px 24px", borderRadius: 12, border: "none", background: "#2563EB", color: "white", fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
+          >
+            Add your first application
+          </button>
         </div>
       )}
 
-      {!isLoading && !error && (
-        <div className="board-cols">
-          <KanbanColumn title="Strong Fit" category="strong" applications={strong} onApplicationClick={handleApplicationClick} />
-          <KanbanColumn title="Medium Fit" category="medium" applications={medium} onApplicationClick={handleApplicationClick} />
-          <KanbanColumn title="Low Fit" category="low" applications={low} onApplicationClick={handleApplicationClick} />
+      {/* Kanban columns */}
+      {applications.length > 0 && (
+        <div style={{ display: "flex", gap: 20, overflowX: "auto", paddingBottom: 16, alignItems: "flex-start" }}>
+          {COLUMNS.map(col => (
+            <KanbanColumn
+              key={col.key}
+              col={col}
+              apps={byCol[col.key]}
+              onCardClick={handleCardClick}
+            />
+          ))}
         </div>
       )}
+
+      <AddApplicationModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} />
     </div>
   );
 }

@@ -8,11 +8,13 @@ type AuthMode = "login" | "register";
 const API_BASE = "https://job-matcher-rasg.onrender.com/api";
 
 function handleGoogleAuth() {
-  window.location.href = `${API_BASE}/auth/google`;
+  const redirectTo = encodeURIComponent(`${window.location.origin}/auth/callback`);
+  window.location.href = `${API_BASE}/auth/google?redirect_to=${redirectTo}`;
 }
 
 function handleLinkedInAuth() {
-  window.location.href = `${API_BASE}/auth/linkedin`;
+  const redirectTo = encodeURIComponent(`${window.location.origin}/auth/callback`);
+  window.location.href = `${API_BASE}/auth/linkedin?redirect_to=${redirectTo}`;
 }
 
 const GoogleIcon = () => (

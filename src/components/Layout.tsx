@@ -1,13 +1,16 @@
 /**
  * Layout.tsx — Production-ready sidebar layout
- * Features: collapsible sidebar, dark mode, mobile overlay, CSS variables
+ * Fixes:
+ *  1. Collapse toggle always visible (floats outside sidebar when collapsed)
+ *  2. Dark mode unified — writes both data-theme AND class so next-themes + CSS vars both work
+ *  3. Sidebar auto-collapses on scroll down, expands on scroll up (desktop only)
  */
-import { useState, useEffect, createContext, useContext } from "react";
+import { useState, useEffect, useRef, createContext, useContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   FileSearch, Search, LayoutGrid, Send, ClipboardList,
   MessageSquare, User, FileText, CreditCard, ChevronLeft,
-  Menu, X, LogOut, Sun, Moon, Sparkles
+  ChevronRight, Menu, X, LogOut, Sun, Moon, Sparkles
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -59,7 +62,9 @@ const CSS = `
     --transition: 0.22s cubic-bezier(0.4,0,0.2,1);
   }
 
-  [data-theme="dark"] {
+  /* Dark mode — written on BOTH html[data-theme=dark] AND html.dark
+     so CSS vars AND Tailwind dark: classes both work */
+  [data-theme="dark"], .dark {
     --bg: #0F0F12;
     --surface: #1A1A20;
     --surface2: #22222A;
@@ -122,19 +127,37 @@ const CSS = `
     font-family: 'Syne', sans-serif; font-weight: 800; font-size: 0.95rem;
     color: var(--text); letter-spacing: -0.01em; white-space: nowrap;
     opacity: 1; transition: opacity var(--transition);
+    flex: 1;
   }
   .collapsed .sb-logo-name { opacity: 0; pointer-events: none; }
 
-  /* Collapse toggle */
+  /* ── COLLAPSE TOGGLE — always visible ──
+     When expanded: sits inside sidebar logo row (inline).
+     When collapsed: floats as a pill just outside the sidebar edge. */
   .sb-toggle {
-    margin-left: auto; width: 28px; height: 28px; border-radius: 8px;
+    position: relative;
+    width: 28px; height: 28px; border-radius: 8px;
     border: 1px solid var(--border); background: var(--surface2);
     display: flex; align-items: center; justify-content: center;
     cursor: pointer; color: var(--text2); transition: all 0.2s; flex-shrink: 0;
+    z-index: 101;
   }
   .sb-toggle:hover { background: var(--accent-bg); color: var(--accent); }
-  .sb-toggle svg { transition: transform var(--transition); }
-  .collapsed .sb-toggle svg { transform: rotate(180deg); }
+
+  /* When collapsed, float the toggle button outside the sidebar */
+  .sb-sidebar.collapsed .sb-toggle {
+    position: fixed;
+    left: calc(var(--sidebar-collapsed-w) - 14px);
+    top: 20px;
+    width: 28px; height: 28px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 50%;
+    box-shadow: var(--shadow-md);
+  }
+  .sb-sidebar.collapsed .sb-toggle:hover {
+    background: var(--accent); color: white; border-color: var(--accent);
+  }
 
   /* Hide toggle on mobile */
   @media (max-width: 767px) { .sb-toggle { display: none; } }
@@ -208,11 +231,10 @@ const CSS = `
   .collapsed .sb-user-email { opacity: 0; }
 
   .sb-actions-row {
-    display: flex; gap: 4px; padding: 4px 0 0;
-    overflow: hidden;
+    display: flex; gap: 4px;
   }
   .sb-action-btn {
-    flex: 1; height: 32px; border-radius: 8px; border: none;
+    flex: 1; height: 34px; border: none; border-radius: 8px;
     background: var(--surface2); color: var(--text2);
     display: flex; align-items: center; justify-content: center; gap: 5px;
     cursor: pointer; font-size: 12px; font-weight: 600; font-family: inherit;
@@ -269,6 +291,11 @@ const CSS = `
     transition: opacity var(--transition); white-space: nowrap;
   }
   .collapsed .sb-plan-badge { opacity: 0; }
+
+  /* ── Scroll-collapse animation hint ── */
+  .sb-sidebar {
+    will-change: width;
+  }
 `;
 
 /* ── Component ─────────────────────────────────────────────────────── */
@@ -285,11 +312,55 @@ export function Layout({ children }: { children: React.ReactNode }) {
   });
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Apply dark mode
+  // Track last scroll Y for scroll-collapse behaviour
+  const lastScrollY = useRef(0);
+  const scrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── FIX 2: Unified dark mode ──────────────────────────────────────
+  // Write BOTH data-theme (for CSS vars) AND class (for Tailwind/next-themes)
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+    const root = document.documentElement;
+    if (dark) {
+      root.setAttribute("data-theme", "dark");
+      root.classList.add("dark");
+    } else {
+      root.setAttribute("data-theme", "light");
+      root.classList.remove("dark");
+    }
     try { localStorage.setItem("theme", dark ? "dark" : "light"); } catch {}
   }, [dark]);
+
+  // ── FIX 3: Scroll-to-collapse (desktop only) ──────────────────────
+  useEffect(() => {
+    const isMobile = () => window.innerWidth <= 767;
+
+    const onScroll = () => {
+      if (isMobile()) return;
+      const currentY = window.scrollY;
+      const delta = currentY - lastScrollY.current;
+
+      // Scrolling DOWN > 60px → collapse
+      if (delta > 60 && !collapsed) {
+        setCollapsed(true);
+      }
+      // Scrolling UP > 40px → expand
+      else if (delta < -40 && collapsed) {
+        setCollapsed(false);
+      }
+
+      // Debounce update so small jitter doesn't flip repeatedly
+      if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
+      scrollTimeout.current = setTimeout(() => {
+        lastScrollY.current = currentY;
+      }, 50);
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
+    };
+  }, [collapsed]);
 
   // Save collapsed state
   useEffect(() => {
@@ -313,9 +384,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
     navigate("/login");
   };
 
+  const toggleCollapsed = () => setCollapsed(c => !c);
+
   return (
     <ThemeCtx.Provider value={{ dark, toggle: () => setDark(d => !d) }}>
-      <SidebarCtx.Provider value={{ collapsed, toggle: () => setCollapsed(c => !c) }}>
+      <SidebarCtx.Provider value={{ collapsed, toggle: toggleCollapsed }}>
         <style>{CSS}</style>
 
         {/* Mobile overlay */}
@@ -325,14 +398,25 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
         {/* Sidebar */}
         <aside className={`sb-sidebar ${collapsed ? "collapsed" : ""} ${mobileOpen ? "mobile-open" : ""}`}>
+
           {/* Logo + collapse toggle */}
           <div className="sb-logo">
             <div className="sb-logo-mark">
               <FileSearch size={16} color="white" />
             </div>
             <span className="sb-logo-name">ApplyBotPro</span>
-            <button className="sb-toggle" onClick={() => setCollapsed(c => !c)} title={collapsed ? "Expand" : "Collapse"}>
-              <ChevronLeft size={14} />
+
+            {/* ── FIX 1: Toggle always rendered.
+                When collapsed, CSS positions it as a floating pill outside the sidebar.
+                ChevronLeft = expanded state (click to collapse)
+                ChevronRight = collapsed state (click to expand) */}
+            <button
+              className="sb-toggle"
+              onClick={toggleCollapsed}
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
             </button>
           </div>
 

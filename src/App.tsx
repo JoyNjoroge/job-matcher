@@ -19,6 +19,7 @@ import ApplicationsPage from "./pages/ApplicationsPage";
 import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage";
+import AuthCallbackPage from "./pages/AuthCallbackPage";
 import ApplyBriefingPage from "./pages/BriefingPage";
 import CVGeneratorPage from "./pages/CVGeneratorPage";
 import PricingPage from "./pages/PricingPage";
@@ -40,7 +41,8 @@ const App = () => (
                 <Route path="/"         element={<HomePage />} />
                 <Route path="/login"    element={<AuthPage mode="login" />} />
                 <Route path="/register" element={<AuthPage mode="register" />} />
-                <Route path="/pricing"  element={<PricingPage />} />
+                <Route path="/pricing"       element={<PricingPage />} />
+                <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
                 {/* PROTECTED — ProtectedRoute redirects to /login if not authed */}
                 <Route path="/analyze"        element={<ProtectedRoute><Layout><AnalyzePage /></Layout></ProtectedRoute>} />
