@@ -24,6 +24,7 @@ from routes.resumes import resumes_bp
 from routes.briefing import apply_briefing_bp
 from routes.cv import cv_bp
 from routes.subscription import subscription_bp
+from oauth_routes import oauth_bp, oauth   # ← ADD THIS
 
 
 def create_app():
@@ -42,12 +43,14 @@ def create_app():
         "https://job-matcher-rasg.onrender.com"
     ]
 
-    # Add production frontend URL if set
     frontend_url = os.getenv("FRONTEND_URL", "")
     if frontend_url and frontend_url not in allowed_origins:
         allowed_origins.append(frontend_url)
 
     CORS(app, origins=allowed_origins, supports_credentials=True)
+
+    # Required for Authlib OAuth state cookie
+    app.secret_key = os.getenv("FLASK_SECRET_KEY", os.getenv("JWT_SECRET_KEY", "change-me"))
 
     # Initialize Supabase
     try:
@@ -57,8 +60,12 @@ def create_app():
         print(f"❌ Failed to initialize Supabase: {e}")
         raise
 
+    # Initialize OAuth (Authlib needs this)
+    oauth.init_app(app)   # ← ADD THIS
+
     # Register blueprints
     app.register_blueprint(auth_bp,             url_prefix="/api/auth")
+    app.register_blueprint(oauth_bp,            url_prefix="/api")        # ← ADD THIS
     app.register_blueprint(profile_bp,          url_prefix="/api")
     app.register_blueprint(resumes_bp,          url_prefix="/api")
     app.register_blueprint(analyze_bp,          url_prefix="/api")

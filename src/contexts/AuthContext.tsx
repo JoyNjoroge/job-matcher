@@ -24,6 +24,8 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  // OAuth callback helper
+  loadFromTokens: (access: string, refresh: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,11 +34,11 @@ const ACCESS_KEY  = "access_token";
 const REFRESH_KEY = "refresh_token";
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser]               = useState<User>(null);
-  const [loading, setLoading]         = useState(true);
-  const [plan, setPlan]               = useState<PlanId>("free");
+  const [user, setUser]                 = useState<User>(null);
+  const [loading, setLoading]           = useState(true);
+  const [plan, setPlan]                 = useState<PlanId>("free");
   const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [usage, setUsage]             = useState<UsageSummary | null>(null);
+  const [usage, setUsage]               = useState<UsageSummary | null>(null);
   const navigate = useNavigate();
 
   const setTokens = (access: string, refresh?: string) => {
@@ -49,7 +51,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem(REFRESH_KEY);
   };
 
-  // Fetch subscription + usage info
   const refreshUsage = useCallback(async () => {
     const token = localStorage.getItem(ACCESS_KEY);
     if (!token) return;
@@ -59,7 +60,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setPlan(data.subscription?.plan_id ?? "free");
       setUsage(data.usage);
     } catch (e) {
-      // Non-fatal — keep existing state
       console.warn("Could not refresh usage:", e);
     }
   }, []);
@@ -87,6 +87,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
       }
     }
+  };
+
+  // Used by AuthCallbackPage after OAuth redirect
+  const loadFromTokens = async (access: string, refresh: string) => {
+    setTokens(access, refresh);
+    await loadCurrentUser(access);
   };
 
   useEffect(() => {
@@ -143,6 +149,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         register,
         logout,
+        loadFromTokens,
       }}
     >
       {children}
