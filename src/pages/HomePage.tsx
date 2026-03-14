@@ -1,14 +1,14 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import {
-  FileSearch, Search, LayoutGrid, Send, ArrowRight,
-  Sparkles, Target, Zap, Star, TrendingUp, Users,
-  CheckCircle, Shield, Clock, Award, ChevronRight, Menu, X
+  FileSearch, Sparkles, Target, Zap, Send,
+  ArrowRight, Star, ChevronRight, Menu, X,
+  Puzzle, Brain, FileText, Users, TrendingUp, CheckCircle
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 /* ── Animated counter ── */
-function useCounter(end: number, duration = 1800, start = false) {
+function useCounter(end: number, duration = 2000, start = false) {
   const [count, setCount] = useState(0);
   useEffect(() => {
     if (!start) return;
@@ -25,40 +25,70 @@ function useCounter(end: number, duration = 1800, start = false) {
 }
 
 function Stat({ value, suffix, label, started }: { value: number; suffix: string; label: string; started: boolean }) {
-  const n = useCounter(value, 1800, started);
+  const n = useCounter(value, 2000, started);
   return (
-    <div className="lp-stat">
-      <div className="lp-stat-num">{n}{suffix}</div>
-      <div className="lp-stat-lbl">{label}</div>
+    <div className="h-stat">
+      <div className="h-stat-val">{n.toLocaleString()}{suffix}</div>
+      <div className="h-stat-lbl">{label}</div>
     </div>
   );
 }
 
 const FEATURES = [
-  { icon: FileSearch, num: "01", accent: "#2563EB", title: "CV Fit Analysis", desc: "Upload your CV against any job and get an instant AI fit score — with strengths, gaps, and interview likelihood.", cta: "Analyze Your CV", link: "/analyze" },
-  { icon: Search, num: "02", accent: "#7C3AED", title: "Smart Job Search", desc: "Search thousands of live listings filtered by role, location, and experience level. AI-powered, not keyword luck.", cta: "Search Jobs", link: "/search" },
-  { icon: LayoutGrid, num: "03", accent: "#10B981", title: "Application Tracker", desc: "Every application in a visual kanban board sorted by fit score. No more spreadsheets.", cta: "View Board", link: "/board" },
-  { icon: Send, num: "04", accent: "#F59E0B", title: "AI Apply Assistant", desc: "Tailored cover letter, email, and ATS keywords — generated in seconds from your CV and the specific role.", cta: "Start Applying", link: "/apply-briefing" },
+  {
+    icon: Brain,
+    tag: "AI Matching",
+    title: "Jobs matched to your actual CV",
+    desc: "Upload once. Get a curated feed of roles you're genuinely qualified for — ranked by fit score, not recency.",
+    cta: "See My Matches",
+    link: "/jobs/recommend",
+    accent: "#6366F1",
+    bg: "rgba(99,102,241,0.08)",
+  },
+  {
+    icon: FileText,
+    tag: "Resume AI",
+    title: "Tailored CV in 6 seconds",
+    desc: "Paste a job description. Get a rewritten CV that passes ATS and highlights exactly what the hiring manager wants.",
+    cta: "Tailor My CV",
+    link: "/cv-generator",
+    accent: "#10B981",
+    bg: "rgba(16,185,129,0.08)",
+  },
+  {
+    icon: Send,
+    tag: "Apply Briefing",
+    title: "Cover letter & email — done",
+    desc: "AI writes your tailored application materials in seconds. Keyword-optimised for the exact role.",
+    cta: "Generate Briefing",
+    link: "/apply-briefing",
+    accent: "#F59E0B",
+    bg: "rgba(245,158,11,0.08)",
+  },
+  {
+    icon: Target,
+    tag: "Fit Analysis",
+    title: "Know your odds before you apply",
+    desc: "Instant fit score with strengths, skill gaps, red flags, and interview likelihood — all clearly broken down.",
+    cta: "Analyze Now",
+    link: "/analyze",
+    accent: "#EC4899",
+    bg: "rgba(236,72,153,0.08)",
+  },
 ];
 
 const STEPS = [
-  { n: "1", icon: FileSearch, title: "Upload Your CV", desc: "PDF or Word. Our AI parses your experience, skills, and background in seconds." },
-  { n: "2", icon: Search, title: "Find a Job", desc: "Search our index or paste any job URL. We support all major boards." },
-  { n: "3", icon: TrendingUp, title: "Get Your Fit Score", desc: "Strengths, gaps, red flags, and your odds of landing an interview — all broken down clearly." },
-  { n: "4", icon: Send, title: "Apply with Confidence", desc: "AI writes your tailored email and cover letter, optimised for that exact role." },
+  { n: "01", icon: FileSearch, title: "Upload your CV", desc: "PDF or Word. Parsed in seconds. Done once." },
+  { n: "02", icon: Brain, title: "Get matched jobs", desc: "AI scans your skills and surfaces the right roles." },
+  { n: "03", icon: TrendingUp, title: "See your fit score", desc: "Know exactly where you stand before applying." },
+  { n: "04", icon: Send, title: "Apply in one click", desc: "Auto-written cover letter, email & ATS keywords." },
 ];
 
 const TESTIMONIALS = [
-  { name: "Amara K.", role: "Software Engineer", color: "#2563EB", text: "I went from months of rejections to 3 interviews in 2 weeks. The fit score changed everything." },
-  { name: "David O.", role: "Product Manager", color: "#7C3AED", text: "The CV tailoring is insanely precise. It found every keyword I was missing for each specific role." },
-  { name: "Priya N.", role: "UX Designer", color: "#10B981", text: "The kanban tracker made the whole job hunt feel manageable. Always knew exactly where I stood." },
-];
-
-const BENEFITS = [
-  { icon: Target, title: "Only Apply Where You Fit", desc: "Know your match score before you hit submit. Stop wasting applications on long shots." },
-  { icon: Clock, title: "10x Faster Applications", desc: "AI generates tailored emails and cover letters in seconds, not hours." },
-  { icon: Shield, title: "Beat the ATS Filter", desc: "Keyword recommendations to pass automated screening before a human sees your CV." },
-  { icon: Award, title: "Walk Into Interviews Prepared", desc: "Role-specific interview questions generated from your actual CV and the job description." },
+  { name: "Amara K.", role: "Software Engineer", init: "AK", text: "Went from months of rejections to 3 interviews in 2 weeks. The fit score changed everything for me." },
+  { name: "David O.", role: "Product Manager", init: "DO", text: "The CV tailoring is insanely precise. It caught every keyword I was missing for each specific role." },
+  { name: "Priya N.", role: "UX Designer", init: "PN", text: "The kanban tracker made the whole job hunt feel manageable. Always knew exactly where I stood." },
+  { name: "Kwame A.", role: "Data Analyst", init: "KA", text: "I love that it tells me NOT to apply to jobs I'm underqualified for. Saved me so much wasted effort." },
 ];
 
 export default function HomePage() {
@@ -68,6 +98,7 @@ export default function HomePage() {
   const [scrolled, setScrolled] = useState(false);
   const [statsStarted, setStatsStarted] = useState(false);
   const statsRef = useRef<HTMLDivElement>(null);
+  const [activeFeature, setActiveFeature] = useState(0);
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 24);
@@ -76,481 +107,593 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setStatsStarted(true); obs.disconnect(); } }, { threshold: 0.3 });
+    const obs = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) { setStatsStarted(true); obs.disconnect(); } },
+      { threshold: 0.3 }
+    );
     if (statsRef.current) obs.observe(statsRef.current);
     return () => obs.disconnect();
   }, []);
 
-  const handleCTA = (dest = "/analyze") => navigate(user ? dest : "/login");
-  const scrollTo = (id: string) => { setMenuOpen(false); document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }); };
+  // Auto-rotate features
+  useEffect(() => {
+    const t = setInterval(() => setActiveFeature(p => (p + 1) % FEATURES.length), 3500);
+    return () => clearInterval(t);
+  }, []);
+
+  const go = (dest: string) => navigate(user ? dest : "/login");
 
   return (
-    <div className="lp">
+    <div className="h-root">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cabinet+Grotesk:wght@400;500;700;800;900&family=Satoshi:wght@300;400;500;700&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        /* ── CSS VARS ── */
-        .lp { --accent: #2563EB; --accent2: #7C3AED; --accent3: #10B981; }
-
-        .lp {
-          font-family: 'DM Sans', sans-serif;
-          background: #FAFAF8;
-          color: #0A0A0F;
+        .h-root {
+          font-family: 'Satoshi', 'DM Sans', sans-serif;
+          background: #0C0C10;
+          color: #F0EEE8;
           overflow-x: hidden;
           line-height: 1.6;
         }
 
+        /* ── NOISE TEXTURE ── */
+        .h-root::before {
+          content: '';
+          position: fixed; inset: 0; z-index: 0; pointer-events: none;
+          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+          opacity: 0.4;
+        }
+
         /* ── NAVBAR ── */
-        .lp-nav {
+        .h-nav {
           position: fixed; top: 0; left: 0; right: 0; z-index: 200;
-          padding: 0 clamp(1rem, 3vw, 2.5rem);
-          transition: background 0.3s, box-shadow 0.3s;
+          padding: 0 clamp(1.25rem, 4vw, 3rem);
+          transition: background 0.3s, border-color 0.3s;
         }
-        .lp-nav.stuck {
-          background: rgba(250,250,248,0.95);
-          backdrop-filter: blur(18px);
-          border-bottom: 1px solid rgba(0,0,0,0.07);
-          box-shadow: 0 2px 16px rgba(0,0,0,0.04);
+        .h-nav.stuck {
+          background: rgba(12,12,16,0.9);
+          backdrop-filter: blur(20px);
+          border-bottom: 1px solid rgba(255,255,255,0.06);
         }
-        .lp-nav-inner {
-          max-width: 1140px; margin: 0 auto;
-          height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+        .h-nav-inner {
+          max-width: 1200px; margin: 0 auto;
+          height: 68px; display: flex; align-items: center; justify-content: space-between; gap: 16px;
         }
-        .lp-logo { display: flex; align-items: center; gap: 9px; text-decoration: none; cursor: pointer; flex-shrink: 0; }
-        .lp-logo-mark {
-          width: 34px; height: 34px; border-radius: 9px; background: #2563EB;
+        .h-logo {
+          display: flex; align-items: center; gap: 10px;
+          text-decoration: none; cursor: pointer; flex-shrink: 0;
+        }
+        .h-logo-mark {
+          width: 36px; height: 36px; border-radius: 10px;
+          background: linear-gradient(135deg, #6366F1, #8B5CF6);
           display: flex; align-items: center; justify-content: center;
-          box-shadow: 0 4px 12px rgba(37,99,235,0.3); flex-shrink: 0;
+          box-shadow: 0 0 20px rgba(99,102,241,0.4);
         }
-        .lp-logo-name { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1rem; color: #0A0A0F; }
-
-        .lp-nav-links { display: none; align-items: center; gap: 2px; }
-        @media (min-width: 860px) { .lp-nav-links { display: flex; } }
-        .lp-nav-a {
-          padding: 7px 13px; border-radius: 8px;
-          font-size: 13.5px; font-weight: 500; color: #4B5563;
+        .h-logo-name {
+          font-family: 'Cabinet Grotesk', 'Syne', sans-serif;
+          font-weight: 900; font-size: 1.05rem; color: #F0EEE8;
+          letter-spacing: -0.01em;
+        }
+        .h-nav-links { display: none; align-items: center; gap: 4px; }
+        @media (min-width: 860px) { .h-nav-links { display: flex; } }
+        .h-nav-a {
+          padding: 7px 14px; border-radius: 8px;
+          font-size: 13.5px; font-weight: 500; color: rgba(240,238,232,0.55);
           background: none; border: none; cursor: pointer;
-          font-family: 'DM Sans', sans-serif; transition: all 0.15s;
+          font-family: 'Satoshi', sans-serif; transition: all 0.15s;
         }
-        .lp-nav-a:hover { color: #0A0A0F; background: rgba(0,0,0,0.04); }
-
-        .lp-nav-ctas { display: flex; align-items: center; gap: 8px; }
-        .lp-btn-ghost {
+        .h-nav-a:hover { color: #F0EEE8; background: rgba(255,255,255,0.06); }
+        .h-nav-ctas { display: flex; align-items: center; gap: 10px; }
+        .h-nav-ghost {
           display: none; padding: 8px 16px; border-radius: 8px;
-          font-size: 13px; font-weight: 600; color: #374151;
-          background: white; border: 1.5px solid rgba(0,0,0,0.1);
-          cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s;
+          font-size: 13px; font-weight: 600; color: rgba(240,238,232,0.7);
+          background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+          cursor: pointer; font-family: 'Satoshi', sans-serif; transition: all 0.15s;
         }
-        @media (min-width: 540px) { .lp-btn-ghost { display: flex; align-items: center; } }
-        .lp-btn-ghost:hover { border-color: rgba(0,0,0,0.2); }
-        .lp-btn-solid {
+        @media (min-width: 600px) { .h-nav-ghost { display: flex; align-items: center; } }
+        .h-nav-ghost:hover { color: #F0EEE8; background: rgba(255,255,255,0.1); }
+        .h-nav-solid {
           display: flex; align-items: center; gap: 6px;
-          padding: 8px 18px; border-radius: 8px;
-          font-size: 13px; font-weight: 700; color: white;
-          background: #2563EB; border: none;
-          box-shadow: 0 4px 12px rgba(37,99,235,0.28);
-          cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s;
+          padding: 9px 20px; border-radius: 9px;
+          font-size: 13px; font-weight: 700; color: #0C0C10;
+          background: #F0EEE8; border: none; cursor: pointer;
+          font-family: 'Satoshi', sans-serif; transition: all 0.15s;
         }
-        .lp-btn-solid:hover { background: #1D4ED8; transform: translateY(-1px); }
-        .lp-hamburger { display: flex; background: none; border: none; cursor: pointer; color: #0A0A0F; padding: 6px; border-radius: 8px; transition: background 0.15s; }
-        .lp-hamburger:hover { background: rgba(0,0,0,0.05); }
-        @media (min-width: 860px) { .lp-hamburger { display: none; } }
+        .h-nav-solid:hover { background: white; transform: translateY(-1px); }
+        .h-hamburger {
+          display: flex; background: none; border: none; cursor: pointer;
+          color: #F0EEE8; padding: 6px; border-radius: 8px; transition: background 0.15s;
+        }
+        .h-hamburger:hover { background: rgba(255,255,255,0.08); }
+        @media (min-width: 860px) { .h-hamburger { display: none; } }
 
-        /* Mobile drawer */
-        .lp-drawer {
-          position: fixed; inset: 0; z-index: 199;
-          background: rgba(250,250,248,0.98); backdrop-filter: blur(20px);
-          display: flex; flex-direction: column;
-          padding: 80px 20px 32px; gap: 4px;
-          animation: drawerIn 0.18s ease;
+        /* Mobile menu */
+        .h-mobile-menu {
+          position: fixed; inset: 0; z-index: 190; background: #0C0C10;
+          display: flex; flex-direction: column; padding: 80px 2rem 2rem;
+          gap: 8px; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
         }
-        @keyframes drawerIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
-        .lp-drawer-link {
-          padding: 14px 16px; border-radius: 10px;
-          font-size: 16px; font-weight: 600; color: #0A0A0F;
-          background: none; border: none; text-align: left;
-          font-family: 'DM Sans', sans-serif; cursor: pointer; transition: background 0.15s;
+        .h-mobile-menu.open { transform: translateX(0); }
+        .h-mobile-a {
+          padding: 14px 16px; border-radius: 10px; font-size: 16px;
+          font-weight: 600; color: rgba(240,238,232,0.7); background: none; border: none;
+          cursor: pointer; text-align: left; font-family: 'Satoshi', sans-serif;
+          transition: all 0.15s;
         }
-        .lp-drawer-link:hover { background: rgba(0,0,0,0.05); }
-        .lp-drawer-divider { height: 1px; background: rgba(0,0,0,0.07); margin: 10px 0; }
+        .h-mobile-a:hover { color: #F0EEE8; background: rgba(255,255,255,0.06); }
 
         /* ── HERO ── */
-        .lp-hero {
-          position: relative; overflow: hidden;
-          padding: clamp(100px, 14vw, 140px) clamp(1rem, 4vw, 2.5rem) clamp(60px, 8vw, 100px);
-          display: flex; flex-direction: column; align-items: center; text-align: center;
+        .h-hero {
+          position: relative; min-height: 100vh;
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          padding: 120px clamp(1.25rem, 4vw, 3rem) 80px;
+          text-align: center; overflow: hidden;
         }
-        .lp-hero-grid {
-          position: absolute; inset: 0; pointer-events: none;
-          background-image: linear-gradient(rgba(37,99,235,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(37,99,235,0.04) 1px, transparent 1px);
-          background-size: 48px 48px;
-          mask-image: radial-gradient(ellipse 75% 60% at 50% 30%, black 20%, transparent 100%);
-          -webkit-mask-image: radial-gradient(ellipse 75% 60% at 50% 30%, black 20%, transparent 100%);
+        .h-hero-glow {
+          position: absolute; pointer-events: none;
+          border-radius: 50%; filter: blur(80px); opacity: 0.35;
         }
-        .lp-hero-glow1 { position: absolute; width: clamp(300px, 50vw, 600px); height: clamp(300px, 50vw, 600px); border-radius: 50%; background: radial-gradient(circle, rgba(37,99,235,0.08) 0%, transparent 65%); top: -30%; left: -15%; filter: blur(50px); pointer-events: none; animation: gFloat 10s ease-in-out infinite; }
-        .lp-hero-glow2 { position: absolute; width: clamp(200px, 40vw, 450px); height: clamp(200px, 40vw, 450px); border-radius: 50%; background: radial-gradient(circle, rgba(124,58,237,0.07) 0%, transparent 65%); bottom: -10%; right: -10%; filter: blur(40px); pointer-events: none; animation: gFloat 14s ease-in-out infinite reverse; }
-        @keyframes gFloat { 0%,100%{transform:translate(0,0)} 50%{transform:translate(15px,-15px)} }
+        .h-hero-glow1 {
+          width: 600px; height: 600px; top: -100px; left: 50%;
+          transform: translateX(-50%);
+          background: radial-gradient(circle, rgba(99,102,241,0.6) 0%, transparent 70%);
+          animation: glowPulse 8s ease-in-out infinite;
+        }
+        .h-hero-glow2 {
+          width: 400px; height: 400px; bottom: 0; right: -100px;
+          background: radial-gradient(circle, rgba(16,185,129,0.4) 0%, transparent 70%);
+          animation: glowPulse 10s ease-in-out infinite reverse;
+        }
+        @keyframes glowPulse {
+          0%, 100% { opacity: 0.3; transform: translateX(-50%) scale(1); }
+          50% { opacity: 0.5; transform: translateX(-50%) scale(1.1); }
+        }
+        .h-hero-glow2 { animation-name: glowPulse2; }
+        @keyframes glowPulse2 {
+          0%, 100% { opacity: 0.25; } 50% { opacity: 0.45; }
+        }
 
-        .lp-hero-pill {
+        .h-hero-badge {
           display: inline-flex; align-items: center; gap: 8px;
-          padding: 5px 14px; border-radius: 999px;
-          background: rgba(37,99,235,0.07); border: 1px solid rgba(37,99,235,0.16);
-          font-size: 12px; font-weight: 600; color: #2563EB;
-          margin-bottom: 24px; position: relative; z-index: 1;
+          padding: 7px 16px; border-radius: 100px;
+          background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.3);
+          font-size: 12.5px; font-weight: 600; color: #A5B4FC;
+          margin-bottom: 28px; letter-spacing: 0.02em;
           animation: fadeUp 0.5s ease both;
         }
-        .lp-hero-pill-dot { width: 6px; height: 6px; border-radius: 50%; background: #2563EB; animation: pulse 2s ease-in-out infinite; }
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        .h-hero-badge-dot {
+          width: 7px; height: 7px; border-radius: 50%; background: #6366F1;
+          box-shadow: 0 0 8px rgba(99,102,241,0.8);
+          animation: blink 2s ease-in-out infinite;
+        }
+        @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
 
-        .lp-hero-h1 {
-          font-family: 'Syne', sans-serif;
-          font-size: clamp(2rem, 5.5vw, 4rem);
-          font-weight: 800; letter-spacing: -0.03em; line-height: 1.1;
-          color: #0A0A0F; max-width: 760px;
-          position: relative; z-index: 1; margin-bottom: 20px;
-          animation: fadeUp 0.5s ease 0.08s both;
+        .h-hero-h1 {
+          font-family: 'Cabinet Grotesk', 'Syne', sans-serif;
+          font-size: clamp(2.6rem, 6.5vw, 5rem);
+          font-weight: 900; letter-spacing: -0.04em; line-height: 1.0;
+          color: #F0EEE8; max-width: 780px;
+          margin: 0 auto 22px;
+          animation: fadeUp 0.5s 0.1s ease both;
         }
-        .lp-hero-h1 em {
-          font-style: normal;
-          background: linear-gradient(130deg, #2563EB 0%, #7C3AED 60%);
-          -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        .h-hero-accent {
+          background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #EC4899 100%);
+          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+          background-clip: text;
         }
-        .lp-hero-sub {
-          font-size: clamp(0.95rem, 2vw, 1.1rem);
-          color: #6B7280; font-weight: 300; line-height: 1.75; max-width: 520px;
-          position: relative; z-index: 1; margin-bottom: 36px;
-          animation: fadeUp 0.5s ease 0.15s both;
+        .h-hero-sub {
+          font-size: clamp(1rem, 2vw, 1.2rem); font-weight: 400;
+          color: rgba(240,238,232,0.5); max-width: 540px;
+          margin: 0 auto 40px; line-height: 1.7;
+          animation: fadeUp 0.5s 0.2s ease both;
         }
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+        .h-hero-ctas {
+          display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+          gap: 12px; margin-bottom: 48px;
+          animation: fadeUp 0.5s 0.3s ease both;
+        }
+        .h-btn-primary {
+          display: flex; align-items: center; gap: 8px;
+          padding: 14px 28px; border-radius: 12px;
+          font-size: 15px; font-weight: 700; color: white;
+          background: linear-gradient(135deg, #6366F1, #8B5CF6);
+          border: none; cursor: pointer; font-family: 'Satoshi', sans-serif;
+          box-shadow: 0 8px 32px rgba(99,102,241,0.4);
+          transition: all 0.2s;
+        }
+        .h-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(99,102,241,0.5); }
+        .h-btn-secondary {
+          display: flex; align-items: center; gap: 8px;
+          padding: 14px 26px; border-radius: 12px;
+          font-size: 15px; font-weight: 600; color: rgba(240,238,232,0.8);
+          background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+          cursor: pointer; font-family: 'Satoshi', sans-serif; transition: all 0.2s;
+        }
+        .h-btn-secondary:hover { background: rgba(255,255,255,0.1); color: #F0EEE8; transform: translateY(-1px); }
 
-        .lp-hero-ctas {
-          display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
-          position: relative; z-index: 1; margin-bottom: 14px;
-          animation: fadeUp 0.5s ease 0.22s both;
+        /* Extension banner */
+        .h-ext-bar {
+          display: inline-flex; align-items: center; gap: 10px;
+          padding: 10px 18px; border-radius: 12px;
+          background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+          font-size: 13px; color: rgba(240,238,232,0.5); cursor: pointer;
+          transition: all 0.2s; animation: fadeUp 0.5s 0.4s ease both;
         }
-        .lp-cta-primary {
-          display: inline-flex; align-items: center; gap: 8px;
-          padding: 13px 28px; border-radius: 10px; font-size: 14.5px; font-weight: 700; color: white;
-          background: #2563EB; border: none; cursor: pointer;
-          box-shadow: 0 6px 24px rgba(37,99,235,0.32); transition: all 0.2s;
-          font-family: 'DM Sans', sans-serif;
+        .h-ext-bar:hover { background: rgba(255,255,255,0.08); color: rgba(240,238,232,0.8); border-color: rgba(255,255,255,0.15); }
+        .h-ext-bar-pill {
+          padding: 3px 9px; border-radius: 100px; background: rgba(16,185,129,0.15);
+          border: 1px solid rgba(16,185,129,0.3); font-size: 11px; font-weight: 700;
+          color: #34D399; letter-spacing: 0.04em;
         }
-        .lp-cta-primary:hover { background: #1D4ED8; transform: translateY(-2px); box-shadow: 0 10px 32px rgba(37,99,235,0.42); }
-        .lp-cta-secondary {
-          display: inline-flex; align-items: center; gap: 8px;
-          padding: 13px 24px; border-radius: 10px; font-size: 14.5px; font-weight: 600; color: #374151;
-          background: white; border: 1.5px solid rgba(0,0,0,0.1); cursor: pointer; transition: all 0.2s;
-          font-family: 'DM Sans', sans-serif;
-        }
-        .lp-cta-secondary:hover { border-color: rgba(0,0,0,0.22); transform: translateY(-1px); }
 
-        .lp-hero-nudge {
-          display: flex; align-items: center; gap: 10px;
-          font-size: 12.5px; color: #9CA3AF; position: relative; z-index: 1;
-          animation: fadeUp 0.5s ease 0.28s both;
+        /* Hero UI mockup */
+        .h-hero-ui {
+          position: relative; max-width: 860px; width: 100%;
+          margin: 56px auto 0; border-radius: 20px; overflow: hidden;
+          border: 1px solid rgba(255,255,255,0.08);
+          background: rgba(255,255,255,0.03);
+          box-shadow: 0 40px 100px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);
+          animation: fadeUp 0.6s 0.5s ease both;
         }
-        .lp-nudge-avatars { display: flex; }
-        .lp-nudge-av {
-          width: 26px; height: 26px; border-radius: 50%; border: 2px solid white;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 10px; font-weight: 700; color: white; margin-left: -7px;
+        .h-ui-bar {
+          height: 40px; background: rgba(255,255,255,0.04);
+          border-bottom: 1px solid rgba(255,255,255,0.06);
+          display: flex; align-items: center; padding: 0 16px; gap: 6px;
         }
-        .lp-nudge-av:first-child { margin-left: 0; }
+        .h-ui-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .h-ui-body {
+          padding: clamp(16px, 3vw, 28px);
+          display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+        }
+        @media (max-width: 640px) { .h-ui-body { grid-template-columns: 1fr; } }
+        .h-ui-card {
+          background: rgba(255,255,255,0.04); border-radius: 12px;
+          border: 1px solid rgba(255,255,255,0.07); padding: 16px;
+        }
+        .h-ui-card-label { font-size: 11px; font-weight: 600; color: rgba(240,238,232,0.35); letter-spacing: 0.06em; margin-bottom: 10px; }
+        .h-ui-job { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .h-ui-job:last-child { border-bottom: none; padding-bottom: 0; }
+        .h-ui-job-logo { width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; }
+        .h-ui-job-title { font-size: 12.5px; font-weight: 600; color: rgba(240,238,232,0.9); line-height: 1.3; }
+        .h-ui-job-co { font-size: 11px; color: rgba(240,238,232,0.4); margin-top: 2px; }
+        .h-ui-badge { display: inline-flex; padding: 3px 8px; border-radius: 100px; font-size: 10.5px; font-weight: 700; margin-top: 4px; }
+        .h-ui-score { font-size: 28px; font-weight: 900; font-family: 'Cabinet Grotesk', sans-serif; color: #A5B4FC; }
+        .h-ui-score-label { font-size: 11px; color: rgba(240,238,232,0.4); margin-top: 2px; }
+        .h-ui-bar-chart { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+        .h-ui-bar-row { display: flex; align-items: center; gap: 8px; font-size: 11px; color: rgba(240,238,232,0.5); }
+        .h-ui-bar-track { flex: 1; height: 5px; background: rgba(255,255,255,0.07); border-radius: 3px; overflow: hidden; }
+        .h-ui-bar-fill { height: 100%; border-radius: 3px; }
 
-        /* App preview */
-        .lp-hero-preview {
-          position: relative; z-index: 1; width: 100%; max-width: 840px;
-          margin-top: 48px; animation: fadeUp 0.6s ease 0.35s both;
-        }
-        .lp-preview-browser {
-          background: white; border-radius: 14px;
-          border: 1px solid rgba(0,0,0,0.08);
-          box-shadow: 0 2px 4px rgba(0,0,0,0.04), 0 24px 64px rgba(37,99,235,0.08);
-          overflow: hidden;
-        }
-        .lp-preview-bar {
-          background: #F4F4F2; border-bottom: 1px solid rgba(0,0,0,0.07);
-          padding: 10px 14px; display: flex; align-items: center; gap: 6px;
-        }
-        .lp-dot { width: 10px; height: 10px; border-radius: 50%; }
-        .lp-dot-r { background: #FF5F57; } .lp-dot-y { background: #FEBC2E; } .lp-dot-g { background: #28C840; }
-        .lp-preview-url {
-          flex: 1; margin: 0 10px; height: 24px; background: white; border-radius: 5px;
-          border: 1px solid rgba(0,0,0,0.07); display: flex; align-items: center; padding: 0 9px;
-          font-size: 11px; color: #9CA3AF;
-        }
-        .lp-preview-body { display: grid; grid-template-columns: 170px 1fr; min-height: 280px; }
-        @media (max-width: 560px) { .lp-preview-body { grid-template-columns: 1fr; } }
-        .lp-preview-sidebar {
-          background: #F7F8FA; border-right: 1px solid rgba(0,0,0,0.06);
-          padding: 14px 8px; display: flex; flex-direction: column; gap: 3px;
-        }
-        @media (max-width: 560px) { .lp-preview-sidebar { display: none; } }
-        .lp-pnav { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 7px; font-size: 12px; color: #9CA3AF; }
-        .lp-pnav.on { background: rgba(37,99,235,0.08); color: #2563EB; font-weight: 600; }
-        .lp-preview-content { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
-        .lp-preview-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; color: #0A0A0F; }
-        .lp-score-ring {
-          width: 70px; height: 70px; border-radius: 50%; flex-shrink: 0;
-          background: conic-gradient(#2563EB 0deg 277deg, #E5E7EB 277deg);
-          display: flex; align-items: center; justify-content: center; position: relative;
-        }
-        .lp-score-ring::after { content:''; width: 52px; height: 52px; background: white; border-radius: 50%; position: absolute; }
-        .lp-score-val { position: relative; z-index: 1; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 15px; color: #2563EB; }
-        .lp-ptag { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 600; }
-        .lp-ptag-g { background: rgba(16,185,129,0.1); color: #059669; }
-        .lp-ptag-b { background: rgba(37,99,235,0.1); color: #2563EB; }
-        .lp-pbar-row { display: flex; align-items: center; gap: 7px; font-size: 11px; color: #6B7280; }
-        .lp-pbar-track { flex: 1; height: 5px; background: #E5E7EB; border-radius: 999px; overflow: hidden; }
-        .lp-pbar-fill { height: 100%; border-radius: 999px; }
-        .lp-pmini-row { display: flex; gap: 8px; }
-        .lp-pmini { flex: 1; background: #F7F8FA; border: 1px solid rgba(0,0,0,0.06); border-radius: 8px; padding: 9px 10px; }
-        .lp-pmini-lbl { font-size: 10px; color: #9CA3AF; margin-bottom: 2px; }
-        .lp-pmini-val { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 800; color: #0A0A0F; }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
 
         /* ── STATS ── */
-        .lp-stats { background: #0A0A0F; padding: clamp(28px, 5vw, 48px) clamp(1rem, 4vw, 2.5rem); }
-        .lp-stats-inner {
-          max-width: 720px; margin: 0 auto;
-          display: flex; align-items: center; justify-content: center; gap: 0;
-          position: relative;
+        .h-stats {
+          position: relative; z-index: 1;
+          padding: clamp(48px, 6vw, 72px) clamp(1.25rem, 4vw, 3rem);
+          border-top: 1px solid rgba(255,255,255,0.06);
+          border-bottom: 1px solid rgba(255,255,255,0.06);
+          background: rgba(255,255,255,0.02);
         }
-        .lp-stat { flex: 1; text-align: center; padding: clamp(16px, 3vw, 24px) 16px; }
-        .lp-stat-num { font-family: 'Syne', sans-serif; font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; color: white; letter-spacing: -0.03em; line-height: 1; margin-bottom: 6px; }
-        .lp-stat-lbl { font-size: clamp(11px, 2vw, 13px); color: rgba(255,255,255,0.45); font-weight: 400; }
-        .lp-stats-divider { width: 1px; height: 50px; background: rgba(255,255,255,0.1); flex-shrink: 0; }
+        .h-stats-inner {
+          max-width: 1000px; margin: 0 auto;
+          display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr));
+          gap: 32px; text-align: center;
+        }
+        .h-stat-val {
+          font-family: 'Cabinet Grotesk', sans-serif; font-size: clamp(2.4rem, 5vw, 3.5rem);
+          font-weight: 900; letter-spacing: -0.04em; color: #F0EEE8; line-height: 1;
+        }
+        .h-stat-lbl { font-size: 13px; color: rgba(240,238,232,0.4); margin-top: 6px; font-weight: 500; }
 
         /* ── SECTIONS ── */
-        .lp-section-wrap { padding: clamp(60px, 8vw, 100px) clamp(1rem, 4vw, 2.5rem); }
-        .lp-section-inner { max-width: 1080px; margin: 0 auto; }
-        .lp-section-eyebrow {
+        .h-section {
+          position: relative; z-index: 1;
+          padding: clamp(72px, 8vw, 120px) clamp(1.25rem, 4vw, 3rem);
+        }
+        .h-section-inner { max-width: 1200px; margin: 0 auto; }
+        .h-eyebrow {
+          display: inline-flex; align-items: center; gap: 7px;
+          font-size: 11.5px; font-weight: 700; letter-spacing: 0.1em;
+          color: #818CF8; margin-bottom: 18px; text-transform: uppercase;
+        }
+        .h-section-h2 {
+          font-family: 'Cabinet Grotesk', sans-serif;
+          font-size: clamp(2rem, 4.5vw, 3.2rem);
+          font-weight: 900; letter-spacing: -0.04em; line-height: 1.1;
+          color: #F0EEE8; margin-bottom: 16px; max-width: 680px;
+        }
+        .h-section-sub {
+          font-size: clamp(15px, 1.5vw, 17px); color: rgba(240,238,232,0.45);
+          max-width: 520px; margin-bottom: clamp(40px, 5vw, 64px); line-height: 1.7;
+        }
+
+        /* ── FEATURE TABS ── */
+        .h-feat-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
+        @media (max-width: 860px) { .h-feat-wrap { grid-template-columns: 1fr; } }
+        .h-feat-tabs { display: flex; flex-direction: column; gap: 4px; }
+        .h-feat-tab {
+          padding: 20px 22px; border-radius: 14px; cursor: pointer;
+          border: 1px solid transparent; transition: all 0.25s;
+          background: none;
+        }
+        .h-feat-tab.active {
+          background: rgba(255,255,255,0.05);
+          border-color: rgba(255,255,255,0.08);
+        }
+        .h-feat-tab-tag {
+          font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em;
+          text-transform: uppercase; margin-bottom: 6px;
+        }
+        .h-feat-tab-title {
+          font-family: 'Cabinet Grotesk', sans-serif;
+          font-size: 17px; font-weight: 800; letter-spacing: -0.02em;
+          color: rgba(240,238,232,0.5); margin-bottom: 6px; transition: color 0.2s;
+          line-height: 1.3;
+        }
+        .h-feat-tab.active .h-feat-tab-title { color: #F0EEE8; }
+        .h-feat-tab-desc { font-size: 13.5px; color: rgba(240,238,232,0.4); line-height: 1.6; display: none; }
+        .h-feat-tab.active .h-feat-tab-desc { display: block; }
+        .h-feat-tab-cta {
           display: inline-flex; align-items: center; gap: 6px;
-          font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
-          color: #2563EB; margin-bottom: 12px;
+          margin-top: 14px; font-size: 13px; font-weight: 700;
+          border: none; background: none; cursor: pointer;
+          font-family: 'Satoshi', sans-serif; padding: 0; transition: gap 0.2s;
         }
-        .lp-section-h2 {
-          font-family: 'Syne', sans-serif;
-          font-size: clamp(1.7rem, 4vw, 2.6rem);
-          font-weight: 800; letter-spacing: -0.028em; color: #0A0A0F; margin-bottom: 12px; line-height: 1.15;
+        .h-feat-tab-cta:hover { gap: 10px; }
+        .h-feat-panel {
+          position: sticky; top: 96px; border-radius: 20px; overflow: hidden;
+          border: 1px solid rgba(255,255,255,0.07);
+          background: rgba(255,255,255,0.03);
+          min-height: 320px; display: flex; flex-direction: column;
         }
-        .lp-section-sub { color: #6B7280; font-size: clamp(14px, 2vw, 15px); font-weight: 300; max-width: 520px; line-height: 1.7; margin-bottom: clamp(32px, 5vw, 52px); }
+        .h-feat-panel-head {
+          padding: 20px 22px;
+          border-bottom: 1px solid rgba(255,255,255,0.06);
+          display: flex; align-items: center; gap: 10px;
+        }
+        .h-feat-panel-icon {
+          width: 38px; height: 38px; border-radius: 10px;
+          display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .h-feat-panel-body { padding: 22px; flex: 1; }
 
-        /* HOW IT WORKS */
-        .lp-steps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
-        .lp-step { background: white; border: 1px solid rgba(0,0,0,0.07); border-radius: 16px; padding: 24px; transition: all 0.2s; }
-        .lp-step:hover { transform: translateY(-3px); box-shadow: 0 12px 36px rgba(0,0,0,0.08); }
-        .lp-step-num { font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; color: #2563EB; margin-bottom: 10px; }
-        .lp-step-icon-wrap { width: 38px; height: 38px; border-radius: 10px; background: rgba(37,99,235,0.08); display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
-        .lp-step-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; color: #0A0A0F; margin-bottom: 7px; }
-        .lp-step-desc { font-size: 13px; color: #6B7280; line-height: 1.65; font-weight: 300; }
+        /* Mock job cards */
+        .h-mock-job { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .h-mock-job:last-child { border: none; }
+        .h-mock-logo { width: 36px; height: 36px; border-radius: 9px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; }
+        .h-mock-score { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+        .h-mock-score-num { font-family: 'Cabinet Grotesk', sans-serif; font-size: 15px; font-weight: 900; }
+        .h-mock-bar { width: 48px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.1); overflow: hidden; }
+        .h-mock-bar-fill { height: 100%; border-radius: 2px; }
 
-        /* FEATURES */
-        .lp-feat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
-        .lp-feat { background: white; border: 1px solid rgba(0,0,0,0.07); border-radius: 18px; padding: 26px; display: flex; flex-direction: column; transition: all 0.22s; }
-        .lp-feat:hover { transform: translateY(-4px); box-shadow: 0 16px 48px rgba(0,0,0,0.09); }
-        .lp-feat-num { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; color: #D1D5DB; margin-bottom: 14px; }
-        .lp-feat-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
-        .lp-feat-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; color: #0A0A0F; margin-bottom: 9px; }
-        .lp-feat-desc { font-size: 13.5px; color: #6B7280; line-height: 1.65; font-weight: 300; flex: 1; margin-bottom: 18px; }
-        .lp-feat-cta { display: inline-flex; align-items: center; gap: 5px; background: none; border: none; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; padding: 0; transition: gap 0.15s; }
-        .lp-feat-cta:hover { gap: 8px; }
+        /* ── HOW IT WORKS ── */
+        .h-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 2px; }
+        .h-step {
+          padding: 32px 28px; position: relative;
+          background: rgba(255,255,255,0.02);
+          border: 1px solid rgba(255,255,255,0.05);
+        }
+        .h-step:first-child { border-radius: 16px 0 0 16px; }
+        .h-step:last-child { border-radius: 0 16px 16px 0; }
+        @media (max-width: 640px) { .h-step { border-radius: 12px !important; } }
+        .h-step-n {
+          font-family: 'Cabinet Grotesk', sans-serif; font-size: 3rem; font-weight: 900;
+          letter-spacing: -0.06em; color: rgba(255,255,255,0.06); line-height: 1; margin-bottom: 20px;
+        }
+        .h-step-icon {
+          width: 42px; height: 42px; border-radius: 11px;
+          background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.2);
+          display: flex; align-items: center; justify-content: center; margin-bottom: 16px;
+        }
+        .h-step-title { font-family: 'Cabinet Grotesk', sans-serif; font-size: 16px; font-weight: 800; letter-spacing: -0.02em; color: #F0EEE8; margin-bottom: 8px; }
+        .h-step-desc { font-size: 13.5px; color: rgba(240,238,232,0.4); line-height: 1.6; }
 
-        /* BENEFITS */
-        .lp-benefits-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; }
-        .lp-benefit { padding: 22px; border-radius: 14px; border: 1px solid rgba(0,0,0,0.07); background: white; }
-        .lp-benefit-icon { width: 40px; height: 40px; border-radius: 10px; background: rgba(37,99,235,0.08); display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
-        .lp-benefit-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14.5px; color: #0A0A0F; margin-bottom: 6px; }
-        .lp-benefit-desc { font-size: 13px; color: #6B7280; line-height: 1.65; font-weight: 300; }
+        /* ── EXTENSION SECTION ── */
+        .h-ext-section {
+          margin: 0 clamp(1.25rem, 4vw, 3rem);
+          border-radius: 24px; overflow: hidden;
+          background: linear-gradient(135deg, rgba(99,102,241,0.15) 0%, rgba(139,92,246,0.1) 50%, rgba(16,185,129,0.08) 100%);
+          border: 1px solid rgba(99,102,241,0.2);
+          padding: clamp(48px, 6vw, 80px) clamp(1.5rem, 5vw, 72px);
+          display: grid; grid-template-columns: 1fr auto; gap: 40px; align-items: center;
+        }
+        @media (max-width: 720px) { .h-ext-section { grid-template-columns: 1fr; } }
+        .h-ext-title {
+          font-family: 'Cabinet Grotesk', sans-serif;
+          font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 900;
+          letter-spacing: -0.04em; color: #F0EEE8; line-height: 1.1; margin-bottom: 14px;
+        }
+        .h-ext-sub { font-size: 15px; color: rgba(240,238,232,0.5); line-height: 1.7; max-width: 460px; margin-bottom: 28px; }
+        .h-ext-features { display: flex; flex-direction: column; gap: 10px; margin-bottom: 32px; }
+        .h-ext-feature { display: flex; align-items: center; gap: 10px; font-size: 14px; color: rgba(240,238,232,0.65); }
+        .h-ext-check { width: 20px; height: 20px; border-radius: 50%; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .h-ext-btn {
+          display: inline-flex; align-items: center; gap: 10px;
+          padding: 14px 28px; border-radius: 12px;
+          font-size: 15px; font-weight: 700; color: white;
+          background: linear-gradient(135deg, #6366F1, #8B5CF6);
+          border: none; cursor: pointer; font-family: 'Satoshi', sans-serif;
+          box-shadow: 0 8px 32px rgba(99,102,241,0.35);
+          transition: all 0.2s;
+        }
+        .h-ext-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(99,102,241,0.5); }
+        .h-ext-puzzle {
+          width: 120px; height: 120px; border-radius: 28px;
+          background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.2);
+          display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
 
-        /* TESTIMONIALS */
-        .lp-testi-outer { background: #F2F2EF; padding: clamp(60px, 8vw, 96px) clamp(1rem, 4vw, 2.5rem); }
-        .lp-testi-inner { max-width: 1080px; margin: 0 auto; }
-        .lp-testi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
-        .lp-testi { background: white; border: 1px solid rgba(0,0,0,0.07); border-radius: 18px; padding: 26px; }
-        .lp-testi-stars { display: flex; gap: 2px; color: #F59E0B; margin-bottom: 12px; }
-        .lp-testi-text { font-size: 14px; color: #374151; line-height: 1.7; font-style: italic; margin-bottom: 18px; }
-        .lp-testi-author { display: flex; align-items: center; gap: 10px; }
-        .lp-testi-av { width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: white; }
-        .lp-testi-name { font-family: 'Syne', sans-serif; font-size: 13.5px; font-weight: 700; color: #0A0A0F; }
-        .lp-testi-role { font-size: 12px; color: #9CA3AF; }
+        /* ── TESTIMONIALS ── */
+        .h-testi-scroll { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x mandatory; }
+        .h-testi-scroll::-webkit-scrollbar { display: none; }
+        .h-testi {
+          flex-shrink: 0; width: 300px; padding: 24px; border-radius: 16px;
+          background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+          scroll-snap-align: start;
+        }
+        .h-testi-stars { display: flex; gap: 3px; margin-bottom: 14px; }
+        .h-testi-text { font-size: 14px; color: rgba(240,238,232,0.7); line-height: 1.7; margin-bottom: 18px; font-style: italic; }
+        .h-testi-author { display: flex; align-items: center; gap: 10px; }
+        .h-testi-av {
+          width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+          background: linear-gradient(135deg, #6366F1, #8B5CF6);
+          display: flex; align-items: center; justify-content: center;
+          font-size: 12px; font-weight: 800; color: white;
+        }
+        .h-testi-name { font-size: 13px; font-weight: 700; color: #F0EEE8; }
+        .h-testi-role { font-size: 12px; color: rgba(240,238,232,0.35); }
 
-        /* CTA BANNER */
-        .lp-cta-outer { padding: clamp(60px, 8vw, 96px) clamp(1rem, 4vw, 2.5rem); background: #FAFAF8; }
-        .lp-cta-banner {
-          max-width: 760px; margin: 0 auto; text-align: center;
-          background: #0A0A0F; border-radius: 24px; padding: clamp(36px, 6vw, 60px) clamp(24px, 5vw, 60px);
-          position: relative; overflow: hidden;
+        /* ── FINAL CTA ── */
+        .h-final {
+          position: relative; z-index: 1;
+          padding: clamp(80px, 10vw, 140px) clamp(1.25rem, 4vw, 3rem);
+          text-align: center;
         }
-        .lp-cta-banner::before {
-          content: ''; position: absolute; width: 400px; height: 400px; border-radius: 50%;
-          background: radial-gradient(circle, rgba(37,99,235,0.2) 0%, transparent 70%);
-          top: -150px; right: -100px; filter: blur(40px); pointer-events: none;
+        .h-final-h2 {
+          font-family: 'Cabinet Grotesk', sans-serif;
+          font-size: clamp(2.4rem, 6vw, 4.5rem); font-weight: 900;
+          letter-spacing: -0.05em; line-height: 1.0;
+          color: #F0EEE8; margin-bottom: 20px;
         }
-        .lp-cta-eyebrow { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #93C5FD; margin-bottom: 16px; }
-        .lp-cta-h2 { font-family: 'Syne', sans-serif; font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 800; letter-spacing: -0.025em; color: white; margin-bottom: 14px; line-height: 1.15; position: relative; z-index: 1; }
-        .lp-cta-sub { color: rgba(255,255,255,0.5); font-size: clamp(13px, 2vw, 14.5px); font-weight: 300; line-height: 1.7; max-width: 480px; margin: 0 auto 32px; position: relative; z-index: 1; }
-        .lp-cta-btns { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; position: relative; z-index: 1; }
-        .lp-cta-btn-w {
-          display: inline-flex; align-items: center; gap: 8px;
-          padding: 13px 26px; border-radius: 10px; font-size: 14px; font-weight: 700; color: #0A0A0F;
-          background: white; border: none; cursor: pointer; transition: all 0.18s;
-          font-family: 'DM Sans', sans-serif;
-        }
-        .lp-cta-btn-w:hover { background: #F3F4F6; transform: translateY(-1px); }
-        .lp-cta-btn-g {
-          display: inline-flex; align-items: center; gap: 8px;
-          padding: 13px 22px; border-radius: 10px; font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.75);
-          background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
-          cursor: pointer; transition: all 0.18s; font-family: 'DM Sans', sans-serif;
-        }
-        .lp-cta-btn-g:hover { background: rgba(255,255,255,0.14); color: white; }
+        .h-final-sub { font-size: clamp(15px, 1.5vw, 18px); color: rgba(240,238,232,0.4); margin-bottom: 40px; }
+        .h-final-ctas { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
 
-        /* FOOTER */
-        .lp-footer { background: #0A0A0F; border-top: 1px solid rgba(255,255,255,0.05); padding: 28px clamp(1rem, 4vw, 2.5rem); }
-        .lp-footer-inner {
-          max-width: 1080px; margin: 0 auto;
-          display: flex; align-items: center; flex-wrap: wrap; gap: 16px;
-          justify-content: space-between;
+        /* ── FOOTER ── */
+        .h-footer {
+          position: relative; z-index: 1;
+          border-top: 1px solid rgba(255,255,255,0.06);
+          padding: 32px clamp(1.25rem, 4vw, 3rem);
         }
-        .lp-footer-logo { display: flex; align-items: center; gap: 8px; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 0.9rem; color: rgba(255,255,255,0.7); }
-        .lp-footer-copy { font-size: 12.5px; color: rgba(255,255,255,0.3); }
-        .lp-footer-links { display: flex; gap: 4px; }
-        .lp-footer-link { background: none; border: none; cursor: pointer; font-size: 13px; color: rgba(255,255,255,0.4); font-family: 'DM Sans', sans-serif; padding: 6px 10px; border-radius: 7px; transition: color 0.15s; }
-        .lp-footer-link:hover { color: rgba(255,255,255,0.8); }
+        .h-footer-inner {
+          max-width: 1200px; margin: 0 auto;
+          display: flex; align-items: center; justify-content: space-between;
+          gap: 16px; flex-wrap: wrap;
+        }
+        .h-footer-logo { display: flex; align-items: center; gap: 8px; font-family: 'Cabinet Grotesk', sans-serif; font-weight: 800; font-size: 14px; color: rgba(240,238,232,0.6); }
+        .h-footer-copy { font-size: 12.5px; color: rgba(240,238,232,0.25); }
+        .h-footer-links { display: flex; gap: 4px; }
+        .h-footer-a { padding: 7px 12px; border-radius: 7px; font-size: 13px; color: rgba(240,238,232,0.35); background: none; border: none; cursor: pointer; font-family: 'Satoshi', sans-serif; transition: color 0.15s; }
+        .h-footer-a:hover { color: rgba(240,238,232,0.7); }
+
+        /* ── DARK ALT SECTION ── */
+        .h-section-alt { background: rgba(255,255,255,0.02); border-top: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05); }
       `}</style>
 
-      {/* ── NAVBAR ── */}
-      <nav className={`lp-nav${scrolled ? " stuck" : ""}`}>
-        <div className="lp-nav-inner">
-          <div className="lp-logo" onClick={() => navigate("/")}>
-            <div className="lp-logo-mark"><FileSearch size={16} color="white" /></div>
-            <span className="lp-logo-name">ApplyBotPro</span>
+      {/* ── NAV ── */}
+      <nav className={`h-nav ${scrolled ? "stuck" : ""}`}>
+        <div className="h-nav-inner">
+          <div className="h-logo" onClick={() => navigate("/")}>
+            <div className="h-logo-mark"><FileSearch size={17} color="white" /></div>
+            <span className="h-logo-name">ApplyBotPro</span>
           </div>
-
-          <div className="lp-nav-links">
-            <button className="lp-nav-a" onClick={() => scrollTo("features")}>Features</button>
-            <button className="lp-nav-a" onClick={() => scrollTo("how-it-works")}>How It Works</button>
-            <button className="lp-nav-a" onClick={() => scrollTo("testimonials")}>Stories</button>
-            <button className="lp-nav-a" onClick={() => navigate("/pricing")}>Pricing</button>
+          <div className="h-nav-links">
+            <button className="h-nav-a" onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })}>Features</button>
+            <button className="h-nav-a" onClick={() => document.getElementById("how")?.scrollIntoView({ behavior: "smooth" })}>How it works</button>
+            <button className="h-nav-a" onClick={() => navigate("/pricing")}>Pricing</button>
           </div>
-
-          <div className="lp-nav-ctas">
-            {user ? (
-              <button className="lp-btn-solid" onClick={() => navigate("/analyze")}>Dashboard <ArrowRight size={13} /></button>
-            ) : (
-              <>
-                <button className="lp-btn-ghost" onClick={() => navigate("/login")}>Sign in</button>
-                <button className="lp-btn-solid" onClick={() => navigate("/register")}>Get started <ArrowRight size={13} /></button>
-              </>
-            )}
-            <button className="lp-hamburger" onClick={() => setMenuOpen(o => !o)} aria-label="Menu">
-              {menuOpen ? <X size={20} /> : <Menu size={20} />}
+          <div className="h-nav-ctas">
+            <button className="h-nav-ghost" onClick={() => navigate(user ? "/analyze" : "/login")}>{user ? "Dashboard" : "Sign in"}</button>
+            <button className="h-nav-solid" onClick={() => navigate(user ? "/jobs/recommend" : "/register")}>
+              {user ? "My Jobs" : "Get started"} <ArrowRight size={13} />
             </button>
           </div>
+          <button className="h-hamburger" onClick={() => setMenuOpen(true)}><Menu size={22} /></button>
         </div>
       </nav>
 
-      {menuOpen && (
-        <div className="lp-drawer">
-          <button className="lp-drawer-link" onClick={() => scrollTo("features")}>Features</button>
-          <button className="lp-drawer-link" onClick={() => scrollTo("how-it-works")}>How It Works</button>
-          <button className="lp-drawer-link" onClick={() => scrollTo("testimonials")}>Success Stories</button>
-          <button className="lp-drawer-link" onClick={() => { setMenuOpen(false); navigate("/pricing"); }}>Pricing</button>
-          <div className="lp-drawer-divider" />
-          {user ? (
-            <button className="lp-drawer-link" style={{ color: "#2563EB" }} onClick={() => { setMenuOpen(false); navigate("/analyze"); }}>Go to Dashboard →</button>
-          ) : (
-            <>
-              <button className="lp-drawer-link" onClick={() => { setMenuOpen(false); navigate("/login"); }}>Sign in</button>
-              <button className="lp-drawer-link" style={{ color: "#2563EB" }} onClick={() => { setMenuOpen(false); navigate("/register"); }}>Get started free →</button>
-            </>
-          )}
-        </div>
-      )}
+      {/* Mobile menu */}
+      <div className={`h-mobile-menu ${menuOpen ? "open" : ""}`}>
+        <button className="h-hamburger" style={{ alignSelf: "flex-end", marginBottom: 16 }} onClick={() => setMenuOpen(false)}><X size={22} /></button>
+        {["Features", "How it works", "Pricing"].map(l => (
+          <button key={l} className="h-mobile-a" onClick={() => { setMenuOpen(false); if (l === "Pricing") navigate("/pricing"); else document.getElementById(l === "Features" ? "features" : "how")?.scrollIntoView({ behavior: "smooth" }); }}>{l}</button>
+        ))}
+        <button className="h-mobile-a" onClick={() => { setMenuOpen(false); navigate(user ? "/analyze" : "/login"); }}>{user ? "Dashboard" : "Sign in"}</button>
+        <button style={{ marginTop: 8 }} className="h-btn-primary" onClick={() => { setMenuOpen(false); navigate(user ? "/jobs/recommend" : "/register"); }}>
+          Get started free <ArrowRight size={14} />
+        </button>
+      </div>
 
       {/* ── HERO ── */}
-      <section className="lp-hero">
-        <div className="lp-hero-grid" />
-        <div className="lp-hero-glow1" />
-        <div className="lp-hero-glow2" />
+      <section className="h-hero">
+        <div className="h-hero-glow h-hero-glow1" />
+        <div className="h-hero-glow h-hero-glow2" />
 
-        <div className="lp-hero-pill">
-          <div className="lp-hero-pill-dot" />
-          AI-Powered Job Matching · Free to Start
+        <div className="h-hero-badge">
+          <div className="h-hero-badge-dot" />
+          Your AI Career Copilot
         </div>
 
-        <h1 className="lp-hero-h1">
-          The Smarter Way to<br />
-          <em>Land Your Next Job</em>
+        <h1 className="h-hero-h1">
+          Stop Solo Job Hunting.<br />
+          <span className="h-hero-accent">Do It With AI.</span>
         </h1>
-        <p className="lp-hero-sub">
-          Upload your CV, get an instant AI fit score, and apply with tailored materials — all in one place.
+
+        <p className="h-hero-sub">
+          Get matched jobs, tailored CVs, and AI-written applications — all personalised to your actual experience. Land interviews, not just rejections.
         </p>
 
-        <div className="lp-hero-ctas">
-          <button className="lp-cta-primary" onClick={() => handleCTA("/analyze")}>
-            Analyze My CV Free <ArrowRight size={15} />
+        <div className="h-hero-ctas">
+          <button className="h-btn-primary" onClick={() => go("/jobs/recommend")}>
+            Find My Jobs <ArrowRight size={15} />
           </button>
-          <button className="lp-cta-secondary" onClick={() => handleCTA("/search")}>
-            <Search size={15} /> Browse Jobs
+          <button className="h-btn-secondary" onClick={() => go("/analyze")}>
+            <FileSearch size={15} /> Analyze My CV
           </button>
         </div>
 
-        <div className="lp-hero-nudge">
-          <div className="lp-nudge-avatars">
-            {[["#2563EB","AK"],["#7C3AED","DO"],["#10B981","PN"]].map(([bg,ini]) => (
-              <div key={ini} className="lp-nudge-av" style={{ background: bg }}>{ini}</div>
-            ))}
+        <div className="h-ext-bar" onClick={() => window.open("https://chrome.google.com/webstore", "_blank")}>
+          <Puzzle size={14} />
+          <span>Get the browser extension</span>
+          <div className="h-ext-bar-pill">FREE</div>
+          <ChevronRight size={13} />
+        </div>
+
+        {/* Hero UI mockup */}
+        <div className="h-hero-ui">
+          <div className="h-ui-bar">
+            <div className="h-ui-dot" style={{ background: "#FF5F56" }} />
+            <div className="h-ui-dot" style={{ background: "#FFBD2E" }} />
+            <div className="h-ui-dot" style={{ background: "#27C93F" }} />
+            <div style={{ flex: 1, height: 20, borderRadius: 4, background: "rgba(255,255,255,0.05)", marginLeft: 12, maxWidth: 240 }} />
           </div>
-          <span>Trusted by 1,000+ job seekers</span>
-        </div>
-
-        {/* App preview */}
-        <div className="lp-hero-preview">
-          <div className="lp-preview-browser">
-            <div className="lp-preview-bar">
-              <div className="lp-dot lp-dot-r" /><div className="lp-dot lp-dot-y" /><div className="lp-dot lp-dot-g" />
-              <div className="lp-preview-url"><FileSearch size={10} style={{ opacity: 0.5 }} /> applybotpro.com/analyze</div>
+          <div className="h-ui-body">
+            {/* Job matches */}
+            <div className="h-ui-card">
+              <div className="h-ui-card-label">YOUR MATCHES TODAY</div>
+              {[
+                { co: "Stripe", title: "Senior Frontend Engineer", score: 94, color: "#6366F1", bg: "rgba(99,102,241,0.15)", initials: "ST" },
+                { co: "Notion", title: "Product Designer", score: 88, color: "#10B981", bg: "rgba(16,185,129,0.15)", initials: "NO" },
+                { co: "Linear", title: "Full Stack Engineer", score: 82, color: "#F59E0B", bg: "rgba(245,158,11,0.15)", initials: "LN" },
+              ].map(j => (
+                <div key={j.co} className="h-mock-job">
+                  <div className="h-mock-logo" style={{ background: j.bg, color: j.color }}>{j.initials}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: "rgba(240,238,232,0.9)" }}>{j.title}</div>
+                    <div style={{ fontSize: 11, color: "rgba(240,238,232,0.4)", marginTop: 2 }}>{j.co}</div>
+                  </div>
+                  <div className="h-mock-score">
+                    <div className="h-mock-score-num" style={{ color: j.color }}>{j.score}%</div>
+                    <div className="h-mock-bar"><div className="h-mock-bar-fill" style={{ width: `${j.score}%`, background: j.color }} /></div>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="lp-preview-body">
-              <div className="lp-preview-sidebar">
-                {[["Analyze",true],["Search",false],["Board",false],["Applications",false],["Interview Prep",false]].map(([l,on]) => (
-                  <div key={l as string} className={`lp-pnav${on ? " on" : ""}`}>
-                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor", opacity: 0.5 }} />
-                    {l}
+            {/* Fit score */}
+            <div className="h-ui-card">
+              <div className="h-ui-card-label">FIT ANALYSIS</div>
+              <div style={{ textAlign: "center", padding: "12px 0 16px" }}>
+                <div className="h-ui-score">92%</div>
+                <div className="h-ui-score-label">Match Score</div>
+              </div>
+              <div className="h-ui-bar-chart">
+                {[["Technical Skills", 96, "#6366F1"], ["Experience Level", 90, "#10B981"], ["Keywords Match", 88, "#F59E0B"], ["Culture Fit", 84, "#EC4899"]].map(([l, p, c]) => (
+                  <div key={l as string} className="h-ui-bar-row">
+                    <span style={{ width: 90 }}>{l as string}</span>
+                    <div className="h-ui-bar-track"><div className="h-ui-bar-fill" style={{ width: `${p}%`, background: c as string }} /></div>
+                    <span style={{ width: 30, textAlign: "right" }}>{p}%</span>
                   </div>
                 ))}
-              </div>
-              <div className="lp-preview-content">
-                <div className="lp-preview-title">CV Fit Analysis Results</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                  <div className="lp-score-ring"><span className="lp-score-val">77%</span></div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#0A0A0F" }}>Senior Frontend Dev · Acme Corp</div>
-                    <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                      <span className="lp-ptag lp-ptag-g">High Interview Chance</span>
-                      <span className="lp-ptag lp-ptag-b">React · TypeScript</span>
-                    </div>
-                  </div>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {[["Technical Skills",91,"#2563EB"],["Experience Match",84,"#7C3AED"],["Soft Skills",78,"#10B981"]].map(([l,p,c]) => (
-                    <div key={l as string} className="lp-pbar-row">
-                      <span style={{ width: 100, fontSize: 11 }}>{l}</span>
-                      <div className="lp-pbar-track"><div className="lp-pbar-fill" style={{ width: `${p}%`, background: c as string }} /></div>
-                      <span style={{ fontSize: 11 }}>{p}%</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="lp-pmini-row">
-                  {[["Strengths","8"],["Skill Gaps","2"],["Red Flags","0"]].map(([l,v]) => (
-                    <div key={l} className="lp-pmini">
-                      <div className="lp-pmini-lbl">{l}</div>
-                      <div className="lp-pmini-val">{v}</div>
-                    </div>
-                  ))}
-                </div>
               </div>
             </div>
           </div>
@@ -558,137 +701,219 @@ export default function HomePage() {
       </section>
 
       {/* ── STATS ── */}
-      <div className="lp-stats">
-        <div className="lp-stats-inner" ref={statsRef}>
-          <div className="lp-stats-divider" />
-          <Stat value={85} suffix="%" label="CV Match Accuracy" started={statsStarted} />
-          <div className="lp-stats-divider" />
-          <Stat value={10} suffix="x" label="Faster Applications" started={statsStarted} />
-          <div className="lp-stats-divider" />
-          <Stat value={500} suffix="+" label="Jobs Indexed Daily" started={statsStarted} />
-          <div className="lp-stats-divider" />
-        </div>
-      </div>
-
-      {/* ── HOW IT WORKS ── */}
-      <div className="lp-section-wrap" id="how-it-works" style={{ background: "#F2F2EF" }}>
-        <div className="lp-section-inner">
-          <div className="lp-section-eyebrow"><Zap size={11} /> Process</div>
-          <h2 className="lp-section-h2">From CV Upload to Interview in 4 Simple Steps</h2>
-          <p className="lp-section-sub">No complexity. Upload your CV, find a job, get your score, and apply — all in minutes.</p>
-          <div className="lp-steps-grid">
-            {STEPS.map((s) => {
-              const Icon = s.icon;
-              return (
-                <div key={s.n} className="lp-step">
-                  <div className="lp-step-num">STEP {s.n}</div>
-                  <div className="lp-step-icon-wrap"><Icon size={18} color="#2563EB" /></div>
-                  <div className="lp-step-title">{s.title}</div>
-                  <div className="lp-step-desc">{s.desc}</div>
-                </div>
-              );
-            })}
-          </div>
+      <div className="h-stats" ref={statsRef}>
+        <div className="h-stats-inner">
+          <Stat value={50000} suffix="+" label="Jobs matched daily" started={statsStarted} />
+          <Stat value={85} suffix="%" label="CV match accuracy" started={statsStarted} />
+          <Stat value={3} suffix="x" label="More interviews landed" started={statsStarted} />
+          <Stat value={80} suffix="%" label="Time saved on applications" started={statsStarted} />
         </div>
       </div>
 
       {/* ── FEATURES ── */}
-      <div className="lp-section-wrap" id="features">
-        <div className="lp-section-inner">
-          <div className="lp-section-eyebrow"><Sparkles size={11} /> Features</div>
-          <h2 className="lp-section-h2">Everything You Need to Land the Role</h2>
-          <p className="lp-section-sub">Four AI-powered tools covering the full job application lifecycle.</p>
-          <div className="lp-feat-grid">
-            {FEATURES.map((f) => {
-              const Icon = f.icon;
-              return (
-                <div key={f.num} className="lp-feat">
-                  <div className="lp-feat-num">{f.num}</div>
-                  <div className="lp-feat-icon" style={{ background: `${f.accent}18` }}>
-                    <Icon size={20} color={f.accent} />
-                  </div>
-                  <div className="lp-feat-title">{f.title}</div>
-                  <div className="lp-feat-desc">{f.desc}</div>
-                  <button className="lp-feat-cta" style={{ color: f.accent }} onClick={() => handleCTA(f.link)}>
-                    {f.cta} <ChevronRight size={13} />
+      <section className="h-section" id="features">
+        <div className="h-section-inner">
+          <div className="h-eyebrow"><Sparkles size={11} /> Features</div>
+          <h2 className="h-section-h2">Everything you need to land the role</h2>
+          <p className="h-section-sub">Four AI tools covering the full job hunt — from discovery to offer.</p>
+          <div className="h-feat-wrap">
+            <div className="h-feat-tabs">
+              {FEATURES.map((f, i) => {
+                const Icon = f.icon;
+                return (
+                  <button key={f.tag} className={`h-feat-tab ${activeFeature === i ? "active" : ""}`} onClick={() => setActiveFeature(i)}>
+                    <div className="h-feat-tab-tag" style={{ color: f.accent }}>{f.tag}</div>
+                    <div className="h-feat-tab-title">{f.title}</div>
+                    <div className="h-feat-tab-desc">{f.desc}</div>
+                    {activeFeature === i && (
+                      <button className="h-feat-tab-cta" style={{ color: f.accent }} onClick={(e) => { e.stopPropagation(); go(f.link); }}>
+                        {f.cta} <ArrowRight size={13} />
+                      </button>
+                    )}
                   </button>
+                );
+              })}
+            </div>
+            <div className="h-feat-panel">
+              <div className="h-feat-panel-head">
+                <div className="h-feat-panel-icon" style={{ background: FEATURES[activeFeature].bg }}>
+                  {(() => { const Icon = FEATURES[activeFeature].icon; return <Icon size={18} color={FEATURES[activeFeature].accent} />; })()}
                 </div>
-              );
-            })}
+                <div>
+                  <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.08em", color: FEATURES[activeFeature].accent, textTransform: "uppercase" }}>{FEATURES[activeFeature].tag}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#F0EEE8", marginTop: 2 }}>{FEATURES[activeFeature].title}</div>
+                </div>
+              </div>
+              <div className="h-feat-panel-body">
+                {activeFeature === 0 && (
+                  <>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(240,238,232,0.35)", letterSpacing: "0.06em", marginBottom: 12 }}>RECOMMENDED FOR YOU</div>
+                    {[
+                      { title: "Staff Software Engineer", co: "Vercel", fit: 96, tag: "Remote" },
+                      { title: "Senior React Developer", co: "Shopify", fit: 91, tag: "Hybrid" },
+                      { title: "Frontend Architect", co: "Figma", fit: 87, tag: "On-site" },
+                    ].map(j => (
+                      <div key={j.co} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(99,102,241,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "#818CF8", flexShrink: 0 }}>{j.co[0]}</div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 600, color: "rgba(240,238,232,0.9)" }}>{j.title}</div>
+                          <div style={{ fontSize: 11, color: "rgba(240,238,232,0.4)" }}>{j.co} · {j.tag}</div>
+                        </div>
+                        <div style={{ fontSize: 14, fontWeight: 900, color: "#6366F1", fontFamily: "'Cabinet Grotesk', sans-serif" }}>{j.fit}%</div>
+                      </div>
+                    ))}
+                  </>
+                )}
+                {activeFeature === 1 && (
+                  <>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(240,238,232,0.35)", letterSpacing: "0.06em", marginBottom: 12 }}>TAILORED IN SECONDS</div>
+                    {[["ATS Keywords", "14 added", "#10B981"], ["Skills Section", "Reordered for role", "#10B981"], ["Summary", "Rewritten", "#10B981"], ["Missing Experience", "Flagged", "#F59E0B"]].map(([l, v, c]) => (
+                      <div key={l as string} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", fontSize: 13 }}>
+                        <span style={{ color: "rgba(240,238,232,0.5)" }}>{l as string}</span>
+                        <span style={{ color: c as string, fontWeight: 700 }}>{v as string}</span>
+                      </div>
+                    ))}
+                  </>
+                )}
+                {activeFeature === 2 && (
+                  <>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(240,238,232,0.35)", letterSpacing: "0.06em", marginBottom: 14 }}>GENERATED FOR THIS ROLE</div>
+                    <div style={{ fontSize: 13, color: "rgba(240,238,232,0.5)", lineHeight: 1.7, padding: "12px 14px", background: "rgba(245,158,11,0.06)", borderRadius: 10, border: "1px solid rgba(245,158,11,0.12)" }}>
+                      "Dear Hiring Manager, I'm writing to express my strong interest in the Senior Product Manager role at Linear. My 5 years building B2B SaaS products aligns directly with your focus on developer tools…"
+                    </div>
+                    <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+                      {["Cover letter", "Email", "LinkedIn message"].map(t => (
+                        <div key={t} style={{ padding: "5px 11px", borderRadius: 100, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.15)", fontSize: 11, fontWeight: 700, color: "#FCD34D" }}>{t}</div>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {activeFeature === 3 && (
+                  <>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(240,238,232,0.35)", letterSpacing: "0.06em", marginBottom: 12 }}>YOUR FIT BREAKDOWN</div>
+                    <div style={{ textAlign: "center", padding: "8px 0 16px" }}>
+                      <div style={{ fontSize: 48, fontWeight: 900, fontFamily: "'Cabinet Grotesk', sans-serif", color: "#EC4899", lineHeight: 1 }}>89%</div>
+                      <div style={{ fontSize: 12, color: "rgba(240,238,232,0.4)", marginTop: 4 }}>Strong Match</div>
+                    </div>
+                    {[["Strengths", "8 identified", "#10B981"], ["Skill gaps", "2 minor", "#F59E0B"], ["Red flags", "None", "#6366F1"]].map(([l, v, c]) => (
+                      <div key={l as string} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderTop: "1px solid rgba(255,255,255,0.05)", fontSize: 13 }}>
+                        <span style={{ color: "rgba(240,238,232,0.45)" }}>{l as string}</span>
+                        <span style={{ color: c as string, fontWeight: 700 }}>{v as string}</span>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* ── WHY ── */}
-      <div className="lp-section-wrap" style={{ background: "#F2F2EF" }}>
-        <div className="lp-section-inner">
-          <div className="lp-section-eyebrow"><Target size={11} /> Why ApplyBotPro</div>
-          <h2 className="lp-section-h2">Stop Guessing. Start Getting Interviews.</h2>
-          <p className="lp-section-sub">Most job seekers apply blindly. ApplyBotPro changes that.</p>
-          <div className="lp-benefits-grid">
-            {BENEFITS.map((b) => {
-              const Icon = b.icon;
+      {/* ── HOW IT WORKS ── */}
+      <section className="h-section h-section-alt" id="how">
+        <div className="h-section-inner">
+          <div className="h-eyebrow"><Zap size={11} /> How it works</div>
+          <h2 className="h-section-h2">From CV to interview in 4 steps</h2>
+          <p className="h-section-sub">No complexity. No setup time. Up and running in under 2 minutes.</p>
+          <div className="h-steps">
+            {STEPS.map((s) => {
+              const Icon = s.icon;
               return (
-                <div key={b.title} className="lp-benefit">
-                  <div className="lp-benefit-icon"><Icon size={20} color="#2563EB" /></div>
-                  <div className="lp-benefit-title">{b.title}</div>
-                  <div className="lp-benefit-desc">{b.desc}</div>
+                <div key={s.n} className="h-step">
+                  <div className="h-step-n">{s.n}</div>
+                  <div className="h-step-icon"><Icon size={18} color="#818CF8" /></div>
+                  <div className="h-step-title">{s.title}</div>
+                  <div className="h-step-desc">{s.desc}</div>
                 </div>
               );
             })}
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* ── EXTENSION ── */}
+      <section className="h-section">
+        <div className="h-section-inner">
+          <div className="h-ext-section">
+            <div>
+              <div className="h-eyebrow"><Puzzle size={11} /> Browser Extension</div>
+              <div className="h-ext-title">Apply anywhere,<br />in one click.</div>
+              <p className="h-ext-sub">Our Chrome extension brings ApplyBotPro directly to job boards. See your fit score, autofill applications, and get AI briefings without leaving the page.</p>
+              <div className="h-ext-features">
+                {["Works on LinkedIn, Indeed, Glassdoor & more", "Instant fit score on any job listing", "Autofill applications with your saved profile", "One-click cover letter generation"].map(f => (
+                  <div key={f} className="h-ext-feature">
+                    <div className="h-ext-check"><CheckCircle size={11} color="#34D399" /></div>
+                    {f}
+                  </div>
+                ))}
+              </div>
+              <button className="h-ext-btn" onClick={() => window.open("https://chrome.google.com/webstore", "_blank")}>
+                <Puzzle size={16} /> Add to Chrome — It's Free
+              </button>
+            </div>
+            <div className="h-ext-puzzle">
+              <Puzzle size={56} color="rgba(99,102,241,0.6)" strokeWidth={1.5} />
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* ── TESTIMONIALS ── */}
-      <div className="lp-testi-outer" id="testimonials">
-        <div className="lp-testi-inner">
-          <div className="lp-section-eyebrow"><Users size={11} /> Success Stories</div>
-          <h2 className="lp-section-h2">Job Seekers Love It</h2>
-          <p className="lp-section-sub" style={{ marginBottom: "clamp(28px, 4vw, 44px)" }}>Real results from real people who got hired faster.</p>
-          <div className="lp-testi-grid">
-            {TESTIMONIALS.map((t) => (
-              <div key={t.name} className="lp-testi">
-                <div className="lp-testi-stars">{[1,2,3,4,5].map(i => <Star key={i} size={13} fill="#F59E0B" color="#F59E0B" />)}</div>
-                <p className="lp-testi-text">"{t.text}"</p>
-                <div className="lp-testi-author">
-                  <div className="lp-testi-av" style={{ background: t.color }}>{t.name.split(" ").map(w => w[0]).join("")}</div>
+      <section className="h-section h-section-alt" id="testimonials">
+        <div className="h-section-inner">
+          <div className="h-eyebrow"><Users size={11} /> Success stories</div>
+          <h2 className="h-section-h2">Job seekers love it</h2>
+          <p className="h-section-sub" style={{ marginBottom: "clamp(28px, 4vw, 40px)" }}>Real results from real people who got hired faster.</p>
+          <div className="h-testi-scroll">
+            {TESTIMONIALS.map(t => (
+              <div key={t.name} className="h-testi">
+                <div className="h-testi-stars">{[1,2,3,4,5].map(i => <Star key={i} size={12} fill="#F59E0B" color="#F59E0B" />)}</div>
+                <p className="h-testi-text">"{t.text}"</p>
+                <div className="h-testi-author">
+                  <div className="h-testi-av">{t.init}</div>
                   <div>
-                    <div className="lp-testi-name">{t.name}</div>
-                    <div className="lp-testi-role">{t.role}</div>
+                    <div className="h-testi-name">{t.name}</div>
+                    <div className="h-testi-role">{t.role}</div>
                   </div>
                 </div>
               </div>
             ))}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* ── CTA BANNER ── */}
-      <div className="lp-cta-outer">
-        <div className="lp-cta-banner">
-          <div className="lp-cta-eyebrow"><Sparkles size={11} /> Free to start · No credit card</div>
-          <h2 className="lp-cta-h2">Your Next Job Is One Upload Away</h2>
-          <p className="lp-cta-sub">Stop wondering why you're not getting callbacks. Get the AI analysis that tells you exactly where you stand.</p>
-          <div className="lp-cta-btns">
-            <button className="lp-cta-btn-w" onClick={() => handleCTA("/analyze")}>Analyze My CV Free <ArrowRight size={14} /></button>
-            <button className="lp-cta-btn-g" onClick={() => handleCTA("/search")}><Search size={14} /> Browse Jobs</button>
+      {/* ── FINAL CTA ── */}
+      <section className="h-final">
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
+          <div style={{ width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)", filter: "blur(60px)" }} />
+        </div>
+        <div style={{ position: "relative", zIndex: 1, maxWidth: 700, margin: "0 auto" }}>
+          <div className="h-eyebrow" style={{ justifyContent: "center" }}><Sparkles size={11} /> Free to start · No credit card</div>
+          <div className="h-final-h2">Your next job is<br /><span className="h-hero-accent">one upload away.</span></div>
+          <p className="h-final-sub">Stop wondering why you're not getting callbacks. Get the AI that tells you exactly where you stand — and fixes it.</p>
+          <div className="h-final-ctas">
+            <button className="h-btn-primary" onClick={() => navigate(user ? "/jobs/recommend" : "/register")}>
+              Get started free <ArrowRight size={15} />
+            </button>
+            <button className="h-btn-secondary" onClick={() => window.open("https://chrome.google.com/webstore", "_blank")}>
+              <Puzzle size={15} /> Get the extension
+            </button>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* ── FOOTER ── */}
-      <footer className="lp-footer">
-        <div className="lp-footer-inner">
-          <div className="lp-footer-logo">
-            <div style={{ width: 26, height: 26, borderRadius: 7, background: "#2563EB", display: "flex", alignItems: "center", justifyContent: "center" }}><FileSearch size={13} color="white" /></div>
+      <footer className="h-footer">
+        <div className="h-footer-inner">
+          <div className="h-footer-logo">
+            <div style={{ width: 24, height: 24, borderRadius: 6, background: "linear-gradient(135deg, #6366F1, #8B5CF6)", display: "flex", alignItems: "center", justifyContent: "center" }}><FileSearch size={12} color="white" /></div>
             ApplyBotPro
           </div>
-          <div className="lp-footer-copy">© {new Date().getFullYear()} ApplyBotPro. All rights reserved.</div>
-          <div className="lp-footer-links">
-            <button className="lp-footer-link" onClick={() => navigate("/pricing")}>Pricing</button>
-            <button className="lp-footer-link" onClick={() => navigate("/login")}>Login</button>
-            <button className="lp-footer-link" onClick={() => navigate("/register")}>Sign Up</button>
+          <div className="h-footer-copy">© {new Date().getFullYear()} ApplyBotPro. All rights reserved.</div>
+          <div className="h-footer-links">
+            <button className="h-footer-a" onClick={() => navigate("/pricing")}>Pricing</button>
+            <button className="h-footer-a" onClick={() => navigate("/login")}>Login</button>
+            <button className="h-footer-a" onClick={() => navigate("/register")}>Sign up</button>
           </div>
         </div>
       </footer>
