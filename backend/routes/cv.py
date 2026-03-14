@@ -13,6 +13,7 @@ cv_bp = Blueprint("cv", __name__)
 
 @cv_bp.route("/cv/refine", methods=["POST"])
 @require_auth
+@require_feature("cv_generation")
 def refine_cv():
     """
     Refine a JSON Resume to better match a job description.

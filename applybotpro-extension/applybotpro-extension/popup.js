@@ -1,108 +1,106 @@
-// Popup Script - Controls the extension popup UI
+// popup.js — CONFIG is already loaded via <script src="config.js"> in popup.html
 
-// Import config
-// Note: In popup, we need to load config differently
-let CONFIG;
+document.addEventListener('DOMContentLoaded', () => {
+  checkAuth();
+  checkActiveTab();
 
-// Load config
-fetch(chrome.runtime.getURL('config.js'))
-  .then(response => response.text())
-  .then(text => {
-    eval(text);
-    initPopup();
+  document.getElementById('btn-open').addEventListener('click', () => {
+    chrome.tabs.create({ url: CONFIG.FRONTEND_URL });
   });
 
-function initPopup() {
-  // Check authentication status
-  checkAuthStatus();
-  
-  // Check if current tab has active job
-  checkActiveJob();
-  
-  // Set up event listeners
-  document.getElementById('open-website').addEventListener('click', () => {
-    chrome.tabs.create({ url: CONFIG.APPLYBOTPRO_DOMAIN });
-  });
-  
-  document.getElementById('refresh-auth').addEventListener('click', async () => {
-    // Request background script to sync auth token
-    chrome.runtime.sendMessage({ type: 'SYNC_AUTH' }, (response) => {
-      checkAuthStatus();
+  document.getElementById('btn-refresh').addEventListener('click', () => {
+    const btn = document.getElementById('btn-refresh');
+    btn.textContent = 'Refreshing…';
+    btn.disabled    = true;
+    chrome.runtime.sendMessage({ type: 'SYNC_AUTH' }, () => {
+      setTimeout(() => {
+        btn.textContent = '↻ Refresh Connection';
+        btn.disabled    = false;
+        checkAuth();
+      }, 800);
     });
   });
-  
-  document.getElementById('help-link').addEventListener('click', (e) => {
-    e.preventDefault();
-    chrome.tabs.create({ url: CONFIG.APPLYBOTPRO_DOMAIN + '/help' });
+
+  document.getElementById('btn-help').addEventListener('click', () => {
+    chrome.tabs.create({ url: CONFIG.FRONTEND_URL + '/help' });
+  });
+});
+
+// ── Auth status ────────────────────────────────────────────────────────────────
+
+async function checkAuth() {
+  const authDot    = document.getElementById('auth-dot');
+  const authStatus = document.getElementById('auth-status');
+  const nameRow    = document.getElementById('name-row');
+  const authName   = document.getElementById('auth-name');
+
+  const { authToken } = await chrome.storage.local.get(['authToken']);
+
+  if (!authToken) {
+    authDot.className    = 'dot';
+    authStatus.textContent = 'Not connected — please log in';
+    nameRow.style.display  = 'none';
+    document.getElementById('info-message').innerHTML =
+      '<strong style="color:#EF4444">⚠ Not connected.</strong><br>Log in to ApplyBotPro, then click Refresh Connection.';
+    return;
+  }
+
+  // Token exists — verify by fetching profile
+  chrome.runtime.sendMessage({ type: 'GET_USER_PROFILE' }, res => {
+    if (res?.profile) {
+      authDot.className    = 'dot active';
+      authStatus.textContent = 'Connected';
+      nameRow.style.display  = 'flex';
+      authName.textContent   = res.profile.name || res.profile.email || 'User';
+    } else {
+      authDot.className    = 'dot warn';
+      authStatus.textContent = 'Token expired — please log in again';
+      nameRow.style.display  = 'none';
+    }
   });
 }
 
-// Check if user is authenticated
-async function checkAuthStatus() {
-  try {
-    const { authToken } = await chrome.storage.local.get(['authToken']);
-    
-    const authIndicator = document.getElementById('auth-indicator');
-    const authStatus = document.getElementById('auth-status');
-    
-    if (authToken) {
-      authIndicator.classList.remove('inactive');
-      authStatus.textContent = 'Connected to ApplyBotPro';
-      
-      // Also fetch user profile to verify token is valid
-      chrome.runtime.sendMessage({ type: 'GET_USER_PROFILE' }, (response) => {
-        if (response && response.profile) {
-          authStatus.textContent = `Connected as ${response.profile.name || 'User'}`;
-        }
-      });
-    } else {
-      authIndicator.classList.add('inactive');
-      authStatus.textContent = 'Not connected - Please log in';
-      
-      document.getElementById('info-message').innerHTML = 
-        '<strong>⚠️ Not Connected</strong><br>Please log in to ApplyBotPro to use the extension.';
-    }
-  } catch (error) {
-    console.error('Error checking auth status:', error);
-  }
-}
+// ── Active tab job detection ───────────────────────────────────────────────────
 
-// Check if current tab has an active tracked job
-async function checkActiveJob() {
+async function checkActiveTab() {
+  const jobDot    = document.getElementById('job-dot');
+  const jobStatus = document.getElementById('job-status');
+  const infoBox   = document.getElementById('info-message');
+
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.url) return;
+
   try {
-    // Get current tab
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    
-    if (!tab || !tab.url) return;
-    
-    // Check if URL contains job tracking parameter
-    const url = new URL(tab.url);
+    const url   = new URL(tab.url);
     const jobId = url.searchParams.get(CONFIG.JOB_ID_PARAM);
-    
-    const jobIndicator = document.getElementById('job-indicator');
-    const jobStatus = document.getElementById('job-status');
-    const infoMessage = document.getElementById('info-message');
-    
+
     if (jobId) {
-      jobIndicator.classList.remove('inactive');
-      jobStatus.textContent = 'Active job detected!';
-      
-      infoMessage.innerHTML = 
-        '<strong>✓ Ready to help!</strong><br>Click "Fill Application" button on the page to auto-fill the form.';
-    } else {
-      // Check if we're on applybotpro
-      if (tab.url.includes(new URL(CONFIG.APPLYBOTPRO_DOMAIN).hostname)) {
-        infoMessage.innerHTML = 
-          '<strong>Welcome!</strong><br>Click "Apply" on any job to activate the assistant on the application page.';
-      }
+      jobDot.className   = 'dot active';
+      jobStatus.textContent = 'Tracked job detected!';
+      infoBox.innerHTML  = '✓ <strong>Ready to fill.</strong><br>Click the AutoFill button floating on the page.';
+      return;
     }
-  } catch (error) {
-    console.error('Error checking active job:', error);
-  }
+
+    // On a known job board?
+    const jobBoards = ['linkedin.com', 'indeed.com', 'glassdoor.com', 'greenhouse.io',
+                       'lever.co', 'workday.com', 'myworkdayjobs.com', 'jobvite.com',
+                       'smartrecruiters.com', 'careers.', 'jobs.'];
+    const isJobBoard = jobBoards.some(b => url.hostname.includes(b) || url.pathname.includes(b));
+
+    if (isJobBoard) {
+      jobDot.className   = 'dot warn';
+      jobStatus.textContent = 'Job page detected';
+      infoBox.innerHTML  = 'Click the <strong>AutoFill</strong> button on the page to fill this application.';
+    } else if (url.hostname.includes('applybotpro') || url.hostname.includes('netlify')) {
+      jobDot.className   = 'dot active';
+      jobStatus.textContent = 'ApplyBotPro dashboard';
+      infoBox.innerHTML  = 'Click Apply on any job to activate AutoFill on the application page.';
+    }
+  } catch (_) {}
 }
 
-// Update status every 2 seconds while popup is open
+// Refresh status every 3s while popup is open
 setInterval(() => {
-  checkAuthStatus();
-  checkActiveJob();
-}, 2000);
+  checkAuth();
+  checkActiveTab();
+}, 3000);

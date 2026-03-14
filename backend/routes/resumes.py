@@ -6,6 +6,7 @@ from models import Resume
 from services.auth import require_auth
 from services.parser import parse_resume_file, extract_resume_structure
 from datetime import datetime
+from services.subscription import get_resume_limit
 
 resumes_bp = Blueprint("resumes", __name__)
 ALLOWED_EXTENSIONS = {"pdf", "docx", "doc", "txt"}
@@ -16,6 +17,15 @@ def allowed_file(filename):
 @resumes_bp.route("/resumes", methods=["GET"])
 @require_auth
 def get_resumes():
+    limit   = get_resumes_limit(g.user_id)
+    db      = get_db_helper()
+    current = len(db.get_resumes(g.user_id))
+    if current >= limit:
+        return jsonify({
+            "error": f"Your plan allows {limit} resume(s). Delete one or upgrade.",
+            "error_code": "resume_limit_reached",
+            "upgrade_required": True,
+        }), 403
     try:
         db = get_db_helper()
         resumes = db.get_resumes(g.user_id)

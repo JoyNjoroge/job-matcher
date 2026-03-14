@@ -12,6 +12,7 @@ jobs_bp = Blueprint("jobs", __name__)
 
 @jobs_bp.route("/jobs/search", methods=["GET"])
 @require_auth
+@require_feature("job_search")
 def search():
     """
     Search for job listings.
@@ -29,6 +30,7 @@ def search():
         - plan: str (user's current plan)
         - api_status, summary
     """
+    limit  = get_job_results_limit(g.user_id)
     try:
         query = request.args.get("query", "")
         if not query:

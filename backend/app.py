@@ -24,8 +24,8 @@ from routes.resumes import resumes_bp
 from routes.briefing import apply_briefing_bp
 from routes.cv import cv_bp
 from routes.subscription import subscription_bp
-from oauth_routes import oauth_bp, oauth   # ← ADD THIS
-
+from oauth_routes import oauth_bp, oauth 
+from routes.extension import extension_bp
 
 def create_app():
     """Create and configure the Flask application."""
@@ -76,33 +76,35 @@ def create_app():
     app.register_blueprint(apply_briefing_bp,   url_prefix="/api")
     app.register_blueprint(cv_bp,               url_prefix="/api")
     app.register_blueprint(subscription_bp,     url_prefix="/api")
+app.register_blueprint(extension_bp, url_prefix="/api")
 
-    @app.route("/api/health")
-    def health_check():
-        try:
-            supabase = get_supabase()
-            supabase.table("users").select("count", count="exact").limit(0).execute()
-            db_status = "connected"
-        except Exception as e:
-            db_status = f"error: {str(e)}"
 
-        return jsonify({
-            "status":        "healthy",
-            "service":       "ApplyBot Pro API",
-            "database":      db_status,
-            "database_type": "Supabase (PostgreSQL)",
-        })
+@app.route("/api/health")
+def health_check():
+    try:
+        supabase = get_supabase()
+        supabase.table("users").select("count", count="exact").limit(0).execute()
+        db_status = "connected"
+    except Exception as e:
+        db_status = f"error: {str(e)}"
 
-    @app.route("/")
-    def index():
-        return jsonify({
-            "message":  "ApplyBot Pro API",
-            "version":  "2.0.0",
-            "database": "Supabase",
-            "status":   "running",
-        })
+    return jsonify({
+        "status":        "healthy",
+        "service":       "ApplyBot Pro API",
+        "database":      db_status,
+        "database_type": "Supabase (PostgreSQL)",
+    })
 
-    return app
+@app.route("/")
+def index():
+    return jsonify({
+        "message":  "ApplyBot Pro API",
+        "version":  "2.0.0",
+        "database": "Supabase",
+        "status":   "running",
+    })
+
+return app
 
 
 if __name__ == "__main__":

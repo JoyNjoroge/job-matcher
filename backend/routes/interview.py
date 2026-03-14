@@ -4,6 +4,8 @@ Interview route - Interview preparation endpoints.
 
 from flask import Blueprint, request, jsonify
 from services.gemini import generate_interview_prep
+from services.auth import require_auth
+from services.subscription import require_feature
 
 interview_bp = Blueprint("interview", __name__)
 
@@ -20,6 +22,8 @@ def clean_text(text):
 
 
 @interview_bp.route("/interview-prep", methods=["POST"])
+@require_auth
+@require_feature("interview_prep")
 def get_interview_prep():
     """
     Generate interview preparation materials.
