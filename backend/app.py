@@ -104,7 +104,7 @@ def index():
         "status":   "running",
     })
 
-return app
+    return app
 
 
 if __name__ == "__main__":
