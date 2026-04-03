@@ -35,6 +35,8 @@ oauth.register(
     client_id=os.getenv("GOOGLE_CLIENT_ID"),
     client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
     server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+    authorize_url="https://accounts.google.com/o/oauth2/v2/auth",
+    access_token_url="https://oauth2.googleapis.com/token",
     client_kwargs={"scope": "openid email profile"},
 )
 
@@ -45,8 +47,9 @@ oauth.register(
     client_secret=os.getenv("LINKEDIN_CLIENT_SECRET"),
     access_token_url="https://www.linkedin.com/oauth/v2/accessToken",
     authorize_url="https://www.linkedin.com/oauth/v2/authorization",
+    userinfo_endpoint="https://api.linkedin.com/v2/me",
     api_base_url="https://api.linkedin.com/v2/",
-    client_kwargs={"scope": "r_liteprofile r_emailaddress"},
+    client_kwargs={"scope": "openid profile email"},
 )
 
 
@@ -141,15 +144,18 @@ def linkedin_callback():
         access_tok = token["access_token"]
         headers    = {"Authorization": f"Bearer {access_tok}"}
 
+        # Fetch profile
         profile_resp = requests.get(
-            "https://api.linkedin.com/v2/me"
-            "?projection=(id,localizedFirstName,localizedLastName)",
+            "https://api.linkedin.com/v2/me",
             headers=headers, timeout=10,
         )
         profile_resp.raise_for_status()
-        p         = profile_resp.json()
-        full_name = f"{p.get('localizedFirstName','')} {p.get('localizedLastName','')}".strip() or "LinkedIn User"
+        p = profile_resp.json()
+        first_name = p.get("localizedFirstName", "")
+        last_name = p.get("localizedLastName", "")
+        full_name = f"{first_name} {last_name}".strip() or "LinkedIn User"
 
+        # Fetch email
         email_resp = requests.get(
             "https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))",
             headers=headers, timeout=10,
