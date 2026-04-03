@@ -61,11 +61,11 @@ def create_app():
         raise
 
     # Initialize OAuth (Authlib needs this)
-    oauth.init_app(app)   # ← ADD THIS
+    oauth.init_app(app)
 
     # Register blueprints
     app.register_blueprint(auth_bp,             url_prefix="/api/auth")
-    app.register_blueprint(oauth_bp,            url_prefix="/api")        # ← ADD THIS
+    app.register_blueprint(oauth_bp,            url_prefix="/api")       
     app.register_blueprint(profile_bp,          url_prefix="/api")
     app.register_blueprint(resumes_bp,          url_prefix="/api")
     app.register_blueprint(analyze_bp,          url_prefix="/api")
@@ -76,38 +76,37 @@ def create_app():
     app.register_blueprint(apply_briefing_bp,   url_prefix="/api")
     app.register_blueprint(cv_bp,               url_prefix="/api")
     app.register_blueprint(subscription_bp,     url_prefix="/api")
-    app.register_blueprint(extension_bp, url_prefix="/api")
+    app.register_blueprint(extension_bp,        url_prefix="/api")
 
+    @app.route("/api/health")
+    def health_check():
+        try:
+            supabase = get_supabase()
+            supabase.table("users").select("count", count="exact").limit(0).execute()
+            db_status = "connected"
+        except Exception as e:
+            db_status = f"error: {str(e)}"
 
-@app.route("/api/health")
-def health_check():
-    try:
-        supabase = get_supabase()
-        supabase.table("users").select("count", count="exact").limit(0).execute()
-        db_status = "connected"
-    except Exception as e:
-        db_status = f"error: {str(e)}"
+        return jsonify({
+            "status":        "healthy",
+            "service":       "ApplyBot Pro API",
+            "database":      db_status,
+            "database_type": "Supabase (PostgreSQL)",
+        })
 
-    return jsonify({
-        "status":        "healthy",
-        "service":       "ApplyBot Pro API",
-        "database":      db_status,
-        "database_type": "Supabase (PostgreSQL)",
-    })
-
-@app.route("/")
-def index():
-    return jsonify({
-        "message":  "ApplyBot Pro API",
-        "version":  "2.0.0",
-        "database": "Supabase",
-        "status":   "running",
-    })
+    @app.route("/")
+    def index():
+        return jsonify({
+            "message":  "ApplyBot Pro API",
+            "version":  "2.0.0",
+            "database": "Supabase",
+            "status":   "running",
+        })
 
     return app
 
 
-if __name__ == "__main__":
-    app = create_app()
-    debug_mode = os.getenv("FLASK_DEBUG", "0") == "1"
-    app.run(debug=debug_mode, host="0.0.0.0", port=5000)
+    if __name__ == "__main__":
+        app = create_app()
+        debug_mode = os.getenv("FLASK_DEBUG", "0") == "1"
+        app.run(debug=debug_mode, host="0.0.0.0", port=5000)
