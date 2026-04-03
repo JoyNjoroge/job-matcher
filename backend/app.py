@@ -25,7 +25,7 @@ from routes.briefing import apply_briefing_bp
 from routes.cv import cv_bp
 from routes.subscription import subscription_bp
 from oauth_routes import oauth_bp, oauth 
-from routes.extension import extension_bp
+from routes.extension_route import extension_bp
 
 def create_app():
     """Create and configure the Flask application."""
