@@ -76,7 +76,7 @@ def create_app():
     app.register_blueprint(apply_briefing_bp,   url_prefix="/api")
     app.register_blueprint(cv_bp,               url_prefix="/api")
     app.register_blueprint(subscription_bp,     url_prefix="/api")
-app.register_blueprint(extension_bp, url_prefix="/api")
+    app.register_blueprint(extension_bp, url_prefix="/api")
 
 
 @app.route("/api/health")
