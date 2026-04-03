@@ -5,7 +5,7 @@ Jobs route - Job search endpoints with tier-based result limits.
 from flask import Blueprint, request, jsonify, g
 from services.scraper import search_jobs
 from services.auth import require_auth
-from services.subscription import get_job_results_limit, get_plan_id
+from services.subscription import get_job_results_limit, get_plan_id, require_feature
 
 jobs_bp = Blueprint("jobs", __name__)
 
