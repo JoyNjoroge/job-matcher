@@ -6,7 +6,7 @@ from models import Resume
 from services.auth import require_auth
 from services.parser import parse_resume_file, extract_resume_structure
 from datetime import datetime
-from services.subscription import get_resume_limit
+from services.subscription import get_resumes_limit
 
 resumes_bp = Blueprint("resumes", __name__)
 ALLOWED_EXTENSIONS = {"pdf", "docx", "doc", "txt"}
