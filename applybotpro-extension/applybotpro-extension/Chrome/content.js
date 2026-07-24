@@ -4,6 +4,7 @@
 let isActivated   = false;
 let currentJobId  = null;
 let userProfile   = null;
+let pendingFields = [];
 
 // ── Auth token bridge ─────────────────────────────────────────────────────────
 // When on the ApplyBotPro frontend, read the token from localStorage
@@ -95,7 +96,7 @@ function showAssistantButton() {
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
         <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
       </svg>
-      <span>AutoFill</span>
+      <span>Review fields</span>
     </div>
   `;
   btn.addEventListener('click', openPanel);
@@ -151,7 +152,7 @@ function openPanel() {
         <div class="applybotpro-actions">
           <button id="abp-fill-btn" class="applybotpro-action-btn primary">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-            Smart Fill Form
+          Scan application
           </button>
           <button id="abp-preview-btn" class="applybotpro-action-btn">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/></svg>
@@ -250,29 +251,67 @@ async function fillFormWithAI() {
       filledFields = simpleFieldMatching(formFields, userProfile);
     }
 
-    // Apply values
-    let filledCount = 0;
-    filledFields.forEach(field => {
-      if (field.suggestedValue) {
-        fillField(field.element, field.suggestedValue);
-        filledCount++;
-      }
-    });
+    // Never write to the employer's form before the applicant reviews the plan.
+    pendingFields = filledFields.filter(field =>
+      field.suggestedValue &&
+      field.confidence !== 'low' &&
+      !isSensitiveField(field)
+    );
+    const needsReview = filledFields.filter(field =>
+      !field.suggestedValue ||
+      field.confidence === 'low' ||
+      isSensitiveField(field)
+    );
 
-    if (filledCount === 0) {
+    if (pendingFields.length === 0) {
       resultsDiv.innerHTML = '<div class="applybotpro-error">Couldn\'t match any fields. Check your profile has name, email, phone etc. filled in.</div>';
     } else {
       resultsDiv.innerHTML = `
-        <div class="applybotpro-success">
-          ✓ Filled <strong>${filledCount}</strong> field${filledCount !== 1 ? 's' : ''}
-          <p class="applybotpro-tip">Always review before submitting.</p>
+        <div class="applybotpro-review-summary">
+          <div><strong>${pendingFields.length}</strong><span>ready</span></div>
+          <div><strong>${needsReview.length}</strong><span>need you</span></div>
         </div>
+        <div class="applybotpro-review-list">
+          ${pendingFields.slice(0, 8).map(field => `
+            <div class="applybotpro-review-row">
+              <span class="applybotpro-review-check">✓</span>
+              <div><small>${escapeHtml(field.label || field.name || 'Application field')}</small>
+              <strong>${escapeHtml(String(field.suggestedValue))}</strong></div>
+              <em>${field.confidence || 'medium'}</em>
+            </div>`).join('')}
+          ${needsReview.length ? `<p class="applybotpro-manual-note">${needsReview.length} sensitive or uncertain field${needsReview.length === 1 ? '' : 's'} will be left untouched.</p>` : ''}
+        </div>
+        <button id="abp-confirm-fill" class="applybotpro-action-btn primary">Fill ${pendingFields.length} reviewed field${pendingFields.length === 1 ? '' : 's'}</button>
+        <p class="applybotpro-privacy-note">ApplyBot never submits the application.</p>
       `;
+      document.getElementById('abp-confirm-fill').addEventListener('click', applyReviewedFields);
     }
   } catch (err) {
     console.error('[AutoFill]', err);
     resultsDiv.innerHTML = `<div class="applybotpro-error">Error: ${err.message}</div>`;
   }
+}
+
+function isSensitiveField(field) {
+  const key = `${field.label || ''} ${field.name || ''} ${field.placeholder || ''}`.toLowerCase();
+  return /(gender|sex|race|ethnic|disab|veteran|sponsor|visa|citizen|work authori|salary|compensation|criminal|felony|demographic|pronoun)/.test(key);
+}
+
+function escapeHtml(value) {
+  return value.replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;',
+  })[char]);
+}
+
+function applyReviewedFields() {
+  pendingFields.forEach(field => fillField(field.element, field.suggestedValue));
+  const resultsDiv = document.getElementById('abp-results');
+  resultsDiv.innerHTML = `
+    <div class="applybotpro-success">
+      Filled <strong>${pendingFields.length}</strong> reviewed field${pendingFields.length === 1 ? '' : 's'}.
+      <p class="applybotpro-tip">Check the form and answer the remaining questions yourself.</p>
+    </div>`;
+  pendingFields = [];
 }
 
 // ── Rule-based fallback matching ──────────────────────────────────────────────

@@ -123,6 +123,11 @@ Form fields:
 For each field return the best value from the profile.
 - Return ONLY a JSON array, no markdown, no explanation.
 - Use null for fields you cannot fill confidently.
+- Never infer or invent qualifications, dates, employers, education, salary,
+  work authorization, sponsorship, demographic, disability, or veteran answers.
+- Always return null for sensitive self-identification, legal, salary,
+  sponsorship, and work-authorization questions.
+- A plausible answer is not enough: it must be explicitly supported by the profile.
 - For cover letter / summary fields use profile.summary (max 300 chars).
 - For skills fields join the skills with commas.
 

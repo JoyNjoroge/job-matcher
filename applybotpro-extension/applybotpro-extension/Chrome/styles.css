@@ -5,11 +5,11 @@
   position: fixed;
   bottom: 28px;
   right: 28px;
-  background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+  background: #19372c;
   color: white;
   padding: 12px 20px;
   border-radius: 100px;
-  box-shadow: 0 6px 24px rgba(99,102,241,0.45);
+  box-shadow: 0 6px 24px rgba(25,55,44,0.25);
   cursor: pointer;
   z-index: 2147483640;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -19,7 +19,7 @@
 
 .applybotpro-floating-btn:hover {
   transform: translateY(-3px);
-  box-shadow: 0 10px 32px rgba(99,102,241,0.55);
+  box-shadow: 0 10px 32px rgba(25,55,44,0.32);
 }
 
 .applybotpro-btn-content {
@@ -40,17 +40,17 @@
   transform: translateY(-50%);
   width: 340px;
   max-height: 90vh;
-  background: #0C0C10;
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 18px;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.55), 0 0 0 1px rgba(99,102,241,0.15);
+  background: #f8f7f2;
+  border: 1px solid #d8ddd9;
+  border-radius: 12px;
+  box-shadow: 0 24px 64px rgba(19,32,27,0.22);
   z-index: 2147483639;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   animation: abpSlideIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
-  color: #F0EEE8;
+  color: #17201d;
 }
 
 @keyframes abpSlideIn {
@@ -60,8 +60,8 @@
 
 /* ── Panel header ────────────────────────────────────────────────────────── */
 .applybotpro-panel-header {
-  background: rgba(255,255,255,0.04);
-  border-bottom: 1px solid rgba(255,255,255,0.07);
+  background: #fff;
+  border-bottom: 1px solid #e3e7e4;
   padding: 14px 16px;
   display: flex;
   justify-content: space-between;
@@ -70,9 +70,9 @@
 }
 
 .applybotpro-close-btn {
-  background: rgba(255,255,255,0.07);
+  background: #eef0ed;
   border: none;
-  color: rgba(240,238,232,0.6);
+  color: #66706b;
   font-size: 20px;
   line-height: 1;
   cursor: pointer;
@@ -87,8 +87,8 @@
 }
 
 .applybotpro-close-btn:hover {
-  background: rgba(255,255,255,0.14);
-  color: #F0EEE8;
+  background: #e1e5e2;
+  color: #17201d;
 }
 
 /* ── Panel content ───────────────────────────────────────────────────────── */
@@ -107,8 +107,8 @@
 
 /* ── Status block ────────────────────────────────────────────────────────── */
 .applybotpro-status {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.07);
+  background: #fff;
+  border: 1px solid #e0e5e1;
   border-radius: 12px;
   padding: 14px;
   margin-bottom: 14px;
@@ -139,14 +139,14 @@
 }
 
 .applybotpro-action-btn.primary {
-  background: linear-gradient(135deg, #6366F1, #8B5CF6);
+  background: #245c46;
   color: white;
-  box-shadow: 0 4px 16px rgba(99,102,241,0.35);
+  box-shadow: none;
 }
 
 .applybotpro-action-btn.primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 22px rgba(99,102,241,0.5);
+  box-shadow: 0 5px 14px rgba(36,92,70,.2);
 }
 
 .applybotpro-action-btn:not(.primary):not(.success) {
@@ -220,6 +220,33 @@
   color: #4ADE80;
   margin: 0 0 10px;
 }
+
+.applybotpro-review-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid #dfe5e0;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.applybotpro-review-summary div { padding: 10px 12px; background: #fff; }
+.applybotpro-review-summary div + div { border-left: 1px solid #dfe5e0; }
+.applybotpro-review-summary strong { display: block; color: #17201d; font-size: 18px; }
+.applybotpro-review-summary span { color: #748079; font-size: 11px; }
+.applybotpro-review-list { margin-bottom: 12px; }
+.applybotpro-review-row {
+  display: grid; grid-template-columns: 18px 1fr auto; gap: 8px; align-items: center;
+  padding: 9px 0; border-bottom: 1px solid #e3e7e4;
+}
+.applybotpro-review-check {
+  width: 17px; height: 17px; border-radius: 50%; background: #dfeee6; color: #245c46;
+  display: grid; place-items: center; font-size: 10px; font-weight: 800;
+}
+.applybotpro-review-row small { display: block; color: #78817d; font-size: 10px; }
+.applybotpro-review-row strong { display: block; color: #17201d; font-size: 12px; margin-top: 2px; word-break: break-word; }
+.applybotpro-review-row em { color: #648071; background: #edf4f0; border-radius: 20px; padding: 3px 6px; font-size: 9px; font-style: normal; }
+.applybotpro-manual-note { margin: 10px 0 0; padding: 9px; background: #faf0dc; color: #805a16; border-radius: 7px; font-size: 11px; line-height: 1.45; }
+.applybotpro-privacy-note { text-align: center; color: #78817d; font-size: 10px; margin: 8px 0 0; }
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 480px) {
