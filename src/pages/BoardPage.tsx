@@ -205,16 +205,15 @@ export default function BoardPage() {
 
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", padding: "48px 24px 80px" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');`}</style>
 
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 40, flexWrap: "wrap", gap: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: "rgba(37,99,235,0.08)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <LayoutGrid size={24} color="#2563EB" />
+          <div style={{ width: 52, height: 52, borderRadius: "50%", background: "var(--clr-accent-bg)", color: "var(--clr-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <LayoutGrid size={24} color="currentColor" />
           </div>
           <div>
-            <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(1.6rem, 3vw, 2.2rem)", fontWeight: 800, letterSpacing: "-0.025em", color: "var(--text, #0A0A0F)", margin: "0 0 4px" }}>
+            <h1 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(1.6rem, 3vw, 2.2rem)", fontWeight: 600, letterSpacing: "-0.035em", color: "var(--text, #0A0A0F)", margin: "0 0 4px" }}>
               Application Board
             </h1>
             <p style={{ color: "var(--text2, #6B7280)", fontSize: 14, margin: 0 }}>
@@ -227,14 +226,14 @@ export default function BoardPage() {
           onClick={() => setShowAddModal(true)}
           style={{
             display: "inline-flex", alignItems: "center", gap: 8,
-            padding: "11px 20px", borderRadius: 12, border: "none",
-            background: "#2563EB", color: "white",
+            padding: "11px 20px", borderRadius: 7, border: "none",
+            background: "var(--clr-accent)", color: "white",
             fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 700,
-            cursor: "pointer", boxShadow: "0 4px 14px rgba(37,99,235,0.28)",
+            cursor: "pointer", boxShadow: "none",
             transition: "all 0.2s",
           }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#1D4ED8"; (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "#2563EB"; (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)"; }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--clr-accent-dark)"; (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--clr-accent)"; (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)"; }}
         >
           <Plus size={16} /> Add Application
         </button>
@@ -246,13 +245,13 @@ export default function BoardPage() {
           <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(0,0,0,0.04)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
             <LayoutGrid size={28} color="#9CA3AF" />
           </div>
-          <h3 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: "1.2rem", color: "var(--text, #0A0A0F)", margin: "0 0 8px" }}>No applications yet</h3>
+          <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "1.2rem", color: "var(--text, #0A0A0F)", margin: "0 0 8px" }}>No applications yet</h3>
           <p style={{ color: "var(--text2, #6B7280)", fontSize: 14, margin: "0 0 24px" }}>
             Apply to jobs or add them manually to see them here.
           </p>
           <button
             onClick={() => setShowAddModal(true)}
-            style={{ padding: "11px 24px", borderRadius: 12, border: "none", background: "#2563EB", color: "white", fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
+            style={{ padding: "11px 24px", borderRadius: 7, border: "none", background: "var(--clr-accent)", color: "white", fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
           >
             Add your first application
           </button>

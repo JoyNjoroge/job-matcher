@@ -10,7 +10,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import {
   FileSearch, Search, LayoutGrid, Send, ClipboardList,
   MessageSquare, User, FileText, CreditCard, ChevronLeft,
-  ChevronRight, Menu, X, LogOut, Sun, Moon, Sparkles
+  ChevronRight, Menu, X, LogOut, Sun, Moon, ShieldCheck
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -45,20 +45,20 @@ const CSS = `
     --sidebar-w: 240px;
     --sidebar-collapsed-w: 64px;
     --header-h: 0px;
-    --bg: #F8F8F6;
+    --bg: #F7F6F1;
     --surface: #FFFFFF;
-    --surface2: #F2F2EF;
+    --surface2: #F0F0EA;
     --border: rgba(0,0,0,0.07);
     --text: #0A0A0F;
     --text2: #6B7280;
     --text3: #9CA3AF;
-    --accent: #2563EB;
-    --accent-hover: #1D4ED8;
-    --accent-bg: rgba(37,99,235,0.08);
+    --accent: #245C46;
+    --accent-hover: #193F31;
+    --accent-bg: rgba(36,92,70,0.08);
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
     --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
     --shadow-lg: 0 12px 40px rgba(0,0,0,0.12);
-    --radius: 12px;
+    --radius: 8px;
     --transition: 0.22s cubic-bezier(0.4,0,0.2,1);
   }
 
@@ -72,9 +72,9 @@ const CSS = `
     --text: #F1F1F3;
     --text2: #9CA3AF;
     --text3: #6B7280;
-    --accent: #3B82F6;
-    --accent-hover: #2563EB;
-    --accent-bg: rgba(59,130,246,0.12);
+    --accent: #74B697;
+    --accent-hover: #91C7AC;
+    --accent-bg: rgba(116,182,151,0.12);
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
     --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
     --shadow-lg: 0 12px 40px rgba(0,0,0,0.5);
@@ -119,12 +119,13 @@ const CSS = `
     overflow: hidden;
   }
   .sb-logo-mark {
-    width: 34px; height: 34px; border-radius: 9px; background: var(--accent);
+    width: 34px; height: 34px; border-radius: 50%; background: transparent;
+    border: 1px solid var(--text);
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+    box-shadow: none;
   }
   .sb-logo-name {
-    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 0.95rem;
+    font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 0.95rem;
     color: var(--text); letter-spacing: -0.01em; white-space: nowrap;
     opacity: 1; transition: opacity var(--transition);
     flex: 1;
@@ -273,8 +274,8 @@ const CSS = `
   .sb-mobile-menu-btn:hover { background: var(--accent-bg); color: var(--accent); }
 
   .sb-mobile-logo {
-    display: flex; align-items: center; gap: 8px; font-family: 'Syne', sans-serif;
-    font-weight: 800; font-size: 0.9rem; color: var(--text);
+    display: flex; align-items: center; gap: 8px; font-family: 'Manrope', sans-serif;
+    font-weight: 700; font-size: 0.9rem; color: var(--text);
   }
 
   /* ── CONTENT ── */
@@ -402,7 +403,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {/* Logo + collapse toggle */}
           <div className="sb-logo">
             <div className="sb-logo-mark">
-              <FileSearch size={16} color="white" />
+              <FileSearch size={16} color="currentColor" />
             </div>
             <span className="sb-logo-name">ApplyBotPro</span>
 
@@ -454,7 +455,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             {/* Plan badge */}
             <div style={{ padding: "0 4px 6px" }}>
               <div className="sb-plan-badge">
-                <Sparkles size={10} />
+                <ShieldCheck size={10} />
                 {planLabel}
               </div>
             </div>

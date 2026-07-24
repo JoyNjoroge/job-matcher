@@ -133,16 +133,16 @@ const AuthPage: React.FC<{ mode?: AuthMode }> = ({ mode = "login" }) => {
           <span className="auth-logo-name">ApplyBotPro</span>
         </div>
         <h1 className="auth-left-title" style={{ position: "relative", zIndex: 1 }}>
-          Land Your<br />Dream Job<br />Faster
+          Apply thoughtfully.<br />Move faster.
         </h1>
         <p className="auth-left-sub" style={{ position: "relative", zIndex: 1 }}>
-          AI-powered fit analysis, interview prep, and tailored applications — all in one place.
+          Keep your experience accurate, review every answer, and spend less time repeating yourself.
         </p>
         <div className="auth-features" style={{ position: "relative", zIndex: 1 }}>
           {[
-            { icon: Target, title: "Smart Job Matching", desc: "Instant AI fit score for every role" },
-            { icon: Sparkles, title: "Interview Preparation", desc: "Tailored questions based on your profile" },
-            { icon: Zap, title: "Application Briefing", desc: "Optimize your resume for each job" },
+            { icon: Target, title: "Evidence-based matching", desc: "Compare the role against your real experience" },
+            { icon: Sparkles, title: "Review before filling", desc: "Uncertain answers stay visible and editable" },
+            { icon: Zap, title: "One reliable profile", desc: "Reuse your facts without generic applications" },
           ].map((f) => {
             const Icon = f.icon;
             return (
