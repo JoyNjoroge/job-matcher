@@ -6,6 +6,7 @@ Main application entry point
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from dotenv import load_dotenv
+from werkzeug.middleware.proxy_fix import ProxyFix
 import os
 
 load_dotenv()
@@ -30,6 +31,7 @@ from routes.extension_route import extension_bp
 def create_app():
     """Create and configure the Flask application."""
     app = Flask(__name__)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
     config = get_config()
     app.config.from_object(config)

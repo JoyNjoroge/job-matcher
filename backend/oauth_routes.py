@@ -16,7 +16,7 @@ Environment variables needed:
 import os
 import secrets
 import requests
-from flask import Blueprint, redirect, request, jsonify
+from flask import Blueprint, redirect, jsonify
 from authlib.integrations.flask_client import OAuth
 
 from database import get_db_helper
@@ -57,6 +57,22 @@ oauth.register(
 
 
 # ── Shared helper ─────────────────────────────────────────────────────────────
+
+def _missing_provider_config(provider: str):
+    prefix = provider.upper()
+    missing = [
+        name for name in (f"{prefix}_CLIENT_ID", f"{prefix}_CLIENT_SECRET")
+        if not os.getenv(name)
+    ]
+    if not missing:
+        return None
+    print(f"[OAuth/{provider}] Missing configuration: {', '.join(missing)}")
+    return jsonify({
+        "error": f"{provider.title()} login is not configured",
+        "error_code": "oauth_not_configured",
+        "missing": missing,
+    }), 503
+
 
 def _upsert_oauth_user(email: str, full_name: str, provider: str) -> dict:
     db   = get_db_helper()
@@ -108,6 +124,9 @@ def _redirect_to_frontend(tokens: dict | None = None, error: str | None = None):
 
 @oauth_bp.route("/auth/google")
 def google_login():
+    config_error = _missing_provider_config("google")
+    if config_error:
+        return config_error
     redirect_uri = f"{OAUTH_REDIRECT_BASE}/auth/google/callback"
     return oauth.google.authorize_redirect(redirect_uri)
 
@@ -136,6 +155,9 @@ def google_callback():
 
 @oauth_bp.route("/auth/linkedin")
 def linkedin_login():
+    config_error = _missing_provider_config("linkedin")
+    if config_error:
+        return config_error
     redirect_uri = f"{OAUTH_REDIRECT_BASE}/auth/linkedin/callback"
     return oauth.linkedin.authorize_redirect(redirect_uri)
 
@@ -144,32 +166,24 @@ def linkedin_login():
 def linkedin_callback():
     try:
         token      = oauth.linkedin.authorize_access_token()
-        access_tok = token["access_token"]
-        headers    = {"Authorization": f"Bearer {access_tok}"}
-
-        # Fetch profile
-        profile_resp = requests.get(
-            "https://api.linkedin.com/v2/me",
-            headers=headers, timeout=10,
+        userinfo_response = requests.get(
+            "https://api.linkedin.com/v2/userinfo",
+            headers={"Authorization": f"Bearer {token['access_token']}"},
+            timeout=10,
         )
-        profile_resp.raise_for_status()
-        p = profile_resp.json()
-        first_name = p.get("localizedFirstName", "")
-        last_name = p.get("localizedLastName", "")
-        full_name = f"{first_name} {last_name}".strip() or "LinkedIn User"
-
-        # Fetch email
-        email_resp = requests.get(
-            "https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))",
-            headers=headers, timeout=10,
-        )
-        email_resp.raise_for_status()
-        email = (
-            email_resp.json()
-            .get("elements", [{}])[0]
-            .get("handle~", {})
-            .get("emailAddress", "")
-            .lower().strip()
+        userinfo_response.raise_for_status()
+        user_info = userinfo_response.json()
+        email = user_info.get("email", "").lower().strip()
+        full_name = (
+            user_info.get("name")
+            or " ".join(
+                part for part in (
+                    user_info.get("given_name", ""),
+                    user_info.get("family_name", ""),
+                )
+                if part
+            )
+            or "LinkedIn User"
         )
 
         if not email:
