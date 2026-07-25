@@ -11,7 +11,7 @@ import type {
 } from "@/types";
 
 export const API_BASE = (
-  import.meta.env.VITE_API_URL || "https://job-matcher-rasg.onrender.com/api"
+  import.meta.env.VITE_API_URL || "https://candorapply-backend.joynjoroge.site/api"
 ).replace(/\/$/, "");
 
 // ─── Auth helper ──────────────────────────────────────────────

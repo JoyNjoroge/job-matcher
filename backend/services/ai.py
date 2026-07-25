@@ -1,8 +1,8 @@
 """Provider-neutral AI service backed by OpenRouter.
 
-The default ``openrouter/free`` router keeps the beta free. Model selection is
-configuration-only so CandorApply can later pin a paid model without rewriting
-business logic. Responses are cached to conserve the limited free quota.
+The default is GPT-4o Mini with Gemini 2.5 Flash-Lite as a low-cost fallback.
+Model selection remains configuration-only, and responses are cached to
+conserve the monthly budget.
 """
 
 import os
@@ -12,10 +12,16 @@ from datetime import datetime, timedelta
 import requests
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
-OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/free").strip()
-OPENROUTER_FALLBACK_MODEL = os.getenv("OPENROUTER_FALLBACK_MODEL", "").strip()
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini").strip()
+OPENROUTER_FALLBACK_MODEL = os.getenv(
+    "OPENROUTER_FALLBACK_MODEL",
+    "google/gemini-2.5-flash-lite",
+).strip()
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-OPENROUTER_SITE_URL = os.getenv("OPENROUTER_SITE_URL", "https://candorapply.com").strip()
+OPENROUTER_SITE_URL = os.getenv(
+    "OPENROUTER_SITE_URL",
+    "https://candorapply.joynjoroge.site",
+).strip()
 OPENROUTER_APP_NAME = os.getenv("OPENROUTER_APP_NAME", "CandorApply").strip()
 AI_TIMEOUT_SECONDS = int(os.getenv("AI_TIMEOUT_SECONDS", "45"))
 AI_MAX_RETRIES = max(1, min(int(os.getenv("AI_MAX_RETRIES", "2")), 3))

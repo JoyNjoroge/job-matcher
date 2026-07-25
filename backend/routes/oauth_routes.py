@@ -9,8 +9,8 @@ Environment variables needed:
     GOOGLE_CLIENT_SECRET
     LINKEDIN_CLIENT_ID
     LINKEDIN_CLIENT_SECRET
-    FRONTEND_URL            (e.g. https://applybotpro.netlify.app)
-    OAUTH_REDIRECT_BASE     (e.g. https://job-matcher-rasg.onrender.com/api)
+    FRONTEND_URL            (e.g. https://candorapply.joynjoroge.site)
+    OAUTH_REDIRECT_BASE     (e.g. https://candorapply-backend.joynjoroge.site/api)
 
 How it works:
   1. Frontend clicks "Continue with Google" → redirects to /api/auth/google
@@ -36,8 +36,11 @@ from services.auth import generate_access_token, generate_refresh_token
 oauth_bp = Blueprint("oauth", __name__)
 oauth    = OAuth()   # call oauth.init_app(app) in your app factory
 
-FRONTEND_URL       = os.getenv("FRONTEND_URL", "https://applybotpro.netlify.app")
-OAUTH_REDIRECT_BASE = os.getenv("OAUTH_REDIRECT_BASE", "https://job-matcher-rasg.onrender.com/api")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://candorapply.joynjoroge.site")
+OAUTH_REDIRECT_BASE = os.getenv(
+    "OAUTH_REDIRECT_BASE",
+    "https://candorapply-backend.joynjoroge.site/api",
+)
 
 # ── Google OAuth ──────────────────────────────────────────────────────────────
 oauth.register(

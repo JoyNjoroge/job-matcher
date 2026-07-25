@@ -39,7 +39,10 @@ def create_app():
 
     # CORS — allow your Netlify frontend + localhost for dev
     is_production = os.getenv("FLASK_ENV") == "production"
-    allowed_origins = ["https://applybotpro.netlify.app"]
+    allowed_origins = [
+        "https://candorapply.joynjoroge.site",
+        "https://candorapply.netlify.app",
+    ]
     if not is_production:
         allowed_origins.extend([
             "http://localhost:5173",

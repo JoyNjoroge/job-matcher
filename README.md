@@ -105,7 +105,8 @@ Create a `.env` file in the backend directory:
 
 ```env
 OPENROUTER_API_KEY=your_openrouter_key_here
-OPENROUTER_MODEL=openrouter/free
+OPENROUTER_MODEL=openai/gpt-4o-mini
+OPENROUTER_FALLBACK_MODEL=google/gemini-2.5-flash-lite
 OPENROUTER_SITE_URL=http://localhost:5173
 FLASK_ENV=development
 FLASK_DEBUG=1
@@ -195,9 +196,10 @@ Before deploying:
    `FLASK_SECRET_KEY`.
 4. Configure `SUPABASE_SERVICE_ROLE_KEY` on Render. Never expose that value in
    the frontend or extension.
-5. Configure `OPENROUTER_API_KEY`, keep
-   `OPENROUTER_MODEL=openrouter/free`, and set `OPENROUTER_SITE_URL` to the
-   deployed frontend URL.
+5. Configure `OPENROUTER_API_KEY`, use
+   `OPENROUTER_MODEL=openai/gpt-4o-mini`, optionally set
+   `OPENROUTER_FALLBACK_MODEL=google/gemini-2.5-flash-lite`, and set
+   `OPENROUTER_SITE_URL` to the deployed frontend URL.
 6. Create the Supabase tables used by the API: `users`, `user_profiles`,
    `user_roles`, `resumes`, `job_applications`, `subscriptions`,
    `usage_tracking`, `cover_letters`, and `ai_response_cache`.

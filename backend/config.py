@@ -37,9 +37,9 @@ class Config:
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
     JWT_EXTENSION_TOKEN_EXPIRES = timedelta(minutes=30)
     
-    # AI provider (OpenRouter's free router by default)
+    # AI provider
     OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-    OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/free")
+    OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini")
     
     # Job Search APIs (keep existing)
     JSEARCH_API_KEY = os.getenv("JSEARCH_API_KEY")

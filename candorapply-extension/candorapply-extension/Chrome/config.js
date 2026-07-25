@@ -4,8 +4,8 @@
 
 const CONFIG = {
   // ── Website & API ──────────────────────────────────────────────────────────
-  APPLYBOTPRO_DOMAIN: 'https://job-matcher-rasg.onrender.com',
-  FRONTEND_URL: 'https://applybotpro.netlify.app',
+  APPLYBOTPRO_DOMAIN: 'https://candorapply-backend.joynjoroge.site',
+  FRONTEND_URL: 'https://candorapply.joynjoroge.site',
 
   API_ENDPOINTS: {
     // Auth + profile — matches /api/auth/me in auth.py
