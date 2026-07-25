@@ -20,7 +20,11 @@ class User:
     """Helper class for User operations with Supabase."""
     
     @staticmethod
-    def create_new(email: str, password: str) -> dict:
+    def create_new(
+        email: str,
+        password: str,
+        auth_provider: str = "email",
+    ) -> dict:
         """Create a new user dict ready for Supabase insert."""
         salt = bcrypt.gensalt()
         password_hash = bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
@@ -33,6 +37,7 @@ class User:
             "last_login": None,
             "onboarding_completed": False,
             "is_active": True,
+            "auth_provider": auth_provider,
         }
     
     @staticmethod
@@ -64,6 +69,7 @@ class User:
             "last_login": user_data.get("last_login"),
             "onboarding_completed": user_data.get("onboarding_completed", False),
             "is_active": user_data.get("is_active", True),
+            "auth_provider": user_data.get("auth_provider", "email"),
         }
 
 

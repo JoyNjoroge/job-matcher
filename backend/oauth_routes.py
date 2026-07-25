@@ -61,6 +61,12 @@ oauth.register(
 
 # ── Shared helper ─────────────────────────────────────────────────────────────
 
+class OAuthAccountConflict(Exception):
+    def __init__(self, registered_provider: str):
+        self.registered_provider = registered_provider
+        super().__init__(f"Account already uses {registered_provider}")
+
+
 def _missing_provider_config(provider: str):
     prefix = provider.upper()
     missing = [
@@ -82,13 +88,14 @@ def _upsert_oauth_user(email: str, full_name: str, provider: str) -> dict:
     user = db.get_user_by_email(email)
 
     if not user:
-        user_data = {
-            **User.create_new(email, secrets.token_hex(24)),
-            "full_name":     full_name,
-            "auth_provider": provider,
-            "is_active":     True,
-        }
+        user_data = User.create_new(
+            email,
+            secrets.token_hex(24),
+            auth_provider=provider,
+        )
         user = db.create_user(user_data)
+        if not user:
+            raise RuntimeError("OAuth user could not be created")
 
         profile_data              = UserProfile.create_new(user["id"])
         profile_data["full_name"] = full_name
@@ -98,8 +105,19 @@ def _upsert_oauth_user(email: str, full_name: str, provider: str) -> dict:
             UserRole.create_new(user["id"], RoleType.USER)
         ).execute()
     else:
-        if not user.get("auth_provider"):
-            db.update_user(user["id"], {"auth_provider": provider})
+        registered_provider = (user.get("auth_provider") or "email").lower()
+        if registered_provider != provider:
+            raise OAuthAccountConflict(registered_provider)
+        db.update_user(user["id"], User.update_last_login(user["id"]))
+        profile = db.get_profile(user["id"])
+        if not profile:
+            profile_data = UserProfile.create_new(
+                user["id"],
+                full_name=full_name,
+            )
+            db.create_profile(profile_data)
+        elif not profile.get("full_name") and full_name:
+            db.update_profile(user["id"], {"full_name": full_name})
 
     return {
         "access_token":  generate_access_token(str(user["id"]), user["email"]),
@@ -144,10 +162,14 @@ def google_callback():
 
         if not email:
             return _redirect_to_frontend(error="no_email")
+        if user_info.get("email_verified") is False:
+            return _redirect_to_frontend(error="unverified_email")
 
         tokens = _upsert_oauth_user(email, full_name, "google")
         return _redirect_to_frontend(tokens)
 
+    except OAuthAccountConflict as e:
+        return _redirect_to_frontend(error=f"account_method_{e.registered_provider}")
     except Exception as e:
         print(f"[OAuth/Google] {e}")
         import traceback; traceback.print_exc()
@@ -191,10 +213,14 @@ def linkedin_callback():
 
         if not email:
             return _redirect_to_frontend(error="no_email")
+        if user_info.get("email_verified") is False:
+            return _redirect_to_frontend(error="unverified_email")
 
         tokens = _upsert_oauth_user(email, full_name, "linkedin")
         return _redirect_to_frontend(tokens)
 
+    except OAuthAccountConflict as e:
+        return _redirect_to_frontend(error=f"account_method_{e.registered_provider}")
     except Exception as e:
         print(f"[OAuth/LinkedIn] {e}")
         import traceback; traceback.print_exc()

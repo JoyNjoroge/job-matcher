@@ -57,7 +57,13 @@ def register():
         # Check if user exists
         existing = db.get_user_by_email(email)
         if existing:
-            return jsonify({"error": "Email already registered"}), 409
+            provider = (existing.get("auth_provider") or "email").lower()
+            method = "email and password" if provider == "email" else provider.title()
+            return jsonify({
+                "error": f"This email is already registered. Sign in with {method}.",
+                "error_code": "email_already_registered",
+                "auth_provider": provider,
+            }), 409
         
         # Create user
         user_data = User.create_new(email, password)
@@ -124,6 +130,14 @@ def login():
         
         if not user:
             return jsonify({"error": "Invalid email or password"}), 401
+
+        provider = (user.get("auth_provider") or "email").lower()
+        if provider != "email":
+            return jsonify({
+                "error": f"This account uses {provider.title()} sign-in.",
+                "error_code": "use_oauth_provider",
+                "auth_provider": provider,
+            }), 409
         
         # Verify password
         password_valid = User.check_password(user, password)

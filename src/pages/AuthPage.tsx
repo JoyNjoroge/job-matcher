@@ -48,6 +48,10 @@ const AuthPage: React.FC<{ mode?: AuthMode }> = ({ mode = "login" }) => {
         google_failed: "Google sign-in could not be completed. Please try again.",
         linkedin_failed: "LinkedIn sign-in could not be completed. Please try again.",
         no_email: "The provider did not share an email address.",
+        unverified_email: "The provider did not return a verified email address.",
+        account_method_email: "This email already uses email and password. Sign in below.",
+        account_method_google: "This email is registered with Google. Continue with Google.",
+        account_method_linkedin: "This email is registered with LinkedIn. Continue with LinkedIn.",
       };
       setError(messages[oauthError] || "Social sign-in could not be completed.");
     }
