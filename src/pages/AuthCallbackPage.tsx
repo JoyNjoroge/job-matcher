@@ -4,14 +4,20 @@
 // or as a query param (?access_token=...) depending on your Supabase config.
 // This page reads it, stores it, then sends the user home.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
+  const { loadFromTokens } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const started = useRef(false);
 
   useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+
     // Supabase implicit flow puts tokens in the URL hash
     // e.g. /#access_token=xxx&refresh_token=yyy&token_type=bearer
     const hash = window.location.hash.substring(1);       // strip leading #
@@ -27,18 +33,18 @@ export default function AuthCallbackPage() {
       return;
     }
 
-    if (accessToken) {
-      localStorage.setItem("access_token", accessToken);
-      if (refreshToken) localStorage.setItem("refresh_token", refreshToken);
-
-      // Clean the tokens out of the URL before navigating
-      window.history.replaceState(null, "", window.location.pathname);
-
-      navigate("/analyze", { replace: true });
-    } else {
+    if (!accessToken || !refreshToken) {
       setError("No access token received. Please try signing in again.");
+      return;
     }
-  }, [navigate]);
+
+    // Remove credentials from browser history before validating the session.
+    window.history.replaceState(null, "", window.location.pathname);
+
+    void loadFromTokens(accessToken, refreshToken)
+      .then(() => navigate("/analyze", { replace: true }))
+      .catch(() => setError("Could not finish signing in. Please try again."));
+  }, [loadFromTokens, navigate]);
 
   if (error) {
     return (
