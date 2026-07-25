@@ -188,28 +188,32 @@ This project is licensed under the MIT License.
 The repository includes Netlify and Render configuration plus CI release checks.
 Before deploying:
 
-1. Copy `.env.example` values into Netlify and `backend/.env.example` values
-   into Render. Never add either real environment file to Git.
+1. Add the values documented in `.env.example` to Netlify and those in
+   `backend/.env.example` to Render. Never add real secrets to Git.
 2. Set `VITE_API_URL` to the public API URL including `/api`.
 3. Use independent random values for `SECRET_KEY`, `JWT_SECRET_KEY`, and
    `FLASK_SECRET_KEY`.
 4. Configure `SUPABASE_SERVICE_ROLE_KEY` on Render. Never expose that value in
    the frontend or extension.
-5. Create the Supabase tables used by the API: `users`, `user_profiles`,
+5. Configure `OPENROUTER_API_KEY`, keep
+   `OPENROUTER_MODEL=openrouter/free`, and set `OPENROUTER_SITE_URL` to the
+   deployed frontend URL.
+6. Create the Supabase tables used by the API: `users`, `user_profiles`,
    `user_roles`, `resumes`, `job_applications`, `subscriptions`,
    `usage_tracking`, `cover_letters`, and `ai_response_cache`.
-6. Configure Google and LinkedIn callback URLs as
+7. Configure Google and LinkedIn callback URLs as
    `${OAUTH_REDIRECT_BASE}/auth/{provider}/callback`.
-7. Configure the Paystack webhook as
+8. Configure the Paystack webhook as
    `https://YOUR_API/api/subscription/webhook` and ensure both plan codes use
    the same currency and prices shown in the UI.
-8. Set `FRONTEND_URL` without a trailing slash and deploy the backend before
+9. Set `FRONTEND_URL` without a trailing slash and deploy the backend before
    the frontend.
-9. Confirm `/api/health` returns HTTP 200. A database failure intentionally
+10. Confirm `/api/health` returns HTTP 200. A database failure intentionally
    returns HTTP 503.
-10. Upload the versioned extension archives from
-    `candorapply-extension/candorapply-extension/`. Their manifests are at the
-    root of each archive, as required by browser stores.
+11. Upload `candorapply-chrome-extension.zip` or
+    `candorapply-firefox-extension.zip` from
+    `candorapply-extension/candorapply-extension/`. Do not upload the legacy
+    ApplyBotPro archives.
 
 Run the same checks as CI:
 
