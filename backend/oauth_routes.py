@@ -26,7 +26,10 @@ from services.auth import generate_access_token, generate_refresh_token
 oauth_bp = Blueprint("oauth", __name__)
 oauth    = OAuth()
 
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://candorapply.joynjoroge.site")
+FRONTEND_URL = os.getenv(
+    "FRONTEND_URL",
+    "https://candorapply.joynjoroge.site",
+).rstrip("/")
 OAUTH_REDIRECT_BASE = os.getenv(
     "OAUTH_REDIRECT_BASE",
     "https://candorapply-backend.joynjoroge.site/api",

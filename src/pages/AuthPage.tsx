@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { FileSearch, Sparkles, Shield, Zap, Target, ArrowRight, CheckCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { API_BASE } from "@/api";
@@ -33,12 +33,25 @@ const LinkedInIcon = () => (
 
 const AuthPage: React.FC<{ mode?: AuthMode }> = ({ mode = "login" }) => {
   const { login, register } = useAuth();
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<"google" | "linkedin" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const isRegister = mode === "register";
+
+  useEffect(() => {
+    const oauthError = searchParams.get("oauth_error");
+    if (oauthError) {
+      const messages: Record<string, string> = {
+        google_failed: "Google sign-in could not be completed. Please try again.",
+        linkedin_failed: "LinkedIn sign-in could not be completed. Please try again.",
+        no_email: "The provider did not share an email address.",
+      };
+      setError(messages[oauthError] || "Social sign-in could not be completed.");
+    }
+  }, [searchParams]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
