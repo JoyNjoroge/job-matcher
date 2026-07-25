@@ -1,7 +1,7 @@
 """
 services/subscription.py
 ------------------------
-Plan limits, usage tracking, and enforcement for ApplyBotPro.
+Plan limits, usage tracking, and enforcement for CandorApply.
 
 Tiers:
   free   — try the product, low limits

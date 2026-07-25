@@ -25,7 +25,7 @@ const steps = [
 ];
 
 const faqs = [
-  ["Will it invent experience to match a job?", "No. If an answer is not supported by your profile, ApplyBot leaves it blank and asks you to decide."],
+  ["Will it invent experience to match a job?", "No. If an answer is not supported by your profile, CandorApply leaves it blank and asks you to decide."],
   ["Does it automatically submit applications?", "No. It prepares fields for your review. The final review and submit action always stay with you."],
   ["Which application sites work?", "The extension is designed for standard forms and common ATS platforms, including Greenhouse, Lever, Workday, and SmartRecruiters."],
 ];
@@ -106,7 +106,7 @@ export default function HomePage() {
       `}</style>
 
       <nav className="l-wrap l-nav">
-        <button className="l-brand" onClick={() => navigate("/")}><span className="l-mark">A</span> ApplyBot</button>
+        <button className="l-brand" onClick={() => navigate("/")}><span className="l-mark">A</span> CandorApply</button>
         <div className="l-links">
           <button className="l-link" onClick={() => document.getElementById("how")?.scrollIntoView()}>How it works</button>
           <button className="l-link" onClick={() => navigate("/pricing")}>Pricing</button>
@@ -128,7 +128,7 @@ export default function HomePage() {
         <div>
           <div className="l-kicker">A careful application assistant</div>
           <h1 className="l-title">Less form filling.<br /><em>More honest applying.</em></h1>
-          <p className="l-lede">ApplyBot fills job applications from your real experience, flags uncertain answers, and gives you the final say—so every application still sounds like you.</p>
+          <p className="l-lede">CandorApply fills job applications from your real experience, flags uncertain answers, and gives you the final say—so every application still sounds like you.</p>
           <div className="l-hero-actions">
             <button className="l-btn solid" onClick={start}>Create your profile <ArrowRight size={15} /></button>
             <button className="l-btn" onClick={() => document.getElementById("how")?.scrollIntoView()}>See how it works</button>
@@ -157,7 +157,7 @@ export default function HomePage() {
           <div className="principle-list">
             <div className="principle"><FileCheck2/><div><strong>Your record is the source</strong><p>Answers come from the profile and resume you control—not from plausible-sounding guesses.</p></div></div>
             <div className="principle"><ScanSearch/><div><strong>Uncertainty stays visible</strong><p>Low-confidence and sensitive questions are separated for review instead of being quietly filled.</p></div></div>
-            <div className="principle"><MousePointer2/><div><strong>You remain the applicant</strong><p>ApplyBot fills only after confirmation and never presses the final submit button.</p></div></div>
+            <div className="principle"><MousePointer2/><div><strong>You remain the applicant</strong><p>CandorApply fills only after confirmation and never presses the final submit button.</p></div></div>
           </div>
         </div>
       </section>
@@ -175,7 +175,7 @@ export default function HomePage() {
       </section>
 
       <section className="l-wrap cta"><div className="section-tag" style={{color:"#527261"}}>Start with your facts</div><h2 className="section-title">Make the next application easier without making it generic.</h2><button className="l-btn solid" onClick={start}>Build my profile <ArrowRight size={15}/></button></section>
-      <footer className="l-wrap footer"><span>© 2026 ApplyBot</span><span>Review first. Apply with confidence.</span></footer>
+      <footer className="l-wrap footer"><span>© 2026 CandorApply</span><span>Review first. Apply with confidence.</span></footer>
     </main>
   );
 }

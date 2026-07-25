@@ -5,11 +5,35 @@ Apply briefing routes - Analyze job fit before applying.
 from flask import Blueprint, request, jsonify, g
 from database import get_db_helper
 from services.auth import require_auth
-from services.gemini import analyze_job_fit_for_briefing
+from services.ai import analyze_job_fit_for_briefing
 from services.parser import parse_resume_file
 from services.subscription import require_feature, get_usage_summary
 
 apply_briefing_bp = Blueprint("apply_briefing", __name__)
+
+
+@apply_briefing_bp.route("/apply/get-resume-status", methods=["GET"])
+@require_auth
+def get_resume_status():
+    """Report whether the current user has enough saved data for a briefing."""
+    db = get_db_helper()
+    result = (
+        db.client.table("resumes")
+        .select("id, source")
+        .eq("user_id", g.user_id)
+        .eq("is_primary", True)
+        .limit(1)
+        .execute()
+    )
+    if result.data:
+        return jsonify({"has_resume": True, "resume_source": result.data[0].get("source", "upload")})
+
+    profile = db.get_profile(g.user_id) or {}
+    has_profile = bool(profile.get("summary") and profile.get("skills"))
+    return jsonify({
+        "has_resume": has_profile,
+        "resume_source": "profile" if has_profile else "none",
+    })
 
 
 @apply_briefing_bp.route("/apply/analyze-fit", methods=["POST"])

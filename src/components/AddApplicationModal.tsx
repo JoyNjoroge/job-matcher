@@ -10,8 +10,7 @@ import { useState, useRef } from "react";
 import { X, Link as LinkIcon, PenLine, Upload, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useApplications } from "@/contexts/ApplicationContext";
 import type { Job, AnalysisResult } from "@/types";
-
-const API_BASE = import.meta.env.VITE_API_URL || "https://job-matcher-rasg.onrender.com/api";
+import { API_BASE } from "@/api";
 
 type Mode = "url" | "manual";
 

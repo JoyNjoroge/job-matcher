@@ -41,7 +41,7 @@ class JobApplication(db.Model):
     # Status
     status = Column(Enum(ApplicationStatus), default=ApplicationStatus.DRAFT, nullable=False, index=True)
     
-    # Analysis Results (cached from Gemini)
+    # Analysis results (cached from the configured AI provider)
     fit_score = Column(Integer, nullable=True)
     interview_likelihood = Column(String(20), nullable=True)  # low, medium, high
     analysis_json = Column(JSON, default=dict, nullable=False)

@@ -21,7 +21,7 @@ def get_applications():
 @require_auth
 def create_application():
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         if not data.get('job_title') or not data.get('company'):
             return jsonify({"error": "job_title and company are required"}), 400
         
@@ -34,13 +34,17 @@ def create_application():
             source_url=data.get('source_url'),
             source_platform=data.get('source_platform'),
             resume_id=data.get('resume_id'),
+            tracked_by_extension=bool(data.get('tracked_by_extension')),
+            applied_at=data.get('applied_at'),
         )
+        if data.get("status") == ApplicationStatus.APPLIED.value:
+            application_data["status"] = ApplicationStatus.APPLIED.value
         
         db = get_db_helper()
         result = db.create_application(application_data)
         return jsonify({"application": JobApplication.to_dict(result)}), 201
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        return jsonify({"error": "Failed to create application"}), 500
 
 @applications_bp.route('/applications/<application_id>', methods=['GET'])
 @require_auth

@@ -4,7 +4,7 @@ from werkzeug.utils import secure_filename
 from database import get_db_helper
 from models import UserProfile, Resume
 from services.auth import require_auth
-from services.parser import parse_resume_file, use_gemini_for_parsing
+from services.parser import parse_resume_file, use_ai_for_parsing
 from datetime import datetime
 
 profile_bp = Blueprint("profile", __name__)
@@ -79,7 +79,7 @@ def parse_resume_for_profile():
         if not raw_text:
             return jsonify({"error": "Failed to extract text"}), 400
         
-        parsed_data = use_gemini_for_parsing(raw_text)
+        parsed_data = use_ai_for_parsing(raw_text)
         auto_apply = request.form.get('auto_apply', 'false').lower() == 'true'
         
         db = get_db_helper()

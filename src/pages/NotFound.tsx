@@ -93,7 +93,7 @@ const NotFound = () => {
       <div className="nf-content">
         <div className="nf-logo">
           <FileSearch size={22} color="#2563EB" />
-          <span>ApplyBotPro</span>
+          <span>CandorApply</span>
         </div>
 
         <div className="nf-number">404</div>

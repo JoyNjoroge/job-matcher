@@ -10,7 +10,9 @@ import type {
   Plan,
 } from "@/types";
 
-const API_BASE = import.meta.env.VITE_API_URL || "https://job-matcher-rasg.onrender.com/api";
+export const API_BASE = (
+  import.meta.env.VITE_API_URL || "https://job-matcher-rasg.onrender.com/api"
+).replace(/\/$/, "");
 
 // ─── Auth helper ──────────────────────────────────────────────
 function authHeaders(accessToken: string) {
@@ -70,7 +72,8 @@ export async function getApplications(): Promise<Application[]> {
   });
 
   if (!response.ok) throw new Error("Failed to fetch applications");
-  return response.json();
+  const payload = await response.json();
+  return Array.isArray(payload) ? payload : payload.applications ?? [];
 }
 
 // ─── Interview Prep ───────────────────────────────────────────
@@ -270,4 +273,27 @@ export async function cancelSubscription(accessToken: string) {
   }
 
   return response.json();
+}
+
+export async function createSubscriptionCheckout(accessToken: string, planId: string) {
+  const response = await fetch(`${API_BASE}/subscription/checkout`, {
+    method: "POST",
+    headers: authHeaders(accessToken),
+    body: JSON.stringify({ plan_id: planId }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.error || "Failed to start checkout");
+  return payload as { authorization_url?: string; reference?: string };
+}
+
+export async function verifySubscriptionPayment(accessToken: string, reference: string) {
+  const response = await fetch(
+    `${API_BASE}/subscription/verify?reference=${encodeURIComponent(reference)}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.message || payload?.error || "Payment verification failed");
+  }
+  return payload;
 }

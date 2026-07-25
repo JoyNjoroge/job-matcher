@@ -2,10 +2,9 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { FileSearch, Sparkles, Shield, Zap, Target, ArrowRight, CheckCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { API_BASE } from "@/api";
 
 type AuthMode = "login" | "register";
-
-const API_BASE = "https://job-matcher-rasg.onrender.com/api";
 
 function handleGoogleAuth() {
   const redirectTo = encodeURIComponent(`${window.location.origin}/auth/callback`);
@@ -130,7 +129,7 @@ const AuthPage: React.FC<{ mode?: AuthMode }> = ({ mode = "login" }) => {
         <div className="auth-left-blob2" />
         <div className="auth-logo" style={{ position: "relative", zIndex: 1 }}>
           <div className="auth-logo-icon"><FileSearch size={20} color="#93C5FD" /></div>
-          <span className="auth-logo-name">ApplyBotPro</span>
+          <span className="auth-logo-name">CandorApply</span>
         </div>
         <h1 className="auth-left-title" style={{ position: "relative", zIndex: 1 }}>
           Apply thoughtfully.<br />Move faster.
@@ -167,7 +166,7 @@ const AuthPage: React.FC<{ mode?: AuthMode }> = ({ mode = "login" }) => {
         <div className="auth-form-wrap">
           <div className="auth-mobile-logo">
             <FileSearch size={24} color="#2563EB" />
-            <span>ApplyBotPro</span>
+            <span>CandorApply</span>
           </div>
 
           <div className="auth-card">

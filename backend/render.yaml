@@ -1,7 +1,8 @@
 services:
   - type: web
-    name: applybotpro-backend
+    name: candorapply-backend
     runtime: python
+    rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn wsgi:app --workers 2 --threads 2 --timeout 120
     plan: free
@@ -18,7 +19,23 @@ services:
         sync: false
       - key: SUPABASE_ANON_KEY
         sync: false
-      - key: GOOGLE_API_KEY
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        value: openrouter/free
+      - key: OPENROUTER_SITE_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: LINKEDIN_CLIENT_ID
+        sync: false
+      - key: LINKEDIN_CLIENT_SECRET
+        sync: false
+      - key: OAUTH_REDIRECT_BASE
         sync: false
       - key: PAYSTACK_SECRET_KEY
         sync: false
@@ -34,3 +51,6 @@ services:
         sync: false
       - key: ADZUNA_APP_KEY
         sync: false
+      - key: SERPAPI_KEY
+        sync: false
+    healthCheckPath: /api/health

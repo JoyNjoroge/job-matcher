@@ -20,7 +20,7 @@ import os
 
 subscription_bp = Blueprint("subscription", __name__)
 
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://applybotpro.netlify.app/")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://applybotpro.netlify.app").rstrip("/")
 
 
 # ── Plans ─────────────────────────────────────────────────────────────────────

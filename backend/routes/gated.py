@@ -16,7 +16,7 @@ Analyze route - CV and job description analysis endpoint.
 import re
 from flask import Blueprint, request, jsonify, g
 from services.parser import parse_cv
-from services.gemini import analyze_job_fit
+from services.ai import analyze_job_fit
 from services.auth import require_auth
 from services.subscription import require_feature, get_usage_summary
 
@@ -118,11 +118,11 @@ def analyze_from_extension():
 # routes/cv.py
 # ════════════════════════════════════════════════════════════════
 CV_PY = '''"""
-CV routes - Refine CV and generate cover letters with Gemini.
+CV routes - Refine CV and generate cover letters with AI provider.
 """
 
 from flask import Blueprint, request, jsonify, g
-from services.gemini import _generate_content_text
+from services.ai import _generate_content_text
 from services.auth import require_auth
 from services.subscription import require_feature, check_cv_refinement_access
 import json
@@ -235,7 +235,7 @@ from flask import Blueprint, request, jsonify, g
 from database import get_db_helper
 from models import UserProfile, Resume
 from services.auth import require_auth
-from services.gemini import analyze_job_fit_for_briefing
+from services.ai import analyze_job_fit_for_briefing
 from services.parser import parse_resume_file
 from services.subscription import require_feature, get_usage_summary
 

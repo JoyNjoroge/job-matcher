@@ -405,7 +405,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <div className="sb-logo-mark">
               <FileSearch size={16} color="currentColor" />
             </div>
-            <span className="sb-logo-name">ApplyBotPro</span>
+            <span className="sb-logo-name">CandorApply</span>
 
             {/* ── FIX 1: Toggle always rendered.
                 When collapsed, CSS positions it as a floating pill outside the sidebar.
@@ -489,7 +489,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <div style={{ width: 26, height: 26, borderRadius: 7, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <FileSearch size={13} color="white" />
               </div>
-              ApplyBotPro
+              CandorApply
             </div>
             <button className="sb-action-btn" style={{ width: 36, height: 36, flex: "none" }} onClick={() => setDark(d => !d)}>
               {dark ? <Sun size={15} /> : <Moon size={15} />}

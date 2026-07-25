@@ -14,20 +14,12 @@ This means:
   - Response is faster and cheaper  ✓
 """
 
-import os
 import json
 from flask import Blueprint, request, jsonify, g
 from services.auth import require_auth
+from services.ai import _generate_content_text
 from services.subscription import require_feature
 from database import get_db_helper
-
-try:
-    import anthropic
-    _client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY", ""))
-    LLM_BACKEND = "anthropic"
-except Exception:
-    _client = None
-    LLM_BACKEND = "none"
 
 extension_bp = Blueprint("extension", __name__)
 
@@ -96,15 +88,21 @@ def autofill():
 
 
 def _fill_with_llm(fields, profile, job_context):
-    """Call LLM to map form fields to profile values. Falls back to rules."""
-    if not _client or LLM_BACKEND == "none":
-        return _rule_based(fields, profile)
+    """Use rules first, then spend AI quota only on unresolved fields."""
+    rule_results = _rule_based(fields, profile)
+    resolved = {
+        item["index"]: item for item in rule_results
+        if item.get("suggestedValue") is not None
+    }
+    unresolved = [f for f in fields if f.get("index") not in resolved]
+    if not unresolved:
+        return [resolved[f["index"]] for f in fields]
 
     fields_desc = json.dumps(
         [{"index": f["index"], "label": f.get("label",""), "name": f.get("name",""),
           "placeholder": f.get("placeholder",""), "type": f.get("type","text"),
           "required": f.get("required", False)}
-         for f in fields],
+         for f in unresolved],
         ensure_ascii=False
     )
 
@@ -121,7 +119,7 @@ Form fields:
 {fields_desc}
 
 For each field return the best value from the profile.
-- Return ONLY a JSON array, no markdown, no explanation.
+- Return ONLY a JSON object, no markdown, no explanation.
 - Use null for fields you cannot fill confidently.
 - Never infer or invent qualifications, dates, employers, education, salary,
   work authorization, sponsorship, demographic, disability, or veteran answers.
@@ -131,26 +129,33 @@ For each field return the best value from the profile.
 - For cover letter / summary fields use profile.summary (max 300 chars).
 - For skills fields join the skills with commas.
 
-JSON array format:
-[{{"index": 0, "suggestedValue": "value or null", "confidence": "high|medium|low"}}]"""
+JSON format:
+{{"suggestions": [{{"index": 0, "suggestedValue": "value or null", "confidence": "high|medium|low"}}]}}"""
 
     try:
-        msg = _client.messages.create(
-            model="claude-haiku-4-5-20251001",   # fast + cheap for this task
-            max_tokens=1024,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw  = msg.content[0].text.strip()
-        # Strip possible markdown fences
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-        return json.loads(raw.strip())
+        raw = _generate_content_text(prompt, json_mode=True)
+        payload = json.loads(raw)
+        ai_suggestions = payload.get("suggestions", [])
+        allowed_indexes = {f.get("index") for f in unresolved}
+        for item in ai_suggestions:
+            index = item.get("index")
+            confidence = item.get("confidence")
+            if index not in allowed_indexes or confidence not in {"high", "medium", "low"}:
+                continue
+            value = item.get("suggestedValue")
+            if value is not None and not isinstance(value, (str, int, float, bool)):
+                continue
+            resolved[index] = {
+                "index": index,
+                "suggestedValue": value,
+                "confidence": confidence,
+            }
     except Exception as e:
-        print(f"[Extension/autofill] LLM error: {e}")
-        return _rule_based(fields, profile)
+        print(f"[Extension/autofill] AI error: {e}")
 
+    by_index = {item["index"]: item for item in rule_results}
+    by_index.update(resolved)
+    return [by_index[f["index"]] for f in fields]
 
 def _rule_based(fields, profile):
     """Simple deterministic fallback — no LLM needed."""

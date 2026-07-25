@@ -1,3 +1,3 @@
 """
-Routes package for ApplyBot Pro API endpoints.
+Routes package for CandorApply API endpoints.
 """

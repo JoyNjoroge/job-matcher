@@ -29,8 +29,22 @@ interface ApplicationContextType {
 
 const ApplicationContext = createContext<ApplicationContextType | undefined>(undefined);
 
-const STORAGE_KEY = "applybotpro_applications";
-const SEARCH_RESULTS_KEY = "applybotpro_search_results";
+const STORAGE_KEY = "candorapply_applications";
+const SEARCH_RESULTS_KEY = "candorapply_search_results";
+const LEGACY_STORAGE_KEY = "applybotpro_applications";
+const LEGACY_SEARCH_RESULTS_KEY = "applybotpro_search_results";
+
+function migrateLegacyStorage(currentKey: string, legacyKey: string): string | null {
+  const current = localStorage.getItem(currentKey);
+  if (current) return current;
+
+  const legacy = localStorage.getItem(legacyKey);
+  if (legacy) {
+    localStorage.setItem(currentKey, legacy);
+    localStorage.removeItem(legacyKey);
+  }
+  return legacy;
+}
 
 export function ApplicationProvider({ children }: { children: React.ReactNode }) {
   const [applications, setApplicationsState] = useState<TrackedApplication[]>([]);
@@ -38,7 +52,7 @@ export function ApplicationProvider({ children }: { children: React.ReactNode })
 
   // Load applications from localStorage on mount
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = migrateLegacyStorage(STORAGE_KEY, LEGACY_STORAGE_KEY);
     if (stored) {
       try {
         setApplicationsState(JSON.parse(stored));
@@ -48,7 +62,10 @@ export function ApplicationProvider({ children }: { children: React.ReactNode })
     }
 
     // Load search results from localStorage
-    const storedSearch = localStorage.getItem(SEARCH_RESULTS_KEY);
+    const storedSearch = migrateLegacyStorage(
+      SEARCH_RESULTS_KEY,
+      LEGACY_SEARCH_RESULTS_KEY,
+    );
     if (storedSearch) {
       try {
         const parsed = JSON.parse(storedSearch);

@@ -17,7 +17,7 @@ def init_db(app):
     
     # Get config from app
     supabase_url = app.config.get('SUPABASE_URL')
-    supabase_key = app.config.get('SUPABASE_ANON_KEY')
+    supabase_key = app.config.get('SUPABASE_KEY')
     
     if not supabase_url or not supabase_key:
         raise RuntimeError(

@@ -3,7 +3,7 @@ Interview route - Interview preparation endpoints.
 """
 
 from flask import Blueprint, request, jsonify
-from services.gemini import generate_interview_prep
+from services.ai import generate_interview_prep
 from services.auth import require_auth
 from services.subscription import require_feature
 

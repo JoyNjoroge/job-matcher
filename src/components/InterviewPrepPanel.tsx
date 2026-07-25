@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { InterviewQuestion } from "@/components/InterviewQuestion";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import type { InterviewPrepData, TrackedApplication } from "@/types";
+import { API_BASE } from "@/api";
 
 interface InterviewPrepPanelProps {
   application: TrackedApplication;
@@ -29,10 +30,11 @@ export function InterviewPrepPanel({ application }: InterviewPrepPanelProps) {
     }
 
     try {
-      const response = await fetch("https://job-matcher-rasg.onrender.com/api/interview-prep", {
+      const response = await fetch(`${API_BASE}/interview-prep`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
         },
         body: JSON.stringify({
           application_id: application.id,

@@ -1,10 +1,10 @@
 """
-CV routes - Refine CV and generate cover letters with Gemini.
+CV routes - Refine CV and generate cover letters with AI provider.
 """
 
 import json
 from flask import Blueprint, request, jsonify, g
-from services.gemini import _generate_content_text
+from services.ai import _generate_content_text
 from services.auth import require_auth
 from services.subscription import require_feature, check_cv_refinement_access
 

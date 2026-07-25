@@ -12,6 +12,7 @@ import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApplications } from "@/contexts/ApplicationContext";
 import { DidYouApplyModal } from "@/components/DidYouApplyModal";
+import { API_BASE } from "@/api";
 
 interface FitAnalysis {
   fit_score: number;
@@ -62,7 +63,7 @@ export default function ApplyBriefingPage() {
 
   const checkResumeStatus = async () => {
     try {
-      const response = await fetch("https://job-matcher-rasg.onrender.com/api/apply/get-resume-status", {
+      const response = await fetch(`${API_BASE}/apply/get-resume-status`, {
         method: "GET",
         headers: { "Authorization": `Bearer ${localStorage.getItem("access_token")}` },
       });
@@ -82,7 +83,7 @@ export default function ApplyBriefingPage() {
     try {
       setLoading(true);
       setError(null);
-      let job = searchResults?.jobs?.find((j: any) => j.id === jobId);
+      const job = searchResults?.jobs?.find((j: any) => j.id === jobId);
       if (!job) { setError("Job not found. Please search again."); setLoading(false); return; }
       setJobData(job);
       const hasResume = await checkResumeStatus();
@@ -112,7 +113,7 @@ export default function ApplyBriefingPage() {
       } else {
         formData.append("use_profile_resume", "true");
       }
-      const response = await fetch("https://job-matcher-rasg.onrender.com/api/apply/analyze-fit", {
+      const response = await fetch(`${API_BASE}/apply/analyze-fit`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${localStorage.getItem("access_token")}` },
         body: formData,

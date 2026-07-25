@@ -4,25 +4,27 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
+import { lazy, Suspense } from "react";
 import { ApplicationProvider } from "./contexts/ApplicationContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { Layout } from "./components/Layout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
-import HomePage from "./pages/HomePage";
-import AnalyzePage from "./pages/AnalyzePage";
-import ResultsPage from "./pages/ResultsPage";
-import BoardPage from "./pages/BoardPage";
-import PrepPage from "./pages/PrepPage";
-import SearchPage from "./pages/SearchPage";
-import ApplyPage from "./pages/ApplyPage";
-import ApplicationsPage from "./pages/ApplicationsPage";
-import ProfilePage from "./pages/ProfilePage";
-import NotFound from "./pages/NotFound";
-import AuthPage from "./pages/AuthPage";
-import AuthCallbackPage from "./pages/AuthCallbackPage";
-import ApplyBriefingPage from "./pages/BriefingPage";
-import CVGeneratorPage from "./pages/CVGeneratorPage";
-import PricingPage from "./pages/PricingPage";
+const HomePage = lazy(() => import("./pages/HomePage"));
+const AnalyzePage = lazy(() => import("./pages/AnalyzePage"));
+const ResultsPage = lazy(() => import("./pages/ResultsPage"));
+const BoardPage = lazy(() => import("./pages/BoardPage"));
+const PrepPage = lazy(() => import("./pages/PrepPage"));
+const SearchPage = lazy(() => import("./pages/SearchPage"));
+const ApplyPage = lazy(() => import("./pages/ApplyPage"));
+const ApplicationsPage = lazy(() => import("./pages/ApplicationsPage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const AuthPage = lazy(() => import("./pages/AuthPage"));
+const AuthCallbackPage = lazy(() => import("./pages/AuthCallbackPage"));
+const ApplyBriefingPage = lazy(() => import("./pages/BriefingPage"));
+const CVGeneratorPage = lazy(() => import("./pages/CVGeneratorPage"));
+const PricingPage = lazy(() => import("./pages/PricingPage"));
+const BillingCallbackPage = lazy(() => import("./pages/BillingCallbackPage"));
 
 const queryClient = new QueryClient();
 
@@ -35,6 +37,11 @@ const App = () => (
             <TooltipProvider>
               <Toaster />
               <Sonner />
+              <Suspense fallback={
+                <div className="min-h-screen grid place-items-center bg-[var(--bg)] text-sm text-muted-foreground">
+                  Loading…
+                </div>
+              }>
               <Routes>
 
                 {/* PUBLIC — no auth needed */}
@@ -42,6 +49,7 @@ const App = () => (
                 <Route path="/login"    element={<AuthPage mode="login" />} />
                 <Route path="/register" element={<AuthPage mode="register" />} />
                 <Route path="/pricing"       element={<PricingPage />} />
+                <Route path="/billing/callback" element={<ProtectedRoute><BillingCallbackPage /></ProtectedRoute>} />
                 <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
                 {/* PROTECTED — ProtectedRoute redirects to /login if not authed */}
@@ -60,6 +68,7 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
 
               </Routes>
+              </Suspense>
             </TooltipProvider>
           </ApplicationProvider>
         </AuthProvider>

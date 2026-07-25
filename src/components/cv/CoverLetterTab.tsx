@@ -8,8 +8,8 @@ import { toast } from "@/hooks/use-toast";
 import { Sparkles, Loader2, Copy, Download } from "lucide-react";
 import { CoverLetterPdfDocument } from "@/components/cv/CVPdfTemplates";
 import type { JsonResume, CVTemplate } from "@/types/jsonResume";
+import { API_BASE } from "@/api";
 
-const API_BASE = "https://job-matcher-rasg.onrender.com/api";
 
 interface CoverLetterTabProps {
   resume: JsonResume;

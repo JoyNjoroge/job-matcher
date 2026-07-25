@@ -1,12 +1,14 @@
-# 🚀 ApplyBot Pro
+# CandorApply
 
-**Job Applications Made Easy** — An AI-powered job application assistant that helps you analyze job fits, search opportunities, track applications, and generate personalized cover letters.
+**Review first. Apply with confidence.** CandorApply helps candidates find
+better-fit roles, tailor truthful application materials, safely autofill forms,
+track applications, and prepare for interviews.
 
-![ApplyBot Pro](https://img.shields.io/badge/ApplyBot-Pro-6366f1?style=for-the-badge)
+![CandorApply](https://img.shields.io/badge/CandorApply-review--first-1f2937?style=for-the-badge)
 ![React](https://img.shields.io/badge/React-18.3-61dafb?style=flat-square&logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178c6?style=flat-square&logo=typescript)
 ![Flask](https://img.shields.io/badge/Flask-2.3.3-000000?style=flat-square&logo=flask)
-![Gemini AI](https://img.shields.io/badge/Gemini-AI-4285f4?style=flat-square&logo=google)
+![OpenRouter](https://img.shields.io/badge/OpenRouter-free-6467f2?style=flat-square)
 
 ---
 
@@ -22,7 +24,8 @@ Find opportunities with our integrated job scraper. Filter by location, job type
 Kanban-style board to manage your job applications. Track status from applied → interviewing → offer → accepted.
 
 ### 4. ✍️ AI-Powered Apply
-Generate personalized cover letters and emails tailored to each job description using Gemini AI.
+Generate truthful drafts tailored to each job description through the
+configured OpenRouter model.
 
 ### 5. 🎯 Interview Prep
 Get AI-generated interview questions and preparation materials based on the specific role and company.
@@ -45,7 +48,7 @@ Get AI-generated interview questions and preparation materials based on the spec
 ### Backend
 - **Flask 2.3.3** — Python web framework
 - **Flask-CORS 4.0.0** — Cross-origin resource sharing
-- **Google Generative AI (Gemini) 0.3.2** — AI-powered analysis and generation
+- **OpenRouter HTTP API** — AI-powered analysis and generation
 - **Requests 2.31.0** — HTTP library for job scraping
 - **BeautifulSoup4 4.12.2** — Web scraping and parsing
 - **PyPDF2 3.0.1** — PDF resume parsing
@@ -59,14 +62,14 @@ Get AI-generated interview questions and preparation materials based on the spec
 ### Prerequisites
 - Node.js 18+ & npm
 - Python 3.9+
-- Google Gemini API key
+- OpenRouter API key
 
 ### Frontend Setup
 
 ```bash
 # Clone the repository
 git clone <YOUR_GIT_URL>
-cd applybot-pro
+cd candorapply
 
 # Install dependencies
 npm install
@@ -90,7 +93,7 @@ pip install -r requirements.txt
 
 # Set up environment variables
 cp .env.example .env
-# Add your GEMINI_API_KEY to .env
+# Add your OPENROUTER_API_KEY to .env
 
 # Run the Flask server
 flask run
@@ -101,7 +104,9 @@ flask run
 Create a `.env` file in the backend directory:
 
 ```env
-GEMINI_API_KEY=your_gemini_api_key_here
+OPENROUTER_API_KEY=your_openrouter_key_here
+OPENROUTER_MODEL=openrouter/free
+OPENROUTER_SITE_URL=http://localhost:5173
 FLASK_ENV=development
 FLASK_DEBUG=1
 ```
@@ -111,7 +116,7 @@ FLASK_DEBUG=1
 ## 📁 Project Structure
 
 ```
-applybot-pro/
+candorapply/
 ├── src/
 │   ├── api/              # API client functions
 │   ├── components/       # Reusable UI components
@@ -124,7 +129,7 @@ applybot-pro/
 │   ├── app.py            # Flask application
 │   ├── routes/           # API endpoints
 │   ├── services/         # Business logic
-│   │   ├── gemini.py     # Gemini AI integration
+│   │   ├── ai.py         # OpenRouter integration
 │   │   ├── parser.py     # CV/resume parsing
 │   │   └── scraper.py    # Job scraping
 │   └── requirements.txt  # Python dependencies
@@ -175,3 +180,43 @@ This project is licensed under the MIT License.
 <p align="center">
   Made with ❤️ by Joy Njoroge
 </p>
+
+---
+
+## Production release checklist
+
+The repository includes Netlify and Render configuration plus CI release checks.
+Before deploying:
+
+1. Copy `.env.example` values into Netlify and `backend/.env.example` values
+   into Render. Never add either real environment file to Git.
+2. Set `VITE_API_URL` to the public API URL including `/api`.
+3. Use independent random values for `SECRET_KEY`, `JWT_SECRET_KEY`, and
+   `FLASK_SECRET_KEY`.
+4. Configure `SUPABASE_SERVICE_ROLE_KEY` on Render. Never expose that value in
+   the frontend or extension.
+5. Create the Supabase tables used by the API: `users`, `user_profiles`,
+   `user_roles`, `resumes`, `job_applications`, `subscriptions`,
+   `usage_tracking`, `cover_letters`, and `ai_response_cache`.
+6. Configure Google and LinkedIn callback URLs as
+   `${OAUTH_REDIRECT_BASE}/auth/{provider}/callback`.
+7. Configure the Paystack webhook as
+   `https://YOUR_API/api/subscription/webhook` and ensure both plan codes use
+   the same currency and prices shown in the UI.
+8. Set `FRONTEND_URL` without a trailing slash and deploy the backend before
+   the frontend.
+9. Confirm `/api/health` returns HTTP 200. A database failure intentionally
+   returns HTTP 503.
+10. Upload the versioned extension archives from
+    `candorapply-extension/candorapply-extension/`. Their manifests are at the
+    root of each archive, as required by browser stores.
+
+Run the same checks as CI:
+
+```bash
+npm ci
+npm run lint
+npm test
+npm run build
+python -m compileall -q backend
+```

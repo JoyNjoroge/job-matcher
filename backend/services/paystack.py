@@ -1,5 +1,5 @@
 """
-Paystack Payment Service - Subscription management for ApplyBot Pro.
+Paystack Payment Service - Subscription management for CandorApply.
 Docs: https://paystack.com/docs/api
 """
 

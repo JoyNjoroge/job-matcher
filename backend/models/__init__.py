@@ -1,5 +1,5 @@
 """
-Database models for ApplyBot Pro - Supabase version.
+Database models for CandorApply - Supabase version.
 These are helper classes, not SQLAlchemy models.
 """
 

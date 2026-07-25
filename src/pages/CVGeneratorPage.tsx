@@ -15,8 +15,8 @@ import { CoverLetterTab } from "@/components/cv/CoverLetterTab";
 import type { JsonResume, CVTemplate } from "@/types/jsonResume";
 import { emptyResume } from "@/types/jsonResume";
 import { useAuth } from "@/contexts/AuthContext";
+import { API_BASE } from "@/api";
 
-const API_BASE = "https://job-matcher-rasg.onrender.com/api";
 
 export default function CVGeneratorPage() {
   const auth = useAuth();
@@ -122,10 +122,10 @@ export default function CVGeneratorPage() {
     }
   }, [accessToken]);
 
-  // Auto-refine with Gemini
+  // Auto-refine with AI provider
   const autoRefine = useCallback(async () => {
     if (!jobDescription.trim()) {
-      toast({ title: "Job description required", description: "Paste a job description so Gemini can tailor your CV.", variant: "destructive" });
+      toast({ title: "Job description required", description: "Paste a job description so AI provider can tailor your CV.", variant: "destructive" });
       return;
     }
     setIsRefining(true);
@@ -138,16 +138,16 @@ export default function CVGeneratorPage() {
         },
         body: JSON.stringify({ current_cv: resume, job_description: jobDescription, company_name: companyName }),
       });
-      if (!res.ok) throw new Error("Gemini refinement failed");
+      if (!res.ok) throw new Error("AI provider refinement failed");
       const data = await res.json();
       if (data.refined_cv) setResume(data.refined_cv);
       if (data.changelog?.length > 0) {
-        toast({ title: "✨ Gemini refined your CV", description: data.changelog.join(". ") });
+        toast({ title: "✨ AI provider refined your CV", description: data.changelog.join(". ") });
       } else {
         toast({ title: "✨ CV refined", description: "Your CV has been optimized for this role." });
       }
     } catch {
-      toast({ title: "Refinement failed", description: "Could not connect to Gemini. Check your backend.", variant: "destructive" });
+      toast({ title: "Refinement failed", description: "Could not connect to AI provider. Check your backend.", variant: "destructive" });
     } finally {
       setIsRefining(false);
     }

@@ -3,12 +3,14 @@ Apply route - Application preparation endpoints.
 """
 
 from flask import Blueprint, request, jsonify
-from services.gemini import generate_application_materials
+from services.ai import generate_application_materials
+from services.auth import require_auth
 
 apply_bp = Blueprint("apply", __name__)
 
 
 @apply_bp.route("/apply/prepare", methods=["POST"])
+@require_auth
 def prepare_application():
     """
     Prepare application materials for a job.
@@ -41,5 +43,5 @@ def prepare_application():
 
         return jsonify(result)
     
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        return jsonify({"error": "Unable to prepare application"}), 500

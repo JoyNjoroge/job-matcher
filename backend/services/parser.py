@@ -1,5 +1,5 @@
 """
-Parser Service - Enhanced CV/resume file parsing with Gemini AI.
+Parser Service - CV/resume extraction with optional OpenRouter enrichment.
 """
 
 import io
@@ -8,17 +8,6 @@ import json
 from PyPDF2 import PdfReader
 from docx import Document
 import os
-import importlib
-import importlib.util
-
-
-def _load_gemini_sdk():
-    """Load preferred Gemini SDK with fallback for older environments."""
-    if importlib.util.find_spec("google.genai"):
-        return importlib.import_module("google.genai"), True
-    if importlib.util.find_spec("google.generativeai"):
-        return importlib.import_module("google.generativeai"), False
-    return None, False
 
 def parse_cv(file) -> str:
     """
@@ -140,7 +129,7 @@ def parse_docx(file) -> str:
 def extract_resume_structure(raw_text: str) -> dict:
     """
     Extract structured data from raw resume text using pattern matching.
-    This is a fallback when Gemini is not available.
+    This is the deterministic fallback when an AI provider is unavailable.
     
     Args:
         raw_text: Raw text content from resume
@@ -260,10 +249,9 @@ def extract_resume_structure(raw_text: str) -> dict:
     return structure
 
 
-def use_gemini_for_parsing(raw_text: str) -> dict:
+def use_ai_for_parsing(raw_text: str) -> dict:
     """
-    Use Gemini AI for more accurate resume parsing.
-    Falls back to pattern matching if Gemini fails.
+    Use the configured AI provider for richer parsing, with a local fallback.
     
     Args:
         raw_text: Raw text content from resume
@@ -272,21 +260,10 @@ def use_gemini_for_parsing(raw_text: str) -> dict:
         Structured dictionary with resume sections
     """
     try:
-        api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            print("No Gemini API key, using fallback parser")
+        if not os.getenv("OPENROUTER_API_KEY"):
+            print("No OpenRouter key, using fallback parser")
             return extract_resume_structure(raw_text)
-
-        genai_sdk, using_new_sdk = _load_gemini_sdk()
-        if not genai_sdk:
-            print("No Gemini SDK installed, using fallback parser")
-            return extract_resume_structure(raw_text)
-
-        if using_new_sdk:
-            client = genai_sdk.Client(api_key=api_key)
-        else:
-            genai_sdk.configure(api_key=api_key)
-            client = None
+        from services.ai import _generate_content_text
         
         prompt = f"""
         Parse this resume and extract structured information.
@@ -318,13 +295,7 @@ def use_gemini_for_parsing(raw_text: str) -> dict:
         {raw_text[:4000]}
         """
         
-        if using_new_sdk:
-            response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
-            response_text = (response.text or "").strip()
-        else:
-            model = genai_sdk.GenerativeModel("gemini-2.5-flash")
-            response = model.generate_content(prompt)
-            response_text = (response.text or "").strip()
+        response_text = _generate_content_text(prompt, json_mode=True)
         
         # Remove markdown code blocks if present
         if response_text.startswith("```json"):
@@ -361,15 +332,15 @@ def use_gemini_for_parsing(raw_text: str) -> dict:
             if key not in result:
                 result[key] = default_value
         
-        print(f"Gemini parsing successful: extracted {len(result.get('skills', []))} skills")
+        print(f"AI parsing successful: extracted {len(result.get('skills', []))} skills")
         return result
         
     except json.JSONDecodeError as e:
-        print(f"Gemini JSON decode error: {e}")
+        print(f"AI JSON decode error: {e}")
         print(f"Response was: {response_text[:200]}...")
         return extract_resume_structure(raw_text)
     except Exception as e:
-        print(f"Gemini parsing error: {e}")
+        print(f"AI parsing error: {e}")
         import traceback
         traceback.print_exc()
         return extract_resume_structure(raw_text)

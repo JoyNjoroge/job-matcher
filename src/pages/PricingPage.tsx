@@ -8,14 +8,9 @@
  */
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { getPlans, cancelSubscription } from "@/api";
+import { getPlans, cancelSubscription, createSubscriptionCheckout } from "@/api";
 import type { Plan } from "@/types";
 import { Check, Lock, Zap, Sparkles, Star, AlertCircle } from "lucide-react";
-
-const PAYSTACK_LINKS: Record<string, string> = {
-  seeker: "https://paystack.shop/pay/k0yr97mep-",
-  pro: "https://paystack.shop/pay/63s9eq94lp",
-};
 
 const PLAN_ORDER = ["free", "seeker", "pro"];
 const getPlanRank = (planId: string) => PLAN_ORDER.indexOf(planId);
@@ -27,6 +22,7 @@ export default function PricingPage() {
   const [cancelling, setCancelling] = useState(false);
   const [cancelMsg, setCancelMsg] = useState("");
   const [cancelError, setCancelError] = useState(false);
+  const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
 
   useEffect(() => {
     getPlans()
@@ -35,9 +31,20 @@ export default function PricingPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleUpgrade = (planId: string) => {
-    const link = PAYSTACK_LINKS[planId];
-    if (link) window.open(link, "_blank");
+  const handleUpgrade = async (planId: string) => {
+    setCheckoutPlan(planId);
+    setCancelMsg("");
+    try {
+      const token = localStorage.getItem("access_token") || "";
+      if (!token) throw new Error("Please sign in before upgrading.");
+      const checkout = await createSubscriptionCheckout(token, planId);
+      if (!checkout.authorization_url) throw new Error("Checkout URL was not returned.");
+      window.location.assign(checkout.authorization_url);
+    } catch (error) {
+      setCancelMsg(error instanceof Error ? error.message : "Failed to start checkout.");
+      setCancelError(true);
+      setCheckoutPlan(null);
+    }
   };
 
   const handleCancel = async () => {
@@ -293,8 +300,9 @@ export default function PricingPage() {
                   <button
                     className={`pr-btn ${isPro ? "pr-btn-purple" : "pr-btn-primary"}`}
                     onClick={() => handleUpgrade(p.id)}
+                    disabled={checkoutPlan !== null}
                   >
-                    Upgrade to {p.name}
+                    {checkoutPlan === p.id ? "Opening checkout…" : `Upgrade to ${p.name}`}
                   </button>
                 ) : isDowngrade ? (
                   <button className="pr-btn pr-btn-ghost" disabled>Lower plan</button>

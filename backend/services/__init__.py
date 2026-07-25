@@ -1,3 +1,3 @@
 """
-Services package for ApplyBot Pro business logic.
+Services package for CandorApply business logic.
 """

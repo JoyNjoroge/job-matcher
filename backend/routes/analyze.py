@@ -5,7 +5,7 @@ Analyze route - CV and job description analysis endpoint.
 import re
 from flask import Blueprint, request, jsonify, g
 from services.parser import parse_cv
-from services.gemini import analyze_job_fit
+from services.ai import analyze_job_fit
 from services.auth import require_auth
 from services.subscription import require_feature, get_usage_summary
 
