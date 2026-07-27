@@ -4,7 +4,7 @@ User profile model.
 
 from datetime import datetime
 from uuid import uuid4
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text, JSON
+from sqlalchemy import Column, String, DateTime, ForeignKey, Text, JSON, Numeric
 from sqlalchemy.orm import relationship
 from database import db
 
@@ -35,6 +35,19 @@ class UserProfile(db.Model):
     
     # Bio
     summary = Column(Text, nullable=True)
+    education = Column(JSON, default=list, nullable=False)
+    work_experience = Column(JSON, default=list, nullable=False)
+    certifications = Column(JSON, default=list, nullable=False)
+    projects = Column(JSON, default=list, nullable=False)
+    tools = Column(JSON, default=list, nullable=False)
+    languages = Column(JSON, default=list, nullable=False)
+    awards = Column(JSON, default=list, nullable=False)
+    volunteer_experience = Column(JSON, default=list, nullable=False)
+    publications = Column(JSON, default=list, nullable=False)
+    courses = Column(JSON, default=list, nullable=False)
+    interests = Column(JSON, default=list, nullable=False)
+    additional_details = Column(JSON, default=dict, nullable=False)
+    years_of_experience = Column(Numeric, nullable=True)
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -58,6 +71,22 @@ class UserProfile(db.Model):
             "github_url": self.github_url,
             "portfolio_url": self.portfolio_url,
             "summary": self.summary,
+            "education": self.education or [],
+            "work_experience": self.work_experience or [],
+            "certifications": self.certifications or [],
+            "projects": self.projects or [],
+            "tools": self.tools or [],
+            "languages": self.languages or [],
+            "awards": self.awards or [],
+            "volunteer_experience": self.volunteer_experience or [],
+            "publications": self.publications or [],
+            "courses": self.courses or [],
+            "interests": self.interests or [],
+            "additional_details": self.additional_details or {},
+            "years_of_experience": (
+                float(self.years_of_experience)
+                if self.years_of_experience is not None else None
+            ),
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

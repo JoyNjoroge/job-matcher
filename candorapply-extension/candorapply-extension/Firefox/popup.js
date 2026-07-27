@@ -8,6 +8,20 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.tabs.create({ url: CONFIG.FRONTEND_URL });
   });
 
+  document.getElementById('btn-assistant').addEventListener('click', async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) return;
+    chrome.tabs.sendMessage(tab.id, { type: 'OPEN_ASSISTANT' }, () => {
+      // Restricted browser pages cannot receive content-script messages.
+      if (chrome.runtime.lastError) {
+        const info = document.getElementById('info-message');
+        info.textContent = 'CandorApply cannot run on browser settings or extension-store pages.';
+        return;
+      }
+      window.close();
+    });
+  });
+
   document.getElementById('btn-refresh').addEventListener('click', () => {
     const btn = document.getElementById('btn-refresh');
     btn.textContent = 'Refreshing…';
@@ -90,7 +104,7 @@ async function checkActiveTab() {
     if (isJobBoard) {
       jobDot.className   = 'dot warn';
       jobStatus.textContent = 'Job page detected';
-      infoBox.innerHTML  = 'Click the <strong>AutoFill</strong> button on the page to fill this application.';
+      infoBox.innerHTML  = 'Select <strong>Open assistant on this page</strong> to review and fill this application.';
     } else if (url.hostname === new URL(CONFIG.FRONTEND_URL).hostname) {
       jobDot.className   = 'dot active';
       jobStatus.textContent = 'CandorApply dashboard';

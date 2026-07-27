@@ -78,9 +78,19 @@ def autofill():
         "linkedin_url":  profile.get("linkedin_url", ""),
         "github_url":    profile.get("github_url", ""),
         "portfolio_url": profile.get("portfolio_url", ""),
-        "job_title":     profile.get("job_title") or profile.get("headline", ""),
+        "job_title":     profile.get("job_title") or profile.get("headline")
+                         or next(iter(profile.get("job_titles") or []), ""),
         "summary":       (profile.get("summary") or profile.get("bio") or "")[:300],
         "skills":        skills_str,
+        "job_titles":    profile.get("job_titles", []),
+        "tools":         profile.get("tools", []),
+        "education":     profile.get("education", []),
+        "work_experience": profile.get("work_experience", []),
+        "certifications": profile.get("certifications", []),
+        "projects":      profile.get("projects", []),
+        "languages":     profile.get("languages", []),
+        "years_of_experience": profile.get("years_of_experience"),
+        "additional_details": profile.get("additional_details", {}),
     }
 
     suggestions = _fill_with_llm(fields, compact_profile, job_context)

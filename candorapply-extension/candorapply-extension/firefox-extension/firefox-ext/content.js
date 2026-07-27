@@ -52,6 +52,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     sendResponse({ success: true });
     return false;
   }
+
+  if (request.type === 'OPEN_ASSISTANT') {
+    activateAutoFill(request.jobId).finally(() => openPanel());
+    sendResponse({ success: true });
+    return false;
+  }
 });
 
 // ── Auto-activate if job ID is in URL ─────────────────────────────────────────
@@ -65,16 +71,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // ── Activation ────────────────────────────────────────────────────────────────
 
 async function activateAutoFill(jobId) {
-  if (isActivated) return;
+  if (isActivated) {
+    showAssistantButton();
+    return;
+  }
   isActivated   = true;
   currentJobId  = jobId;
 
-  const res = await chrome.runtime.sendMessage({ type: 'GET_USER_PROFILE' });
-  userProfile   = res?.profile || null;
-
-  // Show the floating button regardless — user can trigger even without a profile
-  // (panel will tell them to log in if needed)
+  // Render immediately. Profile loading must never prevent the assistant from
+  // appearing on slow application pages or after a service-worker restart.
   showAssistantButton();
+  try {
+    const res = await chrome.runtime.sendMessage({ type: 'GET_USER_PROFILE' });
+    userProfile = res?.profile || null;
+  } catch (error) {
+    console.warn('[CandorApply] Profile load failed:', error);
+    userProfile = null;
+  }
 
   if (CONFIG.FEATURES.DEBUG_MODE) {
     console.log('[CandorApply] Activated. Job:', jobId, '| Profile:', userProfile?.name);
@@ -452,6 +465,11 @@ function previewData() {
     ['GitHub',    userProfile.github_url   || '—'],
     ['Portfolio', userProfile.portfolio_url|| '—'],
     ['Skills',    skills],
+    ['Experience', `${userProfile.experience?.length || 0} role(s)`],
+    ['Education', `${userProfile.education?.length || 0} entr${userProfile.education?.length === 1 ? 'y' : 'ies'}`],
+    ['Certificates', `${userProfile.certifications?.length || 0}`],
+    ['Projects', `${userProfile.projects?.length || 0}`],
+    ['Languages', `${userProfile.languages?.length || 0}`],
   ];
 
   resultsDiv.innerHTML = `

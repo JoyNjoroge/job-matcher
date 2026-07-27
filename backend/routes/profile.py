@@ -47,7 +47,10 @@ def update_profile():
         
         allowed_fields = [
             "full_name", "phone", "location", "job_titles", "skills",
-            "experience_level", "linkedin_url", "github_url", "portfolio_url", "summary"
+            "experience_level", "linkedin_url", "github_url", "portfolio_url", "summary",
+            "education", "work_experience", "certifications", "projects", "tools",
+            "languages", "awards", "volunteer_experience", "publications",
+            "courses", "interests", "additional_details", "years_of_experience",
         ]
         
         update_data = {"updated_at": datetime.utcnow().isoformat()}
@@ -124,6 +127,16 @@ def parse_resume_for_profile():
             if parsed_data.get('job_titles'):
                 existing = set(profile.get('job_titles', []))
                 update_data['job_titles'] = list(existing | set(parsed_data['job_titles']))
+
+            structured_fields = [
+                'education', 'work_experience', 'certifications', 'projects',
+                'tools', 'languages', 'awards', 'volunteer_experience',
+                'publications', 'courses', 'interests', 'additional_details',
+                'years_of_experience',
+            ]
+            for field in structured_fields:
+                if parsed_data.get(field) and not profile.get(field):
+                    update_data[field] = parsed_data[field]
             
             updated_profile = db.update_profile(g.user_id, update_data)
             response_data["profile"] = UserProfile.to_dict(updated_profile)

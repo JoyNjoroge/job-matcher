@@ -100,7 +100,11 @@ def _strip_fences(text: str) -> str:
     return text.strip()
 
 
-def _generate_content_text(prompt: str, json_mode: bool = False) -> str:
+def _generate_content_text(
+    prompt: str,
+    json_mode: bool = False,
+    max_tokens: int = 2048,
+) -> str:
     """Generate text through OpenRouter with bounded retries and fallback."""
     if not OPENROUTER_API_KEY:
         raise RuntimeError("OpenRouter is not configured. Set OPENROUTER_API_KEY.")
@@ -126,7 +130,7 @@ def _generate_content_text(prompt: str, json_mode: bool = False) -> str:
                         {"role": "user", "content": prompt},
                     ],
                     "temperature": 0.1,
-                    "max_tokens": 2048,
+                    "max_tokens": max(256, min(max_tokens, 8192)),
                 }
                 if json_mode:
                     payload["response_format"] = {"type": "json_object"}

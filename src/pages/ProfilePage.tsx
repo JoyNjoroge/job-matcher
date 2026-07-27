@@ -8,11 +8,22 @@ interface Profile {
   id: string; full_name: string | null; phone: string | null; location: string | null;
   job_titles: string[]; skills: string[]; experience_level: string | null;
   linkedin_url: string | null; github_url: string | null; portfolio_url: string | null; summary: string | null;
+  education: Record<string, any>[]; work_experience: Record<string, any>[];
+  certifications: Record<string, any>[]; projects: Record<string, any>[];
+  tools: string[]; languages: Record<string, any>[]; awards: Record<string, any>[];
+  volunteer_experience: Record<string, any>[]; publications: Record<string, any>[];
+  courses: Record<string, any>[]; interests: string[];
+  additional_details: Record<string, any>; years_of_experience: number | null;
 }
 interface ParsedData {
   full_name?: string; email?: string; phone?: string; location?: string; summary?: string;
   job_titles?: string[]; skills?: string[]; experience_level?: string;
-  education?: any[]; experience?: any[]; projects?: any[];
+  education?: Record<string, any>[]; work_experience?: Record<string, any>[];
+  certifications?: Record<string, any>[]; projects?: Record<string, any>[];
+  tools?: string[]; languages?: Record<string, any>[]; awards?: Record<string, any>[];
+  volunteer_experience?: Record<string, any>[]; publications?: Record<string, any>[];
+  courses?: Record<string, any>[]; interests?: string[];
+  additional_details?: Record<string, any>; years_of_experience?: number;
 }
 
 export default function ProfilePage() {
@@ -122,10 +133,123 @@ export default function ProfilePage() {
     if (parsedData.experience_level && !formData.experience_level) updates.experience_level = parsedData.experience_level;
     if (parsedData.job_titles?.length) updates.job_titles = [...new Set([...(formData.job_titles || []), ...parsedData.job_titles])];
     if (parsedData.skills?.length) updates.skills = [...new Set([...(formData.skills || []), ...parsedData.skills])];
+    const structuredArrays = [
+      "education", "work_experience", "certifications", "projects", "languages",
+      "awards", "volunteer_experience", "publications", "courses",
+    ] as const;
+    structuredArrays.forEach((field) => {
+      const incoming = parsedData[field] || [];
+      const current = (formData[field] || []) as Record<string, any>[];
+      if (incoming.length) {
+        const seen = new Set(current.map(item => JSON.stringify(item)));
+        updates[field] = [...current, ...incoming.filter(item => !seen.has(JSON.stringify(item)))] as any;
+      }
+    });
+    (["tools", "interests"] as const).forEach((field) => {
+      const incoming = parsedData[field] || [];
+      if (incoming.length) updates[field] = [...new Set([...(formData[field] || []), ...incoming])] as any;
+    });
+    if (parsedData.years_of_experience != null) updates.years_of_experience = parsedData.years_of_experience;
+    if (parsedData.additional_details && Object.keys(parsedData.additional_details).length) {
+      updates.additional_details = {
+        ...(formData.additional_details || {}),
+        ...parsedData.additional_details,
+      };
+    }
     setFormData(updates);
     setShowParsedPreview(false);
     setParsedData(null);
     toast({ title: "Applied!", description: "Parsed data merged into your profile." });
+  };
+
+  const updateStructuredItem = (
+    field: keyof Profile,
+    index: number,
+    key: string,
+    value: string,
+    isArray: boolean,
+  ) => {
+    const items = [...(((formData as any)[field] || []) as Record<string, any>[])];
+    items[index] = {
+      ...items[index],
+      [key]: isArray ? value.split("\n").map(v => v.trim()).filter(Boolean) : value,
+    };
+    setFormData(prev => ({ ...prev, [field]: items }));
+  };
+
+  const addStructuredItem = (field: keyof Profile, template: Record<string, any>) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: [...((((prev as any)[field] || []) as Record<string, any>[])), template],
+    }));
+  };
+
+  const removeStructuredItem = (field: keyof Profile, index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: (((prev as any)[field] || []) as Record<string, any>[]).filter((_, i) => i !== index),
+    }));
+  };
+
+  const renderStructuredSection = (
+    title: string,
+    description: string,
+    field: keyof Profile,
+    template: Record<string, any>,
+  ) => {
+    const items = (((formData as any)[field] || []) as Record<string, any>[]);
+    return (
+      <div className="pr-card">
+        <div className="pr-card-header">
+          <div className="pr-card-icon" style={{ background: "rgba(36,92,70,0.08)" }}>
+            <Briefcase size={18} color="#245c46" />
+          </div>
+          <div>
+            <div className="pr-card-title">{title}</div>
+            <div className="pr-card-desc">{description}</div>
+          </div>
+        </div>
+        <div className="pr-card-body">
+          <div className="pr-entry-list">
+            {items.map((item, index) => (
+              <div className="pr-entry" key={`${String(field)}-${index}`}>
+                <div className="pr-entry-top">
+                  <strong>{item.title || item.name || item.degree || item.role || item.institution || item.organization || `${title} ${index + 1}`}</strong>
+                  <button className="pr-remove-entry" onClick={() => removeStructuredItem(field, index)} aria-label={`Remove ${title} entry`}><X size={14} /></button>
+                </div>
+                <div className="pr-grid-2">
+                  {Object.entries(item).map(([key, value]) => {
+                    const isArray = Array.isArray(value);
+                    const label = key.replaceAll("_", " ").replace(/\b\w/g, c => c.toUpperCase());
+                    return (
+                      <div className={`pr-field ${isArray || key === "description" ? "pr-field-wide" : ""}`} key={key}>
+                        <label className="pr-field-label">{label}</label>
+                        {isArray || key === "description" ? (
+                          <textarea
+                            className="pr-textarea pr-textarea-small"
+                            value={isArray ? value.join("\n") : String(value || "")}
+                            onChange={e => updateStructuredItem(field, index, key, e.target.value, isArray)}
+                            placeholder={isArray ? "One item per line" : ""}
+                          />
+                        ) : (
+                          <input
+                            className="pr-input"
+                            value={String(value ?? "")}
+                            onChange={e => updateStructuredItem(field, index, key, e.target.value, false)}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            {!items.length && <p className="pr-empty-section">No entries yet. Resume imports will appear here for review.</p>}
+          </div>
+          <button className="pr-btn pr-btn-outline pr-btn-sm" onClick={() => addStructuredItem(field, { ...template })}>Add {title.replace(/s$/, "")}</button>
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -218,6 +342,20 @@ export default function ProfilePage() {
         .pr-save-btn:hover:not(:disabled) { background: #193f31; transform: translateY(-2px); box-shadow: 0 8px 28px rgba(36,92,70,0.4); }
         .pr-save-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
         .pr-spinner { width: 18px; height: 18px; border: 2.5px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; }
+        .pr-entry-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; }
+        .pr-entry { border: 1px solid #dfe4df; background: #fafaf7; border-radius: 8px; padding: 16px; }
+        .pr-entry-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; color: #17201d; font-size: 14px; }
+        .pr-remove-entry { border: 0; background: #eef0ed; color: #66706b; border-radius: 6px; width: 28px; height: 28px; display: grid; place-items: center; cursor: pointer; }
+        .pr-field-wide { grid-column: 1 / -1; }
+        .pr-textarea-small { min-height: 76px; }
+        .pr-empty-section { color: #78817d; font-size: 13px; margin: 0; }
+        .pr-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+        @media (max-width: 640px) {
+          .pr-card-header { padding: 18px 18px 0; }
+          .pr-card-body { padding: 18px; }
+          .pr-linkedin-row, .pr-add-row { flex-direction: column; }
+          .pr-detail-grid { grid-template-columns: 1fr; }
+        }
       `}</style>
 
       {/* Header */}
@@ -267,6 +405,11 @@ export default function ProfilePage() {
               {parsedData.phone && <div className="pr-parsed-item">Phone: <strong>{parsedData.phone}</strong></div>}
               {parsedData.location && <div className="pr-parsed-item">Location: <strong>{parsedData.location}</strong></div>}
               {parsedData.skills?.length && <div className="pr-parsed-item">Skills: <strong>{parsedData.skills.slice(0, 6).join(", ")}{parsedData.skills.length > 6 ? ` +${parsedData.skills.length - 6} more` : ""}</strong></div>}
+              {!!parsedData.work_experience?.length && <div className="pr-parsed-item">Experience: <strong>{parsedData.work_experience.length} role(s)</strong></div>}
+              {!!parsedData.education?.length && <div className="pr-parsed-item">Education: <strong>{parsedData.education.length} entry/entries</strong></div>}
+              {!!parsedData.certifications?.length && <div className="pr-parsed-item">Certifications: <strong>{parsedData.certifications.length}</strong></div>}
+              {!!parsedData.projects?.length && <div className="pr-parsed-item">Projects: <strong>{parsedData.projects.length}</strong></div>}
+              {!!parsedData.languages?.length && <div className="pr-parsed-item">Languages: <strong>{parsedData.languages.length}</strong></div>}
               <div className="pr-parsed-actions">
                 <button className="pr-btn pr-btn-primary pr-btn-sm" onClick={applyParsedData}>Apply to Profile</button>
                 <button className="pr-btn pr-btn-outline pr-btn-sm" onClick={() => { setShowParsedPreview(false); setParsedData(null); }}>Dismiss</button>
@@ -387,6 +530,120 @@ export default function ProfilePage() {
           <div>
             <label className="pr-field-label">Professional Summary</label>
             <textarea name="summary" className="pr-textarea" value={formData.summary || ""} onChange={handleInputChange} placeholder="Write a brief professional summary..." rows={4} />
+          </div>
+        </div>
+      </div>
+
+      {renderStructuredSection(
+        "Work Experience",
+        "Roles, dates, responsibilities, achievements, and technologies.",
+        "work_experience",
+        { company: "", title: "", location: "", start_date: "", end_date: "", description: "", achievements: [], technologies: [] },
+      )}
+
+      {renderStructuredSection(
+        "Education",
+        "Institutions, qualifications, fields of study, grades, and dates.",
+        "education",
+        { institution: "", degree: "", field: "", start_date: "", end_date: "", grade: "", location: "", details: [] },
+      )}
+
+      {renderStructuredSection(
+        "Certifications",
+        "Credentials, issuers, dates, IDs, and verification links.",
+        "certifications",
+        { name: "", issuer: "", date: "", expiry_date: "", credential_id: "", url: "" },
+      )}
+
+      {renderStructuredSection(
+        "Projects",
+        "Projects, contributions, technologies, links, and measurable outcomes.",
+        "projects",
+        { name: "", role: "", url: "", start_date: "", end_date: "", description: "", highlights: [], technologies: [] },
+      )}
+
+      {renderStructuredSection(
+        "Languages",
+        "Spoken languages and proficiency.",
+        "languages",
+        { name: "", proficiency: "" },
+      )}
+
+      {renderStructuredSection(
+        "Awards",
+        "Awards, honors, issuing organizations, and supporting details.",
+        "awards",
+        { name: "", issuer: "", date: "", description: "" },
+      )}
+
+      {renderStructuredSection(
+        "Volunteer Experience",
+        "Organizations, roles, dates, and contributions.",
+        "volunteer_experience",
+        { organization: "", role: "", start_date: "", end_date: "", description: "" },
+      )}
+
+      {renderStructuredSection(
+        "Publications",
+        "Articles, papers, publishers, links, and dates.",
+        "publications",
+        { title: "", publisher: "", date: "", url: "", description: "" },
+      )}
+
+      {renderStructuredSection(
+        "Courses",
+        "Relevant courses and professional training.",
+        "courses",
+        { name: "", provider: "", date: "" },
+      )}
+
+      <div className="pr-card">
+        <div className="pr-card-header">
+          <div className="pr-card-icon" style={{ background: "rgba(36,92,70,0.08)" }}>
+            <FileText size={18} color="#245c46" />
+          </div>
+          <div>
+            <div className="pr-card-title">Additional Resume Details</div>
+            <div className="pr-card-desc">Tools, interests, and facts that do not belong in the sections above.</div>
+          </div>
+        </div>
+        <div className="pr-card-body pr-detail-grid">
+          <div className="pr-field">
+            <label className="pr-field-label">Tools & Technologies</label>
+            <textarea
+              className="pr-textarea"
+              value={(formData.tools || []).join("\n")}
+              onChange={e => setFormData(prev => ({ ...prev, tools: e.target.value.split("\n").map(v => v.trim()).filter(Boolean) }))}
+              placeholder="One tool per line"
+            />
+          </div>
+          <div className="pr-field">
+            <label className="pr-field-label">Interests</label>
+            <textarea
+              className="pr-textarea"
+              value={(formData.interests || []).join("\n")}
+              onChange={e => setFormData(prev => ({ ...prev, interests: e.target.value.split("\n").map(v => v.trim()).filter(Boolean) }))}
+              placeholder="One interest per line"
+            />
+          </div>
+          <div className="pr-field pr-field-wide">
+            <label className="pr-field-label">Other extracted facts</label>
+            <textarea
+              className="pr-textarea"
+              value={Object.entries(formData.additional_details || {}).map(([key, value]) => `${key}: ${typeof value === "string" ? value : JSON.stringify(value)}`).join("\n")}
+              onChange={e => {
+                const details = Object.fromEntries(
+                  e.target.value.split("\n").map(line => {
+                    const separator = line.indexOf(":");
+                    return separator > 0
+                      ? [line.slice(0, separator).trim(), line.slice(separator + 1).trim()]
+                      : [line.trim(), ""];
+                  }).filter(([key]) => key)
+                );
+                setFormData(prev => ({ ...prev, additional_details: details }));
+              }}
+              placeholder="Label: value"
+            />
           </div>
         </div>
       </div>

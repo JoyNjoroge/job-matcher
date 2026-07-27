@@ -144,6 +144,13 @@ def extract_resume_structure(raw_text: str) -> dict:
         "projects": [],
         "tools": [],
         "certifications": [],
+        "languages": [],
+        "awards": [],
+        "volunteer_experience": [],
+        "publications": [],
+        "courses": [],
+        "interests": [],
+        "additional_details": {},
         "years_of_experience": None,
         "experience_level": None,
         "summary": None,
@@ -266,7 +273,9 @@ def use_ai_for_parsing(raw_text: str) -> dict:
         from services.ai import _generate_content_text
         
         prompt = f"""
-        Parse this resume and extract structured information.
+        Parse this resume comprehensively. Preserve every factual detail that
+        could help complete a job application. Do not invent or infer facts
+        that are not supported by the resume.
         Return ONLY valid JSON (no markdown, no explanation) with this exact structure:
         {{
             "full_name": "string or null",
@@ -278,24 +287,39 @@ def use_ai_for_parsing(raw_text: str) -> dict:
             "skills": ["skill1", "skill2"],
             "tools": ["tool1", "tool2"],
             "education": [
-                {{"institution": "string", "degree": "string", "field": "string", "year": "string"}}
+                {{"institution": "string", "degree": "string", "field": "string", "start_date": "string", "end_date": "string", "grade": "string", "location": "string", "details": ["string"]}}
             ],
-            "experience": [
-                {{"company": "string", "title": "string", "duration": "string", "description": "string"}}
+            "work_experience": [
+                {{"company": "string", "title": "string", "location": "string", "start_date": "string", "end_date": "string", "description": "string", "achievements": ["string"], "technologies": ["string"]}}
             ],
             "projects": [
-                {{"name": "string", "description": "string"}}
+                {{"name": "string", "role": "string", "url": "string", "start_date": "string", "end_date": "string", "description": "string", "highlights": ["string"], "technologies": ["string"]}}
             ],
-            "certifications": ["cert1", "cert2"],
+            "certifications": [
+                {{"name": "string", "issuer": "string", "date": "string", "expiry_date": "string", "credential_id": "string", "url": "string"}}
+            ],
+            "languages": [{{"name": "string", "proficiency": "string"}}],
+            "awards": [{{"name": "string", "issuer": "string", "date": "string", "description": "string"}}],
+            "volunteer_experience": [{{"organization": "string", "role": "string", "start_date": "string", "end_date": "string", "description": "string"}}],
+            "publications": [{{"title": "string", "publisher": "string", "date": "string", "url": "string", "description": "string"}}],
+            "courses": [{{"name": "string", "provider": "string", "date": "string"}}],
+            "interests": ["string"],
             "years_of_experience": 0,
-            "experience_level": "entry|mid|senior|lead|executive"
+            "experience_level": "entry|mid|senior|lead|executive",
+            "additional_details": {{
+                "key copied from an otherwise unclassified resume section": "complete factual value"
+            }}
         }}
         
-        Resume text (first 4000 characters):
-        {raw_text[:4000]}
+        Resume text:
+        {raw_text[:16000]}
         """
         
-        response_text = _generate_content_text(prompt, json_mode=True)
+        response_text = _generate_content_text(
+            prompt,
+            json_mode=True,
+            max_tokens=4096,
+        )
         
         # Remove markdown code blocks if present
         if response_text.startswith("```json"):
@@ -321,9 +345,16 @@ def use_ai_for_parsing(raw_text: str) -> dict:
             "skills": [],
             "tools": [],
             "education": [],
-            "experience": [],
+            "work_experience": [],
             "projects": [],
             "certifications": [],
+            "languages": [],
+            "awards": [],
+            "volunteer_experience": [],
+            "publications": [],
+            "courses": [],
+            "interests": [],
+            "additional_details": {},
             "years_of_experience": None,
             "experience_level": None,
         }
@@ -331,6 +362,11 @@ def use_ai_for_parsing(raw_text: str) -> dict:
         for key, default_value in defaults.items():
             if key not in result:
                 result[key] = default_value
+
+        # Accept older model output while keeping one canonical profile field.
+        if not result.get("work_experience") and result.get("experience"):
+            result["work_experience"] = result["experience"]
+        result.pop("experience", None)
         
         print(f"AI parsing successful: extracted {len(result.get('skills', []))} skills")
         return result
