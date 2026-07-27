@@ -15,6 +15,7 @@ This means:
 """
 
 import json
+import re
 from flask import Blueprint, request, jsonify, g
 from services.auth import require_auth
 from services.ai import _generate_content_text
@@ -175,26 +176,28 @@ def _rule_based(fields, profile):
 
     for f in fields:
         key = f"{f.get('label','')} {f.get('name','')} {f.get('placeholder','')}".lower()
+        normalized = re.sub(r"[^a-z0-9]+", " ", key).strip()
         val = None
 
-        if   "email" in key or "e-mail" in key:             val = profile.get("email")
-        elif "phone" in key or "mobile" in key or "tel" in key: val = profile.get("phone")
-        elif "first" in key and "name" in key:               val = first
-        elif "last"  in key and "name" in key:               val = last
-        elif "full"  in key and "name" in key:               val = profile.get("full_name")
-        elif "name"  in key:                                 val = profile.get("full_name")
-        elif "city"  in key:                                 val = profile.get("city")
-        elif "address" in key:                               val = profile.get("address")
-        elif "state" in key or "province" in key:            val = profile.get("state")
-        elif "zip"   in key or "postal" in key:              val = profile.get("zip")
-        elif "country" in key:                               val = profile.get("country")
-        elif "linkedin" in key:                              val = profile.get("linkedin_url")
-        elif "github"   in key:                              val = profile.get("github_url")
-        elif "portfolio" in key or "website" in key:         val = profile.get("portfolio_url")
-        elif "skill"    in key:                              val = profile.get("skills")
-        elif "summary"  in key or "cover" in key or "about" in key or "bio" in key:
+        if re.search(r"\b(e mail|email)( address)?\b", normalized): val = profile.get("email")
+        elif re.search(r"\b(phone|mobile|telephone)( number)?\b", normalized): val = profile.get("phone")
+        elif re.search(r"\bfirst name\b", normalized):             val = first
+        elif re.search(r"\b(last name|surname)\b", normalized):    val = last
+        elif re.search(r"\bfull name\b", normalized):              val = profile.get("full_name")
+        elif re.fullmatch(r"(applicant |candidate |legal |preferred )?name( value)?", normalized):
+            val = profile.get("full_name")
+        elif re.search(r"\bcity\b", normalized):                   val = profile.get("city")
+        elif re.search(r"\b(street )?address\b", normalized):      val = profile.get("address")
+        elif re.search(r"\b(state|province|region)\b", normalized): val = profile.get("state")
+        elif re.search(r"\b(zip|postal)( code)?\b", normalized):   val = profile.get("zip")
+        elif re.search(r"\bcountry\b", normalized):                val = profile.get("country")
+        elif re.search(r"\blinkedin\b", normalized):               val = profile.get("linkedin_url")
+        elif re.search(r"\bgithub\b", normalized):                 val = profile.get("github_url")
+        elif re.search(r"\b(portfolio|personal website)\b", normalized): val = profile.get("portfolio_url")
+        elif re.search(r"\bskills?\b", normalized):                val = profile.get("skills")
+        elif re.search(r"\b(professional summary|cover letter|about me|biography|bio)\b", normalized):
             val = profile.get("summary")
-        elif "title" in key or "position" in key or "role" in key:
+        elif re.search(r"\b(current|most recent|desired) (job )?(title|position|role)\b", normalized):
             val = profile.get("job_title")
 
         results.append({

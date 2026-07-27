@@ -19,7 +19,7 @@ import { API_BASE } from "@/api";
 
 
 export default function CVGeneratorPage() {
-  const auth = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
   const locationState = location.state as {
     jobDescription?: string;
@@ -55,25 +55,33 @@ export default function CVGeneratorPage() {
     if (!accessToken) return;
     setIsLoadingProfile(true);
     try {
-      const res = await fetch(`${API_BASE}/profile`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!res.ok) throw new Error("Failed to load profile");
-      const data = await res.json();
-      const profile = data.profile || {};
-      const resumeData = data.resume?.parsed_json || {};
+      const headers = { Authorization: `Bearer ${accessToken}` };
+      const [profileRes, resumeRes] = await Promise.all([
+        fetch(`${API_BASE}/profile`, { headers }),
+        fetch(`${API_BASE}/resumes/primary`, { headers }),
+      ]);
+      if (!profileRes.ok || !resumeRes.ok) throw new Error("Failed to load profile or resume");
+      const [profileData, primaryResumeData] = await Promise.all([
+        profileRes.json(),
+        resumeRes.json(),
+      ]);
+      const profile = profileData.profile || {};
+      const resumeData = primaryResumeData.resume?.parsed_json || {};
+      const workExperience = resumeData.experience || resumeData.work_experience || profile.work_experience || [];
+      const education = resumeData.education || profile.education || [];
+      const skills = resumeData.skills || profile.skills || [];
 
       const mapped: JsonResume = {
         basics: {
           name: profile.full_name || "",
-          label: profile.desired_job_title || resumeData.seniority_estimation || "",
-          email: profile.email || "",
+          label: profile.job_titles?.[0] || resumeData.job_titles?.[0] || resumeData.seniority_estimation || "",
+          email: user?.email || resumeData.email || "",
           phone: profile.phone || "",
           url: profile.linkedin_url || "",
-          summary: profile.bio || "",
+          summary: profile.summary || resumeData.summary || "",
           location: { city: profile.location || "", region: "", countryCode: "" },
         },
-        work: (resumeData.experience || []).map((exp: any) => ({
+        work: workExperience.map((exp: any) => ({
           name: exp.company || "",
           position: exp.title || exp.role || "",
           startDate: exp.start_date || "",
@@ -81,28 +89,39 @@ export default function CVGeneratorPage() {
           summary: exp.description || "",
           highlights: exp.highlights || exp.achievements || [],
         })),
-        education: (resumeData.education || []).map((ed: any) => ({
+        education: education.map((ed: any) => ({
           institution: ed.institution || ed.school || "",
           area: ed.field || ed.area || "",
           studyType: ed.degree || "",
           startDate: ed.start_date || "",
           endDate: ed.end_date || "",
         })),
-        skills: (resumeData.skills || []).map((s: any) =>
+        skills: skills.map((s: any) =>
           typeof s === "string"
             ? { name: "Skills", keywords: [s] }
             : { name: s.category || s.name || "Skills", keywords: s.items || s.keywords || [] }
         ),
-        projects: (resumeData.projects || []).map((p: any) => ({
+        projects: (resumeData.projects || profile.projects || []).map((p: any) => ({
           name: p.name || "",
           description: p.description || "",
           highlights: p.highlights || [],
         })),
-        certifications: (resumeData.certifications || []).map((c: any) =>
+        certifications: (resumeData.certifications || profile.certifications || []).map((c: any) =>
           typeof c === "string"
             ? { name: c, issuer: "", date: "" }
             : { name: c.name || "", issuer: c.issuer || "", date: c.date || "" }
         ),
+        languages: (resumeData.languages || profile.languages || []).map((language: any) =>
+          typeof language === "string"
+            ? { language, fluency: "" }
+            : { language: language.language || language.name || "", fluency: language.fluency || language.level || "" }
+        ),
+        awards: (resumeData.awards || profile.awards || []).map((award: any) =>
+          typeof award === "string"
+            ? { title: award, awarder: "", date: "" }
+            : { title: award.title || award.name || "", awarder: award.awarder || award.issuer || "", date: award.date || "", summary: award.summary || "" }
+        ),
+        customSections: [],
       };
 
       const stringSkills = mapped.skills.filter((s) => s.name === "Skills");
@@ -120,7 +139,7 @@ export default function CVGeneratorPage() {
     } finally {
       setIsLoadingProfile(false);
     }
-  }, [accessToken]);
+  }, [accessToken, user?.email]);
 
   // Auto-refine with AI provider
   const autoRefine = useCallback(async () => {

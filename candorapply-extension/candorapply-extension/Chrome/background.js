@@ -20,10 +20,19 @@ async function syncAuthToken() {
     //    (service workers can't access localStorage directly)
     const tabs = await chrome.tabs.query({ url: CONFIG.FRONTEND_URL + '/*' });
     if (tabs.length > 0) {
-      const credentials = await chrome.tabs.sendMessage(
-        tabs[0].id,
-        { type: 'READ_LOCAL_STORAGE' }
-      );
+      // A matching tab can exist before its content script has loaded (or after
+      // the extension was reloaded). That is a normal race, not an auth error.
+      let credentials = null;
+      try {
+        credentials = await chrome.tabs.sendMessage(
+          tabs[0].id,
+          { type: 'READ_LOCAL_STORAGE' }
+        );
+      } catch (error) {
+        if (!String(error?.message || error).includes('Receiving end does not exist')) {
+          throw error;
+        }
+      }
       if (credentials?.token) {
         await chrome.storage.local.set({
           authToken: credentials.token,
@@ -45,6 +54,7 @@ async function syncAuthToken() {
     return false;
   } catch (e) {
     console.error('[Auth] syncAuthToken error:', e);
+    return false;
   }
 }
 

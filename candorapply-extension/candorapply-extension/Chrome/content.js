@@ -354,14 +354,15 @@ function simpleFieldMatching(formFields, profile) {
   const summary     = profile.summary || (profile.resume_text || '').substring(0, 500);
 
   formFields.forEach(field => {
-    const key = `${field.label} ${field.name} ${field.placeholder}`.toLowerCase();
+    const key = `${field.label} ${field.name} ${field.placeholder}`
+      .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
-    if      (/email|e-mail/.test(key))                       field.suggestedValue = profile.email;
-    else if (/phone|mobile|tel/.test(key))                   field.suggestedValue = profile.phone;
-    else if (/first.?name/.test(key))                        field.suggestedValue = firstName;
-    else if (/last.?name|surname/.test(key))                 field.suggestedValue = lastName;
-    else if (/full.?name/.test(key))                         field.suggestedValue = profile.name;
-    else if (/\bname\b/.test(key) && !/company|user/.test(key)) field.suggestedValue = profile.name;
+    if      (/\b(e mail|email)( address)?\b/.test(key))      field.suggestedValue = profile.email;
+    else if (/\b(phone|mobile|telephone)( number)?\b/.test(key)) field.suggestedValue = profile.phone;
+    else if (/\bfirst name\b/.test(key))                     field.suggestedValue = firstName;
+    else if (/\b(last name|surname)\b/.test(key))            field.suggestedValue = lastName;
+    else if (/\bfull name\b/.test(key))                      field.suggestedValue = profile.name;
+    else if (/^(applicant |candidate |legal |preferred )?name( value)?$/.test(key)) field.suggestedValue = profile.name;
     else if (/city/.test(key))                               field.suggestedValue = profile.city;
     else if (/address/.test(key))                            field.suggestedValue = profile.address;
     else if (/state|province/.test(key))                     field.suggestedValue = profile.state;
@@ -369,10 +370,10 @@ function simpleFieldMatching(formFields, profile) {
     else if (/country/.test(key))                            field.suggestedValue = profile.country;
     else if (/linkedin/.test(key))                           field.suggestedValue = profile.linkedin_url;
     else if (/github/.test(key))                             field.suggestedValue = profile.github_url;
-    else if (/portfolio|personal.?site|website/.test(key))   field.suggestedValue = profile.portfolio_url;
-    else if (/skill/.test(key))                              field.suggestedValue = skillsStr;
-    else if (/summary|cover|about|bio|introduce/.test(key))  field.suggestedValue = summary;
-    else if (/title|position|role|headline/.test(key))       field.suggestedValue = profile.job_title;
+    else if (/\b(portfolio|personal website)\b/.test(key))   field.suggestedValue = profile.portfolio_url;
+    else if (/\bskills?\b/.test(key))                        field.suggestedValue = skillsStr;
+    else if (/\b(professional summary|cover letter|about me|biography|bio)\b/.test(key)) field.suggestedValue = summary;
+    else if (/\b(current|most recent|desired) (job )?(title|position|role)\b/.test(key)) field.suggestedValue = profile.job_title;
   });
 
   return formFields;
