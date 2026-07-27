@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { Sparkles, Loader2, Copy, Download } from "lucide-react";
 import { CoverLetterPdfDocument } from "@/components/cv/CVPdfTemplates";
+import { PdfPreviewBoundary } from "@/components/cv/PdfPreviewBoundary";
 import type { JsonResume, CVTemplate } from "@/types/jsonResume";
 import { API_BASE } from "@/api";
 
@@ -18,9 +19,18 @@ interface CoverLetterTabProps {
   template: CVTemplate;
   coverLetter: string;
   onCoverLetterChange: (value: string) => void;
+  allowGenerate?: boolean;
 }
 
-export function CoverLetterTab({ resume, jobDescription, companyName, template, coverLetter, onCoverLetterChange }: CoverLetterTabProps) {
+export function CoverLetterTab({
+  resume,
+  jobDescription,
+  companyName,
+  template,
+  coverLetter,
+  onCoverLetterChange,
+  allowGenerate = true,
+}: CoverLetterTabProps) {
   const accessToken = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
   const [isGenerating, setIsGenerating] = useState(false);
   const [tone, setTone] = useState<"professional" | "enthusiastic" | "concise">("professional");
@@ -85,30 +95,36 @@ export function CoverLetterTab({ resume, jobDescription, companyName, template, 
       {/* Left: Controls + Editor */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Generate Cover Letter</CardTitle>
+          <CardTitle className="text-base">
+            {allowGenerate ? "Generate Cover Letter" : "Edit Cover Letter"}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-1">
-            <Label className="text-xs font-semibold text-muted-foreground">Tone</Label>
-            <div className="flex gap-2">
-              {(["professional", "enthusiastic", "concise"] as const).map((t) => (
-                <Button key={t} size="sm" variant={tone === t ? "default" : "outline"} onClick={() => setTone(t)} className="capitalize text-xs">
-                  {t}
-                </Button>
-              ))}
-            </div>
-          </div>
+          {allowGenerate && (
+            <>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold text-muted-foreground">Tone</Label>
+                <div className="flex gap-2">
+                  {(["professional", "enthusiastic", "concise"] as const).map((t) => (
+                    <Button key={t} size="sm" variant={tone === t ? "default" : "outline"} onClick={() => setTone(t)} className="capitalize text-xs">
+                      {t}
+                    </Button>
+                  ))}
+                </div>
+              </div>
 
-          <div className="p-3 rounded-md border border-border bg-muted/30 text-xs text-muted-foreground space-y-1">
-            <p><strong>Using CV data:</strong> {resume.basics.name || "Not set"}</p>
-            <p><strong>Company:</strong> {companyName || "Not set"}</p>
-            <p><strong>Job description:</strong> {jobDescription ? `${jobDescription.slice(0, 80)}...` : "Not set"}</p>
-          </div>
+              <div className="p-3 rounded-md border border-border bg-muted/30 text-xs text-muted-foreground space-y-1">
+                <p><strong>Using CV data:</strong> {resume.basics.name || "Not set"}</p>
+                <p><strong>Company:</strong> {companyName || "Not set"}</p>
+                <p><strong>Job description:</strong> {jobDescription ? `${jobDescription.slice(0, 80)}...` : "Not set"}</p>
+              </div>
 
-          <Button onClick={generate} disabled={isGenerating} className="w-full">
-            {isGenerating ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Sparkles className="h-4 w-4 mr-1" />}
-            Generate with AI
-          </Button>
+              <Button onClick={generate} disabled={isGenerating} className="w-full">
+                {isGenerating ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Sparkles className="h-4 w-4 mr-1" />}
+                Generate with AI
+              </Button>
+            </>
+          )}
 
           {coverLetter && (
             <>
@@ -123,10 +139,16 @@ export function CoverLetterTab({ resume, jobDescription, companyName, template, 
               <Textarea
                 value={coverLetter}
                 onChange={(e) => onCoverLetterChange(e.target.value)}
-                rows={14}
+                rows={18}
                 className="text-sm leading-relaxed"
               />
             </>
+          )}
+
+          {!coverLetter && !allowGenerate && (
+            <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
+              No cover letter was generated. Run the document generator again.
+            </div>
           )}
         </CardContent>
       </Card>
@@ -139,9 +161,11 @@ export function CoverLetterTab({ resume, jobDescription, companyName, template, 
         <CardContent className="p-0">
           <div className="h-[calc(100vh-340px)] min-h-[500px]">
             {coverLetter ? (
-              <PDFViewer width="100%" height="100%" showToolbar={false} className="rounded-b-lg">
-                <CoverLetterPdfDocument coverLetter={coverLetter} resume={resume} template={template} companyName={companyName} />
-              </PDFViewer>
+              <PdfPreviewBoundary>
+                <PDFViewer width="100%" height="100%" showToolbar={false} className="rounded-b-lg">
+                  <CoverLetterPdfDocument coverLetter={coverLetter} resume={resume} template={template} companyName={companyName} />
+                </PDFViewer>
+              </PdfPreviewBoundary>
             ) : (
               <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
                 Generate a cover letter to see the styled preview

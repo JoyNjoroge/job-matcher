@@ -40,9 +40,12 @@ def analyze():
         - cv: File (PDF or DOCX)
         - job_description: str (optional)
         - job_url: str (optional)
+        - job_title: str (optional)
+        - company: str (optional)
 
     Returns:
-        - fit_score, interview_likelihood, strengths, gaps, red_flags, usage
+        - fit_score, interview_likelihood, strengths, gaps, red_flags
+        - job_description, job_title, company, job_url, usage
     """
     try:
         if "cv" not in request.files:
@@ -54,6 +57,8 @@ def analyze():
 
         job_description = clean_text(request.form.get("job_description", ""))
         job_url = request.form.get("job_url", "").strip()
+        job_title = clean_text(request.form.get("job_title", ""))
+        company = clean_text(request.form.get("company", ""))
 
         # Parse CV
         cv_content = parse_cv(cv_file)
@@ -70,10 +75,23 @@ def analyze():
         if not is_valid:
             return jsonify({"error": f"Unable to analyze: {error_msg}. Please provide a complete job description."}), 400
 
-        result = analyze_job_fit(cv_content, job_description)
+        result = dict(analyze_job_fit(
+            cv_content,
+            job_description,
+            job_title=job_title,
+            company=company,
+        ))
 
         if result.get("error_code") == "ai_service_unavailable":
             return jsonify({"error": result.get("error")}), 503
+
+        # Return the authoritative context used for the analysis. In particular,
+        # URL analyses need the scraped/cleaned description on the client so it
+        # can be carried into downstream CV and cover-letter generation.
+        result["job_description"] = job_description
+        result["job_title"] = job_title
+        result["company"] = company
+        result["job_url"] = job_url
 
         # Attach usage info so frontend can update the counter
         result["usage"] = get_usage_summary(g.user_id)

@@ -220,7 +220,7 @@ export default function ProfilePage() {
                 <div className="pr-grid-2">
                   {Object.entries(item).map(([key, value]) => {
                     const isArray = Array.isArray(value);
-                    const label = key.replaceAll("_", " ").replace(/\b\w/g, c => c.toUpperCase());
+                    const label = key.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
                     return (
                       <div className={`pr-field ${isArray || key === "description" ? "pr-field-wide" : ""}`} key={key}>
                         <label className="pr-field-label">{label}</label>

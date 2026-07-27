@@ -45,13 +45,16 @@ Company: {company_name or "Not specified"}
 Please refine the resume to better match the job description. You should:
 1. Tailor the professional summary to highlight relevant experience
 2. Reorder and emphasize relevant skills
-3. Add quantified achievements where possible (use realistic numbers)
+3. Preserve existing quantified achievements, but never invent numbers or facts
 4. Add relevant keywords from the job description naturally
 5. Improve bullet points with action verbs and measurable impact
 6. Keep all information truthful - enhance presentation, don't fabricate
 
 Return ONLY a valid JSON object with exactly two keys:
-- "refined_cv": the complete refined resume in the exact same JSON Resume schema
+- "refined_cv": the complete refined resume in the exact same JSON Resume schema.
+  Include basics, work, education, skills, projects, certifications, languages,
+  awards, and customSections. Every collection must be a JSON array, even when empty.
+  Every work/project highlights value and every skill keywords value must be an array.
 - "changelog": an array of 2-5 short strings describing what was changed
 
 Do NOT include any markdown formatting, code blocks, or explanation. Return ONLY the JSON."""

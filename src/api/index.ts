@@ -29,12 +29,19 @@ function getToken(): string {
 // ─── Analysis ─────────────────────────────────────────────────
 export async function analyzeJob(
   cvFile: File,
-  jobData: { job_description?: string; job_url?: string }
+  jobData: {
+    job_description?: string;
+    job_url?: string;
+    job_title?: string;
+    company?: string;
+  }
 ): Promise<AnalysisResult> {
   const formData = new FormData();
   formData.append("cv", cvFile);
   if (jobData.job_description) formData.append("job_description", jobData.job_description);
   if (jobData.job_url) formData.append("job_url", jobData.job_url);
+  if (jobData.job_title) formData.append("job_title", jobData.job_title);
+  if (jobData.company) formData.append("company", jobData.company);
 
   const response = await fetch(`${API_BASE}/analyze`, {
     method: "POST",

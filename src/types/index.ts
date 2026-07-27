@@ -6,6 +6,11 @@ export interface AnalysisResult {
   strengths: string[];
   gaps: string[];
   red_flags: string[];
+  /** The cleaned description that was actually analyzed (including URL-scraped jobs). */
+  job_description?: string;
+  job_title?: string;
+  company?: string;
+  job_url?: string;
   usage?: UsageSummary;
 }
 

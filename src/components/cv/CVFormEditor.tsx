@@ -149,7 +149,7 @@ export function CVFormEditor({ resume, onChange }: Props) {
                     <Textarea value={w.summary} onChange={e => setWork(i, "summary", e.target.value)} rows={2} className="text-sm" placeholder="Brief description of your role..." />
                   </F>
                   <F label="Highlights / Achievements (one per line)">
-                    <Textarea value={w.highlights.join("\n")} onChange={e => setWork(i, "highlights", e.target.value.split("\n"))} rows={3} className="text-sm" placeholder={"Led a team of 5 engineers\nIncreased revenue by 20%"} />
+                    <Textarea value={(w.highlights || []).join("\n")} onChange={e => setWork(i, "highlights", e.target.value.split("\n"))} rows={3} className="text-sm" placeholder={"Led a team of 5 engineers\nIncreased revenue by 20%"} />
                   </F>
                 </CardContent>
               </Card>
@@ -195,7 +195,7 @@ export function CVFormEditor({ resume, onChange }: Props) {
               <div key={i} className="flex gap-2 items-start">
                 <div className="flex-1 space-y-1">
                   <Input value={sk.name} onChange={e => setSkill(i, "name", e.target.value)} placeholder="Category (e.g. Languages)" className="h-9 text-sm" />
-                  <Input value={sk.keywords.join(", ")} onChange={e => setSkill(i, "keywords", e.target.value.split(",").map(s => s.trim()))} placeholder="Python, TypeScript, Go" className="h-9 text-sm" />
+                  <Input value={(sk.keywords || []).join(", ")} onChange={e => setSkill(i, "keywords", e.target.value.split(",").map(s => s.trim()))} placeholder="Python, TypeScript, Go" className="h-9 text-sm" />
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => delSkill(i)} className="text-destructive h-8 w-8 mt-0.5"><Trash2 className="h-3.5 w-3.5" /></Button>
               </div>
@@ -228,7 +228,7 @@ export function CVFormEditor({ resume, onChange }: Props) {
                     <Textarea value={p.description} onChange={e => setProject(i, "description", e.target.value)} rows={2} className="text-sm" />
                   </F>
                   <F label="Highlights (one per line)">
-                    <Textarea value={p.highlights.join("\n")} onChange={e => setProject(i, "highlights", e.target.value.split("\n"))} rows={2} className="text-sm" placeholder={"Reduced load time by 40%\nUsed by 5,000+ users"} />
+                    <Textarea value={(p.highlights || []).join("\n")} onChange={e => setProject(i, "highlights", e.target.value.split("\n"))} rows={2} className="text-sm" placeholder={"Reduced load time by 40%\nUsed by 5,000+ users"} />
                   </F>
                 </CardContent>
               </Card>

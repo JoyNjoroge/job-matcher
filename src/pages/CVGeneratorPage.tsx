@@ -1,5 +1,4 @@
-import { Component, useState, useCallback, useEffect } from "react";
-import type { ErrorInfo, ReactNode } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { PDFViewer, pdf } from "@react-pdf/renderer";
 import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -8,81 +7,122 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import { Sparkles, Download, Loader2, FileText, Mail, Package } from "lucide-react";
+import {
+  Check, Download, FileText, Files, Loader2, Mail, Package, Sparkles,
+} from "lucide-react";
 import { CVFormEditor } from "@/components/cv/CVFormEditor";
 import { CVPdfDocument, CoverLetterPdfDocument } from "@/components/cv/CVPdfTemplates";
 import { TemplateGallery } from "@/components/cv/TemplateGallery";
 import { CoverLetterTab } from "@/components/cv/CoverLetterTab";
+import { PdfPreviewBoundary } from "@/components/cv/PdfPreviewBoundary";
 import type { JsonResume, CVTemplate } from "@/types/jsonResume";
 import { emptyResume } from "@/types/jsonResume";
+import { mergeRefinedJsonResume, normalizeJsonResume } from "@/lib/normalizeJsonResume";
 import { useAuth } from "@/contexts/AuthContext";
 import { API_BASE } from "@/api";
 
-class PdfPreviewBoundary extends Component<
-  { children: ReactNode },
-  { failed: boolean }
-> {
-  state = { failed: false };
+type GenerationKind = "resume" | "cover-letter" | "both";
 
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
+interface GeneratorContext {
+  jobDescription?: string;
+  companyName?: string;
+  jobTitle?: string;
+  aiSuggestions?: {
+    strengths: string[];
+    gaps: string[];
+    red_flags: string[];
+    fit_score: number;
+  };
+}
 
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("CV PDF preview failed:", error, info);
-  }
+const GENERATOR_CONTEXT_KEY = "candorapply_generator_context";
 
-  render() {
-    if (this.state.failed) {
-      return (
-        <div className="h-full grid place-items-center p-6 text-center text-sm text-muted-foreground">
-          <div>
-            <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p>The live PDF preview could not load.</p>
-            <p className="mt-1">You can still edit your resume and use Download PDF.</p>
-          </div>
-        </div>
-      );
-    }
-    return this.props.children;
+function readStoredContext(): GeneratorContext | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const value = sessionStorage.getItem(GENERATOR_CONTEXT_KEY);
+    return value ? JSON.parse(value) : null;
+  } catch {
+    return null;
   }
 }
+
+function firstPopulatedArray(...values: unknown[]): any[] {
+  return values.find((value) => Array.isArray(value) && value.length > 0) as any[] || [];
+}
+
+async function responseError(response: Response, fallback: string): Promise<Error> {
+  const payload = await response.json().catch(() => ({}));
+  return new Error(payload?.error || fallback);
+}
+
+const GENERATION_OPTIONS: {
+  id: GenerationKind;
+  title: string;
+  description: string;
+  icon: typeof FileText;
+}[] = [
+  {
+    id: "resume",
+    title: "Tailored resume",
+    description: "Optimize your resume for this role.",
+    icon: FileText,
+  },
+  {
+    id: "cover-letter",
+    title: "Cover letter",
+    description: "Write a role-specific cover letter.",
+    icon: Mail,
+  },
+  {
+    id: "both",
+    title: "Both documents",
+    description: "Generate a matching application bundle.",
+    icon: Files,
+  },
+];
 
 export default function CVGeneratorPage() {
   const { user } = useAuth();
   const location = useLocation();
-  const locationState = location.state as {
-    jobDescription?: string;
-    companyName?: string;
-    aiSuggestions?: { strengths: string[]; gaps: string[]; red_flags: string[]; fit_score: number };
-  } | null;
+  const navigationContext = location.state as GeneratorContext | null;
+  const initialContext = navigationContext || readStoredContext();
 
-  const accessToken = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-  const [resume, setResume] = useState<JsonResume>(emptyResume);
+  const accessToken = typeof window !== "undefined"
+    ? localStorage.getItem("access_token")
+    : null;
+
+  const [resume, setResume] = useState<JsonResume>(() => normalizeJsonResume(emptyResume));
   const [template, setTemplate] = useState<CVTemplate>("ats-crusher");
-  const [jobDescription, setJobDescription] = useState(locationState?.jobDescription || "");
-  const [companyName, setCompanyName] = useState(locationState?.companyName || "");
-  const [aiSuggestions] = useState(locationState?.aiSuggestions || null);
-  const [isRefining, setIsRefining] = useState(false);
+  const [generationKind, setGenerationKind] = useState<GenerationKind>("both");
+  const [jobDescription, setJobDescription] = useState(initialContext?.jobDescription || "");
+  const [companyName, setCompanyName] = useState(initialContext?.companyName || "");
+  const [jobTitle] = useState(initialContext?.jobTitle || "");
+  const [aiSuggestions] = useState(initialContext?.aiSuggestions || null);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
-  const [activeTab, setActiveTab] = useState("cv");
+  const [hasGenerated, setHasGenerated] = useState(false);
+  const [activeTab, setActiveTab] = useState<"cv" | "cover-letter">("cv");
   const [coverLetter, setCoverLetter] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(true);
 
-  // If we arrived from ResultsPage with a JD, auto-trigger profile load so
-  // the user sees their data pre-populated ready to refine
   useEffect(() => {
-    if (locationState?.jobDescription && accessToken) {
-      loadFromProfile();
-    }
-    // clear location state so refresh doesn't re-trigger
-    window.history.replaceState({}, document.title);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    sessionStorage.setItem(GENERATOR_CONTEXT_KEY, JSON.stringify({
+      jobDescription,
+      companyName,
+      jobTitle,
+      aiSuggestions,
+    }));
+  }, [jobDescription, companyName, jobTitle, aiSuggestions]);
 
-  // Load from existing profile resume
-  const loadFromProfile = useCallback(async () => {
-    if (!accessToken) return;
+  const loadFromProfile = useCallback(async (showSuccessToast = true): Promise<JsonResume | null> => {
+    if (!accessToken) {
+      if (showSuccessToast) {
+        toast({ title: "Sign in required", description: "Sign in before importing your profile.", variant: "destructive" });
+      }
+      return null;
+    }
+
     setIsLoadingProfile(true);
     try {
       const headers = { Authorization: `Bearer ${accessToken}` };
@@ -90,138 +130,168 @@ export default function CVGeneratorPage() {
         fetch(`${API_BASE}/profile`, { headers }),
         fetch(`${API_BASE}/resumes/primary`, { headers }),
       ]);
-      if (!profileRes.ok || !resumeRes.ok) throw new Error("Failed to load profile or resume");
-      const [profileData, primaryResumeData] = await Promise.all([
+      if (!profileRes.ok) throw await responseError(profileRes, "Failed to load profile");
+      if (!resumeRes.ok) throw await responseError(resumeRes, "Failed to load primary resume");
+
+      const [profilePayload, resumePayload] = await Promise.all([
         profileRes.json(),
         resumeRes.json(),
       ]);
-      const profile = profileData.profile || {};
-      const resumeData = primaryResumeData.resume?.parsed_json || {};
-      const workExperience = resumeData.experience || resumeData.work_experience || profile.work_experience || [];
-      const education = resumeData.education || profile.education || [];
-      const skills = resumeData.skills || profile.skills || [];
+      const profile = profilePayload.profile || {};
+      const parsed = resumePayload.resume?.parsed_json || {};
 
-      const mapped: JsonResume = {
+      const mapped = normalizeJsonResume({
         basics: {
-          name: profile.full_name || "",
-          label: profile.job_titles?.[0] || resumeData.job_titles?.[0] || resumeData.seniority_estimation || "",
-          email: user?.email || resumeData.email || "",
-          phone: profile.phone || "",
-          url: profile.linkedin_url || "",
-          summary: profile.summary || resumeData.summary || "",
-          location: { city: profile.location || "", region: "", countryCode: "" },
+          name: profile.full_name || parsed.full_name,
+          label: profile.job_titles?.[0] || parsed.job_titles?.[0] || parsed.seniority_estimation,
+          email: user?.email || parsed.email,
+          phone: profile.phone || parsed.phone,
+          summary: profile.summary || parsed.summary,
+          linkedin: profile.linkedin_url || parsed.linkedin_url,
+          github: profile.github_url || parsed.github_url,
+          website: profile.portfolio_url || parsed.portfolio_url,
+          location: { city: profile.location || parsed.location },
         },
-        work: workExperience.map((exp: any) => ({
-          name: exp.company || "",
-          position: exp.title || exp.role || "",
-          startDate: exp.start_date || "",
-          endDate: exp.end_date || "Present",
-          summary: exp.description || "",
-          highlights: exp.highlights || exp.achievements || [],
-        })),
-        education: education.map((ed: any) => ({
-          institution: ed.institution || ed.school || "",
-          area: ed.field || ed.area || "",
-          studyType: ed.degree || "",
-          startDate: ed.start_date || "",
-          endDate: ed.end_date || "",
-        })),
-        skills: skills.map((s: any) =>
-          typeof s === "string"
-            ? { name: "Skills", keywords: [s] }
-            : { name: s.category || s.name || "Skills", keywords: s.items || s.keywords || [] }
-        ),
-        projects: (resumeData.projects || profile.projects || []).map((p: any) => ({
-          name: p.name || "",
-          description: p.description || "",
-          highlights: p.highlights || [],
-        })),
-        certifications: (resumeData.certifications || profile.certifications || []).map((c: any) =>
-          typeof c === "string"
-            ? { name: c, issuer: "", date: "" }
-            : { name: c.name || "", issuer: c.issuer || "", date: c.date || "" }
-        ),
-        languages: (resumeData.languages || profile.languages || []).map((language: any) =>
-          typeof language === "string"
-            ? { language, fluency: "" }
-            : { language: language.language || language.name || "", fluency: language.fluency || language.level || "" }
-        ),
-        awards: (resumeData.awards || profile.awards || []).map((award: any) =>
-          typeof award === "string"
-            ? { title: award, awarder: "", date: "" }
-            : { title: award.title || award.name || "", awarder: award.awarder || award.issuer || "", date: award.date || "", summary: award.summary || "" }
-        ),
-        customSections: [],
-      };
-
-      const stringSkills = mapped.skills.filter((s) => s.name === "Skills");
-      const namedSkills = mapped.skills.filter((s) => s.name !== "Skills");
-      if (stringSkills.length > 0) {
-        const allKeywords = stringSkills.flatMap((s) => s.keywords);
-        namedSkills.unshift({ name: "General", keywords: allKeywords });
-      }
-      mapped.skills = namedSkills.length > 0 ? namedSkills : mapped.skills;
+        work: firstPopulatedArray(parsed.experience, parsed.work_experience, profile.work_experience),
+        education: firstPopulatedArray(parsed.education, profile.education),
+        skills: firstPopulatedArray(parsed.skills, profile.skills),
+        projects: firstPopulatedArray(parsed.projects, profile.projects),
+        certifications: firstPopulatedArray(parsed.certifications, profile.certifications),
+        languages: firstPopulatedArray(parsed.languages, profile.languages),
+        awards: firstPopulatedArray(parsed.awards, profile.awards),
+      });
 
       setResume(mapped);
-      toast({ title: "Profile loaded", description: "Your resume data has been imported into the editor." });
-    } catch (err) {
-      toast({ title: "Error", description: "Could not load profile data.", variant: "destructive" });
+      if (showSuccessToast) {
+        toast({
+          title: "Profile loaded",
+          description: "Your saved resume and profile are ready to tailor.",
+        });
+      }
+      return mapped;
+    } catch (error) {
+      if (showSuccessToast) {
+        toast({
+          title: "Could not load profile",
+          description: error instanceof Error ? error.message : "Try again.",
+          variant: "destructive",
+        });
+      }
+      return null;
     } finally {
       setIsLoadingProfile(false);
     }
   }, [accessToken, user?.email]);
 
-  // Auto-refine with AI provider
-  const autoRefine = useCallback(async () => {
+  // Prepare the saved profile in the background when entering from Results.
+  useEffect(() => {
+    if (accessToken) void loadFromProfile(false);
+  }, [accessToken, loadFromProfile]);
+
+  const refineResume = useCallback(async (currentResume: JsonResume): Promise<JsonResume> => {
+    const response = await fetch(`${API_BASE}/cv/refine`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+      body: JSON.stringify({
+        current_cv: currentResume,
+        job_description: jobDescription,
+        company_name: companyName,
+      }),
+    });
+    if (!response.ok) throw await responseError(response, "Resume generation failed");
+    const payload = await response.json();
+    return mergeRefinedJsonResume(currentResume, payload.refined_cv || currentResume);
+  }, [accessToken, companyName, jobDescription]);
+
+  const generateCoverLetter = useCallback(async (currentResume: JsonResume): Promise<string> => {
+    const response = await fetch(`${API_BASE}/cv/cover-letter`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+      body: JSON.stringify({
+        resume: currentResume,
+        job_description: jobDescription,
+        company_name: companyName,
+        tone: "professional",
+      }),
+    });
+    if (!response.ok) throw await responseError(response, "Cover-letter generation failed");
+    const payload = await response.json();
+    return String(payload.cover_letter || "").trim();
+  }, [accessToken, companyName, jobDescription]);
+
+  const generateDocuments = useCallback(async () => {
     if (!jobDescription.trim()) {
-      toast({ title: "Job description required", description: "Paste a job description so AI provider can tailor your CV.", variant: "destructive" });
+      toast({
+        title: "Job description missing",
+        description: "Return to the analysis or paste the target job description here.",
+        variant: "destructive",
+      });
       return;
     }
-    setIsRefining(true);
-    try {
-      const res = await fetch(`${API_BASE}/cv/refine`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-        },
-        body: JSON.stringify({ current_cv: resume, job_description: jobDescription, company_name: companyName }),
-      });
-      if (!res.ok) throw new Error("AI provider refinement failed");
-      const data = await res.json();
-      if (data.refined_cv) setResume(data.refined_cv);
-      if (data.changelog?.length > 0) {
-        toast({ title: "✨ AI provider refined your CV", description: data.changelog.join(". ") });
-      } else {
-        toast({ title: "✨ CV refined", description: "Your CV has been optimized for this role." });
-      }
-    } catch {
-      toast({ title: "Refinement failed", description: "Could not connect to AI provider. Check your backend.", variant: "destructive" });
-    } finally {
-      setIsRefining(false);
-    }
-  }, [resume, jobDescription, companyName, accessToken]);
 
-  // Download CV PDF
+    setIsGenerating(true);
+    try {
+      const profileResume = await loadFromProfile(false);
+      if (!profileResume?.basics.name) {
+        throw new Error("Your saved profile or resume is empty. Add it on the Profile page first.");
+      }
+
+      let generatedResume = profileResume;
+      if (generationKind === "resume" || generationKind === "both") {
+        generatedResume = await refineResume(profileResume);
+        setResume(generatedResume);
+      }
+
+      if (generationKind === "cover-letter" || generationKind === "both") {
+        const generatedLetter = await generateCoverLetter(generatedResume);
+        if (!generatedLetter) throw new Error("The AI provider returned an empty cover letter.");
+        setCoverLetter(generatedLetter);
+      }
+
+      setActiveTab(generationKind === "cover-letter" ? "cover-letter" : "cv");
+      setHasGenerated(true);
+      toast({
+        title: "Documents ready",
+        description: "Review and edit every field before downloading.",
+      });
+    } catch (error) {
+      toast({
+        title: "Generation failed",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [generateCoverLetter, generationKind, jobDescription, loadFromProfile, refineResume]);
+
+  const chooseGenerationKind = (kind: GenerationKind) => {
+    setGenerationKind(kind);
+    setHasGenerated(false);
+  };
+
   const downloadPdf = useCallback(async () => {
     try {
       const blob = await pdf(<CVPdfDocument resume={resume} template={template} />).toBlob();
       const userName = resume.basics.name.replace(/\s+/g, "_") || "Resume";
       const company = companyName.replace(/\s+/g, "_") || "General";
-      const fileName = `${userName}_Resume_${company}.pdf`;
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = fileName;
+      link.download = `${userName}_Resume_${company}.pdf`;
       link.click();
-      URL.revokeObjectURL(url);
-      toast({ title: "PDF downloaded", description: fileName });
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch {
-      toast({ title: "Download failed", description: "Could not generate PDF.", variant: "destructive" });
+      toast({ title: "Download failed", description: "Could not generate the PDF.", variant: "destructive" });
     }
-  }, [resume, template, companyName]);
+  }, [companyName, resume, template]);
 
-  // Download bundle (CV + Cover Letter)
   const downloadBundle = useCallback(async () => {
     const userName = resume.basics.name.replace(/\s+/g, "_") || "Applicant";
     const company = companyName.replace(/\s+/g, "_") || "General";
@@ -232,175 +302,246 @@ export default function CVGeneratorPage() {
       cvLink.href = cvUrl;
       cvLink.download = `${userName}_Resume_${company}.pdf`;
       cvLink.click();
-      URL.revokeObjectURL(cvUrl);
+      window.setTimeout(() => URL.revokeObjectURL(cvUrl), 1000);
 
       if (coverLetter) {
-        await new Promise((r) => setTimeout(r, 500));
-        const clBlob = await pdf(
-          <CoverLetterPdfDocument coverLetter={coverLetter} resume={resume} template={template} companyName={companyName} />
+        await new Promise((resolve) => window.setTimeout(resolve, 500));
+        const letterBlob = await pdf(
+          <CoverLetterPdfDocument
+            coverLetter={coverLetter}
+            resume={resume}
+            template={template}
+            companyName={companyName}
+          />,
         ).toBlob();
-        const clUrl = URL.createObjectURL(clBlob);
-        const clLink = document.createElement("a");
-        clLink.href = clUrl;
-        clLink.download = `${userName}_CoverLetter_${company}.pdf`;
-        clLink.click();
-        URL.revokeObjectURL(clUrl);
+        const letterUrl = URL.createObjectURL(letterBlob);
+        const letterLink = document.createElement("a");
+        letterLink.href = letterUrl;
+        letterLink.download = `${userName}_CoverLetter_${company}.pdf`;
+        letterLink.click();
+        window.setTimeout(() => URL.revokeObjectURL(letterUrl), 1000);
       }
-      toast({ title: "Bundle downloaded", description: coverLetter ? "CV + Cover Letter exported." : "CV exported (no cover letter generated yet)." });
     } catch {
-      toast({ title: "Download failed", description: "Could not generate PDFs.", variant: "destructive" });
+      toast({ title: "Download failed", description: "Could not generate the bundle.", variant: "destructive" });
     }
-  }, [resume, template, companyName, coverLetter]);
+  }, [companyName, coverLetter, resume, template]);
+
+  const includesResume = generationKind === "resume" || generationKind === "both";
+  const includesCoverLetter = generationKind === "cover-letter" || generationKind === "both";
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <FileText className="h-6 w-6 text-primary" />
-            Smart CV Generator
+            Application Document Generator
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Build, tailor, and export a job-winning resume & cover letter with AI
+            Choose what to create, select a theme, then edit the generated fields.
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={loadFromProfile} disabled={isLoadingProfile}>
-            {isLoadingProfile ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-            Import from Profile
-          </Button>
-          {activeTab === "cv" && (
-            <Button onClick={downloadPdf}>
-              <Download className="h-4 w-4 mr-1" /> Download PDF
-            </Button>
-          )}
-          <Button variant="secondary" onClick={downloadBundle}>
-            <Package className="h-4 w-4 mr-1" /> Download Bundle
-          </Button>
-        </div>
+        {hasGenerated && (
+          <div className="flex gap-2">
+            {includesResume && generationKind !== "both" && (
+              <Button onClick={downloadPdf}>
+                <Download className="h-4 w-4 mr-1" /> Download Resume
+              </Button>
+            )}
+            {generationKind === "both" && (
+              <Button onClick={downloadBundle}>
+                <Package className="h-4 w-4 mr-1" /> Download Bundle
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* AI Suggestions Banner — shown when arriving from ResultsPage */}
       {aiSuggestions && showSuggestions && (
         <Card className="border-violet-200 bg-violet-50 dark:bg-violet-950/20 dark:border-violet-800">
-          <CardContent className="pt-4 pb-4">
+          <CardContent className="py-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1">
                 <p className="text-sm font-semibold text-violet-800 dark:text-violet-300 flex items-center gap-1.5 mb-2">
-                  <Sparkles className="h-4 w-4" /> AI Analysis Suggestions (Fit Score: {aiSuggestions.fit_score}%)
+                  <Sparkles className="h-4 w-4" />
+                  Analysis context · {aiSuggestions.fit_score}% fit
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                  {aiSuggestions.gaps.length > 0 && (
+                  {!!aiSuggestions.gaps?.length && (
                     <div>
-                      <p className="font-semibold text-amber-700 dark:text-amber-400 mb-1">Gaps to address in your CV:</p>
-                      <ul className="space-y-0.5 text-amber-800 dark:text-amber-300">
-                        {aiSuggestions.gaps.map((g, i) => <li key={i} className="flex gap-1">• {g}</li>)}
-                      </ul>
+                      <p className="font-semibold text-amber-700 mb-1">Gaps to address</p>
+                      {aiSuggestions.gaps.map((gap, index) => <p key={index}>• {gap}</p>)}
                     </div>
                   )}
-                  {aiSuggestions.strengths.length > 0 && (
+                  {!!aiSuggestions.strengths?.length && (
                     <div>
-                      <p className="font-semibold text-emerald-700 dark:text-emerald-400 mb-1">Strengths to highlight:</p>
-                      <ul className="space-y-0.5 text-emerald-800 dark:text-emerald-300">
-                        {aiSuggestions.strengths.map((s, i) => <li key={i} className="flex gap-1">✓ {s}</li>)}
-                      </ul>
+                      <p className="font-semibold text-emerald-700 mb-1">Strengths to highlight</p>
+                      {aiSuggestions.strengths.map((strength, index) => <p key={index}>✓ {strength}</p>)}
                     </div>
                   )}
                 </div>
-                <p className="text-xs text-violet-600 dark:text-violet-400 mt-2">
-                  Hit <strong>Auto-Refine</strong> below to apply these improvements to your CV automatically.
-                </p>
               </div>
-              <button onClick={() => setShowSuggestions(false)} className="text-violet-400 hover:text-violet-600 text-lg leading-none flex-shrink-0">×</button>
+              <button
+                onClick={() => setShowSuggestions(false)}
+                className="text-violet-400 hover:text-violet-600 text-lg"
+                aria-label="Dismiss suggestions"
+              >
+                ×
+              </button>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* AI Refine Section (shared context for both tabs) */}
-      <Card className="border-primary/20 bg-primary/5">
-        <CardContent className="pt-4 pb-4">
-          <div className="flex gap-4 items-end">
-            <div className="flex-1 space-y-1">
-              <Label className="text-xs font-semibold text-primary">Target Job Description</Label>
+      <Card className="border-primary/20">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">1. Confirm the target role</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_240px] gap-4">
+            <div className="space-y-1">
+              <Label>Job description</Label>
               <Textarea
                 value={jobDescription}
-                onChange={(e) => setJobDescription(e.target.value)}
-                placeholder="Paste the job description here for AI-powered CV tailoring & cover letter generation..."
-                rows={3}
-                className="text-sm"
+                onChange={(event) => setJobDescription(event.target.value)}
+                placeholder="The job description from your analysis will appear here."
+                rows={5}
               />
             </div>
-            <div className="w-48 space-y-1">
-              <Label className="text-xs font-semibold text-primary">Company</Label>
+            <div className="space-y-1">
+              <Label>Company</Label>
               <input
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
+                onChange={(event) => setCompanyName(event.target.value)}
                 placeholder="Company name"
               />
-              {activeTab === "cv" && (
-                <Button onClick={autoRefine} disabled={isRefining} className="w-full mt-2 bg-primary hover:bg-primary/90">
-                  {isRefining ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Sparkles className="h-4 w-4 mr-1" />}
-                  Auto-Refine
-                </Button>
-              )}
+              {jobTitle && <p className="text-xs text-muted-foreground pt-2">Role: {jobTitle}</p>}
+              <Button
+                variant="outline"
+                className="w-full mt-3"
+                onClick={() => void loadFromProfile(true)}
+                disabled={isLoadingProfile}
+              >
+                {isLoadingProfile && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                Reload profile data
+              </Button>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Tabs: CV | Cover Letter */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="cv" className="gap-1.5">
-            <FileText className="h-4 w-4" /> Resume
-          </TabsTrigger>
-          <TabsTrigger value="cover-letter" className="gap-1.5">
-            <Mail className="h-4 w-4" /> Cover Letter
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="cv" className="space-y-6 mt-4">
-          <TemplateGallery selected={template} onSelect={setTemplate} />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Edit Resume</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CVFormEditor resume={resume} onChange={setResume} />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Live Preview</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="h-[calc(100vh-340px)] min-h-[500px]">
-                  <PdfPreviewBoundary>
-                    <PDFViewer width="100%" height="100%" showToolbar={false} className="rounded-b-lg">
-                      <CVPdfDocument resume={resume} template={template} />
-                    </PDFViewer>
-                  </PdfPreviewBoundary>
-                </div>
-              </CardContent>
-            </Card>
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">2. Choose what to generate</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {GENERATION_OPTIONS.map((option) => {
+              const Icon = option.icon;
+              const selected = generationKind === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => chooseGenerationKind(option.id)}
+                  className={`relative rounded-xl border p-4 text-left transition ${
+                    selected
+                      ? "border-primary bg-primary/5 ring-2 ring-primary/15"
+                      : "border-border hover:border-primary/40"
+                  }`}
+                >
+                  {selected && <Check className="absolute right-3 top-3 h-4 w-4 text-primary" />}
+                  <Icon className="h-5 w-5 text-primary mb-3" />
+                  <p className="font-semibold text-sm">{option.title}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{option.description}</p>
+                </button>
+              );
+            })}
           </div>
-        </TabsContent>
+        </CardContent>
+      </Card>
 
-        <TabsContent value="cover-letter" className="mt-4">
-          <CoverLetterTab
-            resume={resume}
-            jobDescription={jobDescription}
-            companyName={companyName}
-            template={template}
-            coverLetter={coverLetter}
-            onCoverLetterChange={setCoverLetter}
-          />
-        </TabsContent>
-      </Tabs>
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">3. Choose a theme</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TemplateGallery selected={template} onSelect={setTemplate} />
+        </CardContent>
+      </Card>
+
+      <Button
+        size="lg"
+        className="w-full h-12"
+        onClick={generateDocuments}
+        disabled={isGenerating || isLoadingProfile}
+      >
+        {isGenerating || isLoadingProfile
+          ? <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+          : <Sparkles className="h-5 w-5 mr-2" />}
+        {isGenerating ? "Generating editable documents…" : "Generate editable documents"}
+      </Button>
+
+      {hasGenerated && (
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "cv" | "cover-letter")}>
+          <TabsList>
+            {includesResume && (
+              <TabsTrigger value="cv" className="gap-1.5">
+                <FileText className="h-4 w-4" /> Resume
+              </TabsTrigger>
+            )}
+            {includesCoverLetter && (
+              <TabsTrigger value="cover-letter" className="gap-1.5">
+                <Mail className="h-4 w-4" /> Cover Letter
+              </TabsTrigger>
+            )}
+          </TabsList>
+
+          {includesResume && (
+            <TabsContent value="cv" className="mt-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Edit tailored resume</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <CVFormEditor resume={resume} onChange={(value) => setResume(normalizeJsonResume(value))} />
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Live preview</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="h-[calc(100vh-340px)] min-h-[500px]">
+                      <PdfPreviewBoundary>
+                        <PDFViewer width="100%" height="100%" showToolbar={false} className="rounded-b-lg">
+                          <CVPdfDocument resume={resume} template={template} />
+                        </PDFViewer>
+                      </PdfPreviewBoundary>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          )}
+
+          {includesCoverLetter && (
+            <TabsContent value="cover-letter" className="mt-4">
+              <CoverLetterTab
+                resume={resume}
+                jobDescription={jobDescription}
+                companyName={companyName}
+                template={template}
+                coverLetter={coverLetter}
+                onCoverLetterChange={setCoverLetter}
+                allowGenerate={false}
+              />
+            </TabsContent>
+          )}
+        </Tabs>
+      )}
     </div>
   );
 }

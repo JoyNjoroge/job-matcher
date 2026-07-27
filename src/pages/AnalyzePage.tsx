@@ -24,6 +24,7 @@ export default function AnalyzePage() {
   const [inputMode, setInputMode] = useState<InputMode>("description");
   const [jobDescription, setJobDescription] = useState("");
   const [jobUrl, setJobUrl] = useState("");
+  const [companyName, setCompanyName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
@@ -34,6 +35,7 @@ export default function AnalyzePage() {
     if (state?.selectedJob) {
       setSelectedJob(state.selectedJob);
       setJobDescription(state.selectedJob.description);
+      setCompanyName(state.selectedJob.company);
       window.history.replaceState({}, document.title);
     }
   }, [state?.selectedJob]);
@@ -46,7 +48,12 @@ export default function AnalyzePage() {
     }
   }, [cvFile]);
 
-  const clearSelectedJob = () => { setSelectedJob(null); setJobDescription(""); setAnalysisResult(null); };
+  const clearSelectedJob = () => {
+    setSelectedJob(null);
+    setJobDescription("");
+    setCompanyName("");
+    setAnalysisResult(null);
+  };
 
   const canSubmit = cvFile && (selectedJob || (inputMode === "description" ? jobDescription.trim() : jobUrl.trim()));
 
@@ -59,12 +66,34 @@ export default function AnalyzePage() {
     setIsLoading(true);
     setError(null);
     try {
+      const submittedJobDescription = selectedJob
+        ? selectedJob.description
+        : inputMode === "description"
+          ? jobDescription
+          : "";
+      const submittedCompany = selectedJob?.company || companyName.trim();
+      const submittedJobTitle = selectedJob?.title || "";
+
       const result = await analyzeJob(cvFile, {
-        job_description: selectedJob ? selectedJob.description : (inputMode === "description" ? jobDescription : undefined),
+        job_description: submittedJobDescription || undefined,
         job_url: !selectedJob && inputMode === "url" ? jobUrl : undefined,
+        job_title: submittedJobTitle || undefined,
+        company: submittedCompany || undefined,
       });
       setAnalysisResult(result);
-      navigate("/results", { state: { analysis: result, job: selectedJob, cvText } });
+      navigate("/results", {
+        state: {
+          analysis: result,
+          job: selectedJob,
+          cvText,
+          // Prefer the server value because it is the exact cleaned (or
+          // URL-scraped) description used by the fit analysis.
+          jobDescription: result.job_description || submittedJobDescription,
+          companyName: result.company || submittedCompany,
+          jobTitle: result.job_title || submittedJobTitle,
+          jobUrl: result.job_url || (!selectedJob && inputMode === "url" ? jobUrl.trim() : ""),
+        },
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to analyze. Please try again.");
     } finally {
@@ -267,6 +296,19 @@ export default function AnalyzePage() {
                 onChange={(e) => setJobUrl(e.target.value)}
               />
             )}
+
+            <div style={{ marginTop: 14 }}>
+              <label className="an-section-label" htmlFor="analysis-company">
+                Company name <span style={{ color: "#9CA3AF", fontWeight: 400 }}>(optional)</span>
+              </label>
+              <input
+                id="analysis-company"
+                className="an-input"
+                placeholder="Company name"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+              />
+            </div>
           </>
         )}
       </div>

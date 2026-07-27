@@ -9,7 +9,7 @@ import type { JsonResume, CVTemplate } from "@/types/jsonResume";
    ════════════════════════════════════════════════════════════════ */
 
 function Bullets({ items, s }: { items: string[]; s: any }) {
-  const filtered = items.filter(Boolean);
+  const filtered = (items || []).filter(Boolean);
   if (!filtered.length) return null;
   return (
     <>
@@ -66,7 +66,7 @@ function Sections({ resume, s }: { resume: JsonResume; s: any }) {
                 ) : null}
               </View>
               {p.technologies?.length ? (
-                <Text style={s.entrySubtitle}>{p.technologies.join(", ")}</Text>
+                <Text style={s.entrySubtitle}>{(p.technologies || []).join(", ")}</Text>
               ) : null}
               {p.description ? <Text style={s.entrySummary}>{p.description}</Text> : null}
               <Bullets items={p.highlights} s={s} />
@@ -87,7 +87,7 @@ function Sections({ resume, s }: { resume: JsonResume; s: any }) {
               </View>
               <Text style={s.entrySubtitle}>{ed.institution}{ed.gpa ? `  ·  GPA: ${ed.gpa}` : ""}</Text>
               {ed.courses?.length ? (
-                <Text style={s.entrySummary}>Relevant courses: {ed.courses.join(", ")}</Text>
+                <Text style={s.entrySummary}>Relevant courses: {(ed.courses || []).join(", ")}</Text>
               ) : null}
             </View>
           ))}
@@ -116,7 +116,7 @@ function Sections({ resume, s }: { resume: JsonResume; s: any }) {
           {resume.skills.map((sk, i) => (
             <View key={i} style={s.skillRow}>
               <Text style={s.skillName}>{sk.name}:</Text>
-              <Text style={s.skillKeywords}>{sk.keywords.join(", ")}</Text>
+              <Text style={s.skillKeywords}>{(sk.keywords || []).join(", ")}</Text>
             </View>
           ))}
         </>
@@ -360,7 +360,7 @@ function NovaTemplate({ resume }: { resume: JsonResume }) {
               {resume.skills.map((sk, i) => (
                 <View key={i} style={{ marginBottom: 6 }}>
                   <Text style={novaS.sidebarSkillName}>{sk.name}</Text>
-                  <Text style={{ fontSize: 8, color: "#94a3b8", lineHeight: 1.4 }}>{sk.keywords.join(" · ")}</Text>
+                  <Text style={{ fontSize: 8, color: "#94a3b8", lineHeight: 1.4 }}>{(sk.keywords || []).join(" · ")}</Text>
                 </View>
               ))}
             </>

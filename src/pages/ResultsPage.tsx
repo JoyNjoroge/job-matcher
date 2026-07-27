@@ -1,9 +1,19 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Sparkles, CheckCircle, AlertCircle, XCircle, MessageSquare, LayoutGrid, ExternalLink, FileText } from "lucide-react";
-import type { AnalysisResult } from "@/types";
+import type { AnalysisResult, Job } from "@/types";
 import { useApplications } from "@/contexts/ApplicationContext";
 import { DidYouApplyModal } from "@/components/DidYouApplyModal";
+
+interface ResultsLocationState {
+  analysis?: AnalysisResult;
+  job?: Job | null;
+  cvText?: string;
+  jobDescription?: string;
+  companyName?: string;
+  jobTitle?: string;
+  jobUrl?: string;
+}
 
 function ScoreRing({ score }: { score: number }) {
   const deg = Math.round((score / 100) * 360);
@@ -50,9 +60,10 @@ export default function ResultsPage() {
   const navigate = useNavigate();
   const { addApplication } = useApplications();
 
-  const analysis  = location.state?.analysis as AnalysisResult | undefined;
-  const job       = location.state?.job;       // present when coming from SearchPage/AnalyzePage with a selected job
-  const cvText    = location.state?.cvText;
+  const state = location.state as ResultsLocationState | null;
+  const analysis = state?.analysis;
+  const job = state?.job; // present when coming from SearchPage/AnalyzePage with a selected job
+  const cvText = state?.cvText;
 
   // "Did you apply?" modal — shown when user clicks Apply from results
   const [showDidYouApply, setShowDidYouApply] = useState(false);
@@ -76,11 +87,33 @@ export default function ResultsPage() {
     );
   }
 
+  const jobDescription =
+    state?.jobDescription ||
+    analysis.job_description ||
+    job?.description ||
+    "";
+  const companyName =
+    state?.companyName ||
+    analysis.company ||
+    job?.company ||
+    "";
+  const jobTitle =
+    state?.jobTitle ||
+    analysis.job_title ||
+    job?.title ||
+    "";
+  const jobUrl =
+    state?.jobUrl ||
+    analysis.job_url ||
+    job?.apply_link ||
+    job?.application_url ||
+    "";
+
   const scoreColor = analysis.fit_score >= 70 ? "#10B981" : analysis.fit_score >= 40 ? "#F59E0B" : "#EF4444";
 
   /** Open job URL then ask "did you apply?" */
   const handleApplyClick = () => {
-    const applyUrl = job?.apply_link || job?.application_url;
+    const applyUrl = jobUrl;
     if (applyUrl) {
       window.open(applyUrl, "_blank", "noopener,noreferrer");
       setPendingApplyUrl(applyUrl);
@@ -100,12 +133,12 @@ export default function ResultsPage() {
       addApplication(
         {
           id: `ext_${Date.now()}`,
-          title: analysis.job_title || "External Job",
-          company: analysis.company || "Unknown Company",
+          title: jobTitle || "External Job",
+          company: companyName || "Unknown Company",
           location: "",
-          description: "",
-          apply_link: pendingApplyUrl || "",
-        } as any,
+          description: jobDescription,
+          apply_link: pendingApplyUrl || jobUrl,
+        },
         analysis,
         cvText,
       );
@@ -236,8 +269,9 @@ export default function ResultsPage() {
           className="rs-btn-cv"
           onClick={() => navigate("/cv-generator", {
             state: {
-              jobDescription: job?.description || "",
-              companyName: job?.company || "",
+              jobDescription,
+              companyName,
+              jobTitle,
               aiSuggestions: {
                 strengths: analysis.strengths || [],
                 gaps: analysis.gaps || [],
@@ -261,8 +295,8 @@ export default function ResultsPage() {
       {/* Did You Apply? Modal */}
       <DidYouApplyModal
         isOpen={showDidYouApply}
-        jobTitle={job?.title || analysis.job_title || "this job"}
-        company={job?.company || analysis.company || ""}
+        jobTitle={jobTitle || "this job"}
+        company={companyName}
         onYes={handleConfirmApplied}
         onNo={() => setShowDidYouApply(false)}
       />
