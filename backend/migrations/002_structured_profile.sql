@@ -1,6 +1,4 @@
--- Run once in Supabase Dashboard -> SQL Editor before deploying this release.
--- Structured resume facts live on the user profile so the extension can use
--- them without re-reading or re-parsing the original resume.
+begin;
 
 alter table public.user_profiles
   add column if not exists education jsonb not null default '[]'::jsonb,
@@ -16,3 +14,6 @@ alter table public.user_profiles
   add column if not exists interests jsonb not null default '[]'::jsonb,
   add column if not exists additional_details jsonb not null default '{}'::jsonb,
   add column if not exists years_of_experience numeric;
+
+commit;
+notify pgrst, 'reload schema';

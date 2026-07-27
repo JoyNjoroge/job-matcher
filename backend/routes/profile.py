@@ -14,6 +14,30 @@ ALLOWED_EXTENSIONS = {'pdf', 'docx', 'doc', 'txt'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+
+def profile_schema_error_response(error):
+    """Return an actionable response when Supabase is missing profile columns."""
+    message = str(error).lower()
+    structured_columns = (
+        "education", "work_experience", "certifications", "projects", "tools",
+        "languages", "awards", "volunteer_experience", "publications",
+        "courses", "interests", "additional_details", "years_of_experience",
+    )
+    missing_column = (
+        ("column" in message or "schema cache" in message)
+        and any(column in message for column in structured_columns)
+    )
+    if missing_column:
+        return jsonify({
+            "error": (
+                "Supabase is missing the structured profile columns. "
+                "Run backend/migrations/002_structured_profile.sql in the "
+                "Supabase SQL Editor, then try saving again."
+            ),
+            "error_code": "profile_schema_migration_required",
+        }), 503
+    return None
+
 @profile_bp.route("/profile", methods=["GET"])
 @require_auth
 def get_profile():
@@ -62,6 +86,9 @@ def update_profile():
         return jsonify({"profile": UserProfile.to_dict(result)})
     except Exception as e:
         print(f"Update profile error: {e}")
+        schema_error = profile_schema_error_response(e)
+        if schema_error:
+            return schema_error
         return jsonify({"error": "Failed to update profile"}), 500
 
 @profile_bp.route("/profile/parse-resume", methods=["POST"])
@@ -147,6 +174,9 @@ def parse_resume_for_profile():
         print(f"Parse resume error: {e}")
         import traceback
         traceback.print_exc()
+        schema_error = profile_schema_error_response(e)
+        if schema_error:
+            return schema_error
         return jsonify({"error": "Failed to parse resume"}), 500
 
 @profile_bp.route("/profile/onboarding", methods=["POST"])
