@@ -47,6 +47,8 @@ const AuthPage: React.FC<{ mode?: AuthMode }> = ({ mode = "login" }) => {
       const messages: Record<string, string> = {
         google_failed: "Google sign-in could not be completed. Please try again.",
         linkedin_failed: "LinkedIn sign-in could not be completed. Please try again.",
+        linkedin_token_failed: "LinkedIn could not complete the secure sign-in exchange. Check the app product and callback settings.",
+        linkedin_profile_failed: "LinkedIn signed you in but did not return the basic profile permission.",
         no_email: "The provider did not share an email address.",
         unverified_email: "The provider did not return a verified email address.",
         account_method_email: "This email already uses email and password. Sign in below.",
@@ -74,9 +76,8 @@ const AuthPage: React.FC<{ mode?: AuthMode }> = ({ mode = "login" }) => {
   return (
     <div className="auth-root">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
         * { box-sizing: border-box; }
-        .auth-root { min-height: 100vh; display: flex; font-family: 'DM Sans', sans-serif; }
+        .auth-root { min-height: 100vh; display: flex; font-family: var(--font-ui); }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes floatBlob { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(20px, -15px) scale(1.05); } }
@@ -88,8 +89,8 @@ const AuthPage: React.FC<{ mode?: AuthMode }> = ({ mode = "login" }) => {
         .auth-left-grid { position: absolute; inset: 0; background-image: linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; }
         .auth-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 48px; }
         .auth-logo-icon { width: 42px; height: 42px; background: rgba(37,99,235,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; }
-        .auth-logo-name { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.3rem; color: white; }
-        .auth-left-title { font-family: 'Syne', sans-serif; font-size: clamp(2rem, 3vw, 2.8rem); font-weight: 800; color: white; letter-spacing: -0.03em; line-height: 1.1; margin: 0 0 16px; }
+        .auth-logo-name { font-family: var(--font-ui); font-weight: 800; font-size: 1.3rem; color: white; }
+        .auth-left-title { font-family: var(--font-ui); font-size: clamp(2rem, 3vw, 2.8rem); font-weight: 800; color: white; letter-spacing: -0.03em; line-height: 1.1; margin: 0 0 16px; }
         .auth-left-sub { color: rgba(255,255,255,0.5); font-size: 15px; font-weight: 300; line-height: 1.7; margin: 0 0 48px; max-width: 380px; }
         .auth-features { display: flex; flex-direction: column; gap: 16px; }
         .auth-feature { display: flex; align-items: flex-start; gap: 14px; }
@@ -103,15 +104,15 @@ const AuthPage: React.FC<{ mode?: AuthMode }> = ({ mode = "login" }) => {
         .auth-form-wrap { width: 100%; max-width: 420px; }
         .auth-mobile-logo { display: flex; align-items: center; gap: 8px; justify-content: center; margin-bottom: 32px; }
         @media (min-width: 1024px) { .auth-mobile-logo { display: none; } }
-        .auth-mobile-logo span { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.3rem; color: #0A0A0F; }
+        .auth-mobile-logo span { font-family: var(--font-ui); font-weight: 800; font-size: 1.3rem; color: #0A0A0F; }
 
         .auth-card { background: white; border: 1px solid rgba(0,0,0,0.07); border-radius: 24px; padding: 36px; box-shadow: 0 4px 24px rgba(0,0,0,0.06); animation: fadeUp 0.5s ease; }
-        .auth-card-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.5rem; letter-spacing: -0.02em; color: #0A0A0F; margin: 0 0 6px; }
+        .auth-card-title { font-family: var(--font-ui); font-weight: 800; font-size: 1.5rem; letter-spacing: -0.02em; color: #0A0A0F; margin: 0 0 6px; }
         .auth-card-sub { font-size: 14px; color: #6B7280; font-weight: 300; margin: 0 0 24px; line-height: 1.5; }
 
         /* OAuth */
         .auth-oauth-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
-        .auth-oauth-btn { width: 100%; height: 46px; border-radius: 11px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; border: 1.5px solid rgba(0,0,0,0.1); background: white; color: #374151; }
+        .auth-oauth-btn { width: 100%; height: 46px; border-radius: 11px; font-family: var(--font-ui); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; border: 1.5px solid rgba(0,0,0,0.1); background: white; color: #374151; }
         .auth-oauth-btn:hover:not(:disabled) { background: #F9FAFB; border-color: rgba(0,0,0,0.2); transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,0.07); }
         .auth-oauth-btn:disabled { opacity: 0.65; cursor: not-allowed; transform: none; }
         .auth-oauth-btn.google:hover:not(:disabled) { border-color: rgba(66,133,244,0.4); box-shadow: 0 3px 12px rgba(66,133,244,0.12); }
@@ -123,12 +124,12 @@ const AuthPage: React.FC<{ mode?: AuthMode }> = ({ mode = "login" }) => {
         .auth-divider-text { font-size: 12px; color: #9CA3AF; font-weight: 500; white-space: nowrap; }
 
         .auth-field-label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 7px; }
-        .auth-input { width: 100%; height: 46px; padding: 0 14px; border: 1.5px solid rgba(0,0,0,0.1); border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: #0A0A0F; background: #F9FAFB; outline: none; transition: all 0.2s; }
+        .auth-input { width: 100%; height: 46px; padding: 0 14px; border: 1.5px solid rgba(0,0,0,0.1); border-radius: 10px; font-family: var(--font-ui); font-size: 14px; color: #0A0A0F; background: #F9FAFB; outline: none; transition: all 0.2s; }
         .auth-input:focus { border-color: #2563EB; background: white; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
         .auth-field { margin-bottom: 16px; }
         .auth-hint { font-size: 12px; color: #9CA3AF; margin-top: 5px; }
         .auth-error { display: flex; gap: 10px; align-items: flex-start; background: rgba(239,68,68,0.07); border: 1px solid rgba(239,68,68,0.2); border-radius: 10px; padding: 12px 14px; font-size: 13px; color: #DC2626; margin-bottom: 16px; }
-        .auth-submit { width: 100%; height: 48px; background: #2563EB; color: white; border: none; border-radius: 11px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 6px 20px rgba(37,99,235,0.3); }
+        .auth-submit { width: 100%; height: 48px; background: #2563EB; color: white; border: none; border-radius: 11px; font-family: var(--font-ui); font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 6px 20px rgba(37,99,235,0.3); }
         .auth-submit:hover:not(:disabled) { background: #1D4ED8; transform: translateY(-1px); box-shadow: 0 8px 28px rgba(37,99,235,0.4); }
         .auth-submit:disabled { opacity: 0.65; cursor: not-allowed; transform: none; }
         .auth-switch { text-align: center; font-size: 14px; color: #6B7280; margin-top: 20px; }

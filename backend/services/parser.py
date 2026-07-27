@@ -55,7 +55,7 @@ def parse_resume_file(file, file_ext: str) -> str:
             return parse_docx(file)
         else:
             content = file.read()
-            if isinstance(content, bytes):
+            if isinstance(content, bytes): 
                 return content.decode("utf-8", errors='ignore')
             return content
     except Exception as e:

@@ -12,7 +12,6 @@ const NotFound = () => {
   return (
     <div className="nf-root">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
         * { box-sizing: border-box; }
         .nf-root {
           min-height: 100vh;
@@ -20,7 +19,7 @@ const NotFound = () => {
           align-items: center;
           justify-content: center;
           background: #FAFAF8;
-          font-family: 'DM Sans', sans-serif;
+          font-family: var(--font-ui);
           padding: 24px;
           position: relative;
           overflow: hidden;
@@ -30,10 +29,10 @@ const NotFound = () => {
 
         .nf-content { position: relative; z-index: 1; text-align: center; max-width: 480px; }
         .nf-logo { display: flex; align-items: center; gap: 8px; justify-content: center; margin-bottom: 48px; }
-        .nf-logo span { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.1rem; color: #0A0A0F; }
+        .nf-logo span { font-family: var(--font-ui); font-weight: 800; font-size: 1.1rem; color: #0A0A0F; }
 
         .nf-number {
-          font-family: 'Syne', sans-serif;
+          font-family: var(--font-ui);
           font-size: clamp(7rem, 20vw, 11rem);
           font-weight: 800;
           letter-spacing: -0.05em;
@@ -52,7 +51,7 @@ const NotFound = () => {
           display: flex;
           align-items: center;
           justify-content: center;
-          font-family: 'Syne', sans-serif;
+          font-family: var(--font-ui);
           font-size: inherit;
           font-weight: 800;
           letter-spacing: inherit;
@@ -64,7 +63,7 @@ const NotFound = () => {
           filter: blur(2px);
         }
 
-        .nf-title { font-family: 'Syne', sans-serif; font-size: 1.6rem; font-weight: 800; color: #0A0A0F; letter-spacing: -0.02em; margin: 24px 0 10px; }
+        .nf-title { font-family: var(--font-ui); font-size: 1.6rem; font-weight: 800; color: #0A0A0F; letter-spacing: -0.02em; margin: 24px 0 10px; }
         .nf-sub { color: #6B7280; font-size: 15px; font-weight: 300; line-height: 1.7; margin: 0 0 36px; }
 
         .nf-btn {
@@ -75,7 +74,7 @@ const NotFound = () => {
           background: #2563EB;
           color: white;
           border-radius: 12px;
-          font-family: 'DM Sans', sans-serif;
+          font-family: var(--font-ui);
           font-size: 15px;
           font-weight: 700;
           text-decoration: none;

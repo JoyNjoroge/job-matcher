@@ -9,9 +9,9 @@
 
     body {
       width: 320px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #0C0C10;
-      color: #F0EEE8;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      background: #f7f6f1;
+      color: #17201d;
     }
 
     .popup {
@@ -22,30 +22,29 @@
     .header {
       display: flex; align-items: center; gap: 10px;
       padding-bottom: 16px;
-      border-bottom: 1px solid rgba(255,255,255,0.07);
+      border-bottom: 1px solid #dfe4df;
       margin-bottom: 16px;
     }
     .logo-mark {
-      width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
-      background: linear-gradient(135deg, #6366F1, #8B5CF6);
+      width: 34px; height: 34px; border-radius: 7px; flex-shrink: 0;
+      background: #245c46;
       display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 0 14px rgba(99,102,241,0.4);
     }
     .logo-mark svg { width: 17px; height: 17px; }
-    .logo-text { font-weight: 800; font-size: 15px; letter-spacing: -0.02em; }
-    .logo-tagline { font-size: 11px; color: rgba(240,238,232,0.4); margin-top: 1px; }
+    .logo-text { font-weight: 700; font-size: 15px; letter-spacing: -0.01em; }
+    .logo-tagline { font-size: 11px; color: #66706b; margin-top: 1px; }
 
     /* Status card */
     .status-card {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 12px;
+      background: #fff;
+      border: 1px solid #dfe4df;
+      border-radius: 8px;
       padding: 14px;
       margin-bottom: 14px;
     }
     .status-row {
       display: flex; align-items: center; gap: 8px;
-      font-size: 13px; color: rgba(240,238,232,0.7);
+      font-size: 13px; color: #66706b;
       margin-bottom: 8px;
     }
     .status-row:last-child { margin-bottom: 0; }
@@ -53,21 +52,21 @@
       width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
       background: #EF4444;
     }
-    .dot.active { background: #22C55E; box-shadow: 0 0 6px #22C55E; }
-    .dot.warn   { background: #F59E0B; }
+    .dot.active { background: #3f765f; }
+    .dot.warn   { background: #b07a27; }
     #auth-name {
-      font-weight: 700; color: #F0EEE8;
+      font-weight: 650; color: #17201d;
       font-size: 13px;
     }
 
     /* Info box */
     .info-box {
-      background: rgba(99,102,241,0.08);
-      border: 1px solid rgba(99,102,241,0.18);
-      border-radius: 10px;
+      background: #eef3f0;
+      border: 1px solid #d8e4dd;
+      border-radius: 8px;
       padding: 12px 14px;
       font-size: 12.5px;
-      color: rgba(240,238,232,0.6);
+      color: #53605a;
       line-height: 1.6;
       margin-bottom: 14px;
     }
@@ -75,37 +74,36 @@
     /* Buttons */
     .actions { display: flex; flex-direction: column; gap: 8px; }
     .btn {
-      width: 100%; padding: 11px 16px; border-radius: 9px;
-      font-size: 13px; font-weight: 700; cursor: pointer;
+      width: 100%; padding: 11px 16px; border-radius: 7px;
+      font-size: 13px; font-weight: 650; cursor: pointer;
       display: flex; align-items: center; justify-content: center; gap: 8px;
       border: none; font-family: inherit; transition: all 0.15s;
     }
     .btn-primary {
-      background: linear-gradient(135deg, #6366F1, #8B5CF6);
+      background: #245c46;
       color: white;
-      box-shadow: 0 4px 14px rgba(99,102,241,0.35);
     }
-    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(99,102,241,0.45); }
+    .btn-primary:hover { background: #193f31; }
     .btn-ghost {
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.1);
-      color: rgba(240,238,232,0.7);
+      background: #fff;
+      border: 1px solid #cfd7d1;
+      color: #445049;
     }
-    .btn-ghost:hover { background: rgba(255,255,255,0.1); color: #F0EEE8; }
+    .btn-ghost:hover { background: #eef0ed; color: #17201d; }
 
     /* Footer */
     .footer {
       margin-top: 14px; padding-top: 12px;
-      border-top: 1px solid rgba(255,255,255,0.06);
+      border-top: 1px solid #dfe4df;
       display: flex; justify-content: space-between; align-items: center;
     }
     .footer-link {
       background: none; border: none; cursor: pointer;
-      font-size: 12px; color: rgba(240,238,232,0.3); font-family: inherit;
+      font-size: 12px; color: #66706b; font-family: inherit;
       transition: color 0.15s;
     }
-    .footer-link:hover { color: rgba(240,238,232,0.6); }
-    .version { font-size: 11px; color: rgba(240,238,232,0.2); }
+    .footer-link:hover { color: #245c46; }
+    .version { font-size: 11px; color: #929b96; }
   </style>
 </head>
 <body>

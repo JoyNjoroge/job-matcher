@@ -43,7 +43,7 @@ export default function AuthCallbackPage() {
       <div style={{
         display: "flex", flexDirection: "column", alignItems: "center",
         justifyContent: "center", minHeight: "100vh",
-        fontFamily: "DM Sans, sans-serif", gap: 16,
+        fontFamily: "var(--font-ui)", gap: 16,
       }}>
         <p style={{ color: "#EF4444", fontSize: 15 }}>
           Sign-in failed: {error}
@@ -64,7 +64,7 @@ export default function AuthCallbackPage() {
   return (
     <div style={{
       display: "flex", alignItems: "center", justifyContent: "center",
-      minHeight: "100vh", fontFamily: "DM Sans, sans-serif",
+      minHeight: "100vh", fontFamily: "var(--font-ui)",
     }}>
       <p style={{ color: "#6B7280", fontSize: 15 }}>Signing you in…</p>
     </div>

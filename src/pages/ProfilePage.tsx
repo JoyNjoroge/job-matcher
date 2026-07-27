@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { getProfile, updateProfile, parseResumeForProfile, parseLinkedInForProfile } from "@/api";
+import { getProfile, updateProfile, parseResumeForProfile } from "@/api";
 import { Upload, Save, Loader, Link2, X, User, Briefcase, Globe, FileText } from "lucide-react";
 
 interface Profile {
@@ -27,7 +27,6 @@ export default function ProfilePage() {
   const [parsedData, setParsedData] = useState<ParsedData | null>(null);
   const [showParsedPreview, setShowParsedPreview] = useState(false);
   const [linkedinUrl, setLinkedinUrl] = useState("");
-  const [parsingLinkedIn, setParsingLinkedIn] = useState(false);
   const [newSkill, setNewSkill] = useState("");
   const [newJobTitle, setNewJobTitle] = useState("");
 
@@ -89,17 +88,28 @@ export default function ProfilePage() {
     } finally { setParsingResume(false); }
   };
 
-  const handleLinkedInParse = async () => {
+  const handleLinkedInSave = () => {
     if (!linkedinUrl.trim()) return;
-    setParsingLinkedIn(true);
+    let normalized = linkedinUrl.trim();
+    if (!/^https?:\/\//i.test(normalized)) normalized = `https://${normalized}`;
     try {
-      const accessToken = localStorage.getItem("access_token");
-      if (!accessToken) throw new Error("No auth token");
-      const result = await parseLinkedInForProfile(accessToken, linkedinUrl, false);
-      if (result.parsed_data) { setParsedData(result.parsed_data); setShowParsedPreview(true); toast({ title: "Parsed!", description: "Review the extracted data below." }); }
+      const url = new URL(normalized);
+      if (!/(^|\.)linkedin\.com$/i.test(url.hostname)) {
+        throw new Error("Enter a valid linkedin.com profile URL");
+      }
+      setFormData(prev => ({ ...prev, linkedin_url: normalized }));
+      setLinkedinUrl("");
+      toast({
+        title: "LinkedIn URL added",
+        description: "Save your profile to keep this change.",
+      });
     } catch (err: any) {
-      toast({ title: "Error", description: err?.message || "Failed to parse LinkedIn", variant: "destructive" });
-    } finally { setParsingLinkedIn(false); }
+      toast({
+        title: "Invalid LinkedIn URL",
+        description: err?.message || "Enter a valid LinkedIn profile URL",
+        variant: "destructive",
+      });
+    }
   };
 
   const applyParsedData = () => {
@@ -120,8 +130,8 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 24px", gap: 16, fontFamily: "DM Sans, sans-serif" }}>
-        <div style={{ width: 36, height: 36, border: "3px solid rgba(37,99,235,0.2)", borderTopColor: "#2563EB", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 24px", gap: 16, fontFamily: "var(--font-ui)" }}>
+        <div style={{ width: 36, height: 36, border: "3px solid rgba(36,92,70,0.2)", borderTopColor: "#245c46", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
         <p style={{ color: "#6B7280", fontSize: 14 }}>Loading your profile…</p>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
@@ -131,20 +141,19 @@ export default function ProfilePage() {
   return (
     <div className="profile-root">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
-        .profile-root { font-family: 'DM Sans', sans-serif; max-width: 860px; margin: 0 auto; padding: 48px 24px 80px; }
+        .profile-root { font-family: var(--font-ui); max-width: 860px; margin: 0 auto; padding: 48px 24px 80px; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
         .pr-header { display: flex; align-items: flex-start; gap: 18px; margin-bottom: 40px; padding-bottom: 32px; border-bottom: 1px solid rgba(0,0,0,0.07); }
-        .pr-avatar { width: 64px; height: 64px; border-radius: 18px; background: linear-gradient(135deg, #2563EB, #7C3AED); display: flex; align-items: center; justify-content: center; color: white; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 24px; flex-shrink: 0; }
-        .pr-header-text h1 { font-family: 'Syne', sans-serif; font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 800; letter-spacing: -0.025em; color: #0A0A0F; margin: 0 0 6px; }
+        .pr-avatar { width: 64px; height: 64px; border-radius: 9px; background: #245c46; display: flex; align-items: center; justify-content: center; color: white; font-family: var(--font-ui); font-weight: 800; font-size: 24px; flex-shrink: 0; }
+        .pr-header-text h1 { font-family: var(--font-ui); font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 800; letter-spacing: -0.025em; color: #0A0A0F; margin: 0 0 6px; }
         .pr-header-text p { color: #6B7280; font-size: 14px; margin: 0; font-weight: 300; }
 
         /* Cards */
-        .pr-card { background: white; border: 1px solid rgba(0,0,0,0.07); border-radius: 20px; overflow: hidden; margin-bottom: 20px; }
+        .pr-card { background: white; border: 1px solid rgba(0,0,0,0.07); border-radius: 10px; overflow: hidden; margin-bottom: 20px; }
         .pr-card-header { display: flex; align-items: center; gap: 12px; padding: 22px 28px 0; }
         .pr-card-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        .pr-card-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; color: #0A0A0F; margin: 0 0 2px; }
+        .pr-card-title { font-family: var(--font-ui); font-weight: 700; font-size: 1rem; color: #0A0A0F; margin: 0 0 2px; }
         .pr-card-desc { font-size: 12px; color: #9CA3AF; margin: 0; }
         .pr-card-body { padding: 20px 28px 28px; }
 
@@ -153,14 +162,14 @@ export default function ProfilePage() {
         .pr-input {
           width: 100%; height: 44px; padding: 0 14px;
           border: 1.5px solid rgba(0,0,0,0.1); border-radius: 10px;
-          font-family: 'DM Sans', sans-serif; font-size: 14px; color: #0A0A0F;
+          font-family: var(--font-ui); font-size: 14px; color: #0A0A0F;
           background: #F9FAFB; outline: none; transition: all 0.2s; box-sizing: border-box;
         }
-        .pr-input:focus { border-color: #2563EB; background: white; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
-        .pr-select { width: 100%; height: 44px; padding: 0 14px; border: 1.5px solid rgba(0,0,0,0.1); border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: #0A0A0F; background: #F9FAFB; outline: none; cursor: pointer; box-sizing: border-box; }
-        .pr-select:focus { border-color: #2563EB; background: white; }
-        .pr-textarea { width: 100%; min-height: 100px; padding: 12px 14px; border: 1.5px solid rgba(0,0,0,0.1); border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: #0A0A0F; background: #F9FAFB; outline: none; resize: vertical; transition: all 0.2s; line-height: 1.6; box-sizing: border-box; }
-        .pr-textarea:focus { border-color: #2563EB; background: white; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+        .pr-input:focus { border-color: #245c46; background: white; box-shadow: 0 0 0 3px rgba(36,92,70,0.1); }
+        .pr-select { width: 100%; height: 44px; padding: 0 14px; border: 1.5px solid rgba(0,0,0,0.1); border-radius: 10px; font-family: var(--font-ui); font-size: 14px; color: #0A0A0F; background: #F9FAFB; outline: none; cursor: pointer; box-sizing: border-box; }
+        .pr-select:focus { border-color: #245c46; background: white; }
+        .pr-textarea { width: 100%; min-height: 100px; padding: 12px 14px; border: 1.5px solid rgba(0,0,0,0.1); border-radius: 10px; font-family: var(--font-ui); font-size: 14px; color: #0A0A0F; background: #F9FAFB; outline: none; resize: vertical; transition: all 0.2s; line-height: 1.6; box-sizing: border-box; }
+        .pr-textarea:focus { border-color: #245c46; background: white; box-shadow: 0 0 0 3px rgba(36,92,70,0.1); }
         .pr-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
         .pr-field { display: flex; flex-direction: column; }
 
@@ -171,16 +180,16 @@ export default function ProfilePage() {
           padding: 5px 12px; border-radius: 999px;
           font-size: 13px; font-weight: 500;
         }
-        .pr-tag-skill { background: rgba(37,99,235,0.08); color: #2563EB; }
-        .pr-tag-title { background: rgba(124,58,237,0.08); color: #7C3AED; }
+        .pr-tag-skill { background: rgba(36,92,70,0.08); color: #245c46; }
+        .pr-tag-title { background: rgba(124,58,237,0.08); color: #3f765f; }
         .pr-tag-remove { background: none; border: none; cursor: pointer; color: inherit; opacity: 0.6; padding: 0; display: flex; align-items: center; transition: opacity 0.2s; }
         .pr-tag-remove:hover { opacity: 1; }
         .pr-add-row { display: flex; gap: 8px; }
 
         /* Buttons */
-        .pr-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 44px; padding: 0 18px; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; border: none; }
-        .pr-btn-primary { background: #2563EB; color: white; box-shadow: 0 4px 14px rgba(37,99,235,0.28); }
-        .pr-btn-primary:hover:not(:disabled) { background: #1D4ED8; transform: translateY(-1px); }
+        .pr-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 44px; padding: 0 18px; border-radius: 10px; font-family: var(--font-ui); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; border: none; }
+        .pr-btn-primary { background: #245c46; color: white; box-shadow: 0 4px 14px rgba(36,92,70,0.28); }
+        .pr-btn-primary:hover:not(:disabled) { background: #193f31; transform: translateY(-1px); }
         .pr-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
         .pr-btn-outline { background: white; color: #0A0A0F; border: 1.5px solid rgba(0,0,0,0.12); }
         .pr-btn-outline:hover:not(:disabled) { border-color: rgba(0,0,0,0.25); }
@@ -188,15 +197,15 @@ export default function ProfilePage() {
         .pr-btn-sm { height: 36px; padding: 0 14px; font-size: 13px; }
 
         /* Upload zone */
-        .pr-upload-zone { border: 2px dashed rgba(37,99,235,0.25); border-radius: 14px; padding: 28px; text-align: center; transition: all 0.2s; background: rgba(37,99,235,0.02); }
-        .pr-upload-zone:hover { border-color: rgba(37,99,235,0.5); background: rgba(37,99,235,0.04); }
-        .pr-upload-icon { width: 44px; height: 44px; background: rgba(37,99,235,0.08); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
+        .pr-upload-zone { border: 2px dashed rgba(36,92,70,0.25); border-radius: 14px; padding: 28px; text-align: center; transition: all 0.2s; background: rgba(36,92,70,0.02); }
+        .pr-upload-zone:hover { border-color: rgba(36,92,70,0.5); background: rgba(36,92,70,0.04); }
+        .pr-upload-icon { width: 44px; height: 44px; background: rgba(36,92,70,0.08); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
         .pr-upload-label { font-weight: 600; font-size: 14px; color: #0A0A0F; margin-bottom: 4px; }
         .pr-upload-hint { font-size: 12px; color: #9CA3AF; margin-bottom: 14px; }
 
         /* Parsed preview */
-        .pr-parsed-preview { background: rgba(37,99,235,0.04); border: 1.5px solid rgba(37,99,235,0.2); border-radius: 14px; padding: 18px 20px; margin-top: 14px; }
-        .pr-parsed-title { font-weight: 700; font-size: 14px; color: #2563EB; margin-bottom: 10px; }
+        .pr-parsed-preview { background: rgba(36,92,70,0.04); border: 1.5px solid rgba(36,92,70,0.2); border-radius: 14px; padding: 18px 20px; margin-top: 14px; }
+        .pr-parsed-title { font-weight: 700; font-size: 14px; color: #245c46; margin-bottom: 10px; }
         .pr-parsed-item { font-size: 13px; color: #374151; margin-bottom: 6px; }
         .pr-parsed-actions { display: flex; gap: 8px; margin-top: 14px; }
 
@@ -205,8 +214,8 @@ export default function ProfilePage() {
 
         /* Save bar */
         .pr-save-bar { display: flex; justify-content: flex-end; padding-top: 8px; }
-        .pr-save-btn { height: 50px; padding: 0 32px; background: #2563EB; color: white; border: none; border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 9px; box-shadow: 0 6px 20px rgba(37,99,235,0.3); }
-        .pr-save-btn:hover:not(:disabled) { background: #1D4ED8; transform: translateY(-2px); box-shadow: 0 8px 28px rgba(37,99,235,0.4); }
+        .pr-save-btn { height: 50px; padding: 0 32px; background: #245c46; color: white; border: none; border-radius: 8px; font-family: var(--font-ui); font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 9px; box-shadow: 0 6px 20px rgba(36,92,70,0.3); }
+        .pr-save-btn:hover:not(:disabled) { background: #193f31; transform: translateY(-2px); box-shadow: 0 8px 28px rgba(36,92,70,0.4); }
         .pr-save-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
         .pr-spinner { width: 18px; height: 18px; border: 2.5px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; }
       `}</style>
@@ -225,8 +234,8 @@ export default function ProfilePage() {
       {/* Resume Upload */}
       <div className="pr-card">
         <div className="pr-card-header">
-          <div className="pr-card-icon" style={{ background: "rgba(37,99,235,0.08)" }}>
-            <FileText size={18} color="#2563EB" />
+          <div className="pr-card-icon" style={{ background: "rgba(36,92,70,0.08)" }}>
+            <FileText size={18} color="#245c46" />
           </div>
           <div>
             <div className="pr-card-title">Import from Resume</div>
@@ -235,7 +244,7 @@ export default function ProfilePage() {
         </div>
         <div className="pr-card-body">
           <div className="pr-upload-zone">
-            <div className="pr-upload-icon"><Upload size={20} color="#2563EB" /></div>
+            <div className="pr-upload-icon"><Upload size={20} color="#245c46" /></div>
             <div className="pr-upload-label">{resumeFile ? resumeFile.name : "Drop your CV here"}</div>
             <div className="pr-upload-hint">PDF, DOC, DOCX supported</div>
             <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
@@ -274,8 +283,8 @@ export default function ProfilePage() {
             <Link2 size={18} color="#0A66C2" />
           </div>
           <div>
-            <div className="pr-card-title">Import from LinkedIn</div>
-            <div className="pr-card-desc">Paste your LinkedIn profile URL to extract your info</div>
+            <div className="pr-card-title">LinkedIn profile</div>
+            <div className="pr-card-desc">Add your public profile link. LinkedIn sign-in only shares your basic name and email.</div>
           </div>
         </div>
         <div className="pr-card-body">
@@ -286,10 +295,9 @@ export default function ProfilePage() {
               placeholder="https://www.linkedin.com/in/yourprofile"
               value={linkedinUrl}
               onChange={(e) => setLinkedinUrl(e.target.value)}
-              disabled={parsingLinkedIn}
             />
-            <button className="pr-btn pr-btn-primary" onClick={handleLinkedInParse} disabled={!linkedinUrl.trim() || parsingLinkedIn} style={{ flexShrink: 0 }}>
-              {parsingLinkedIn ? <><div className="pr-spinner" /> Parsing...</> : <><Link2 size={15} /> Parse</>}
+            <button className="pr-btn pr-btn-primary" onClick={handleLinkedInSave} disabled={!linkedinUrl.trim()} style={{ flexShrink: 0 }}>
+              <><Link2 size={15} /> Add link</>
             </button>
           </div>
         </div>
@@ -299,7 +307,7 @@ export default function ProfilePage() {
       <div className="pr-card">
         <div className="pr-card-header">
           <div className="pr-card-icon" style={{ background: "rgba(16,185,129,0.1)" }}>
-            <User size={18} color="#10B981" />
+            <User size={18} color="#3f765f" />
           </div>
           <div><div className="pr-card-title">Basic Information</div></div>
         </div>
@@ -336,7 +344,7 @@ export default function ProfilePage() {
       <div className="pr-card">
         <div className="pr-card-header">
           <div className="pr-card-icon" style={{ background: "rgba(124,58,237,0.1)" }}>
-            <Briefcase size={18} color="#7C3AED" />
+            <Briefcase size={18} color="#3f765f" />
           </div>
           <div><div className="pr-card-title">Professional Information</div></div>
         </div>

@@ -12,7 +12,7 @@ export default function ApplicationsPage() {
   return (
     <div className="apps-root">
       <style>{`
-        .apps-root { font-family: 'DM Sans', sans-serif; max-width: 1200px; margin: 0 auto; padding: 48px 24px 80px; }
+        .apps-root { font-family: var(--font-ui); max-width: 1200px; margin: 0 auto; padding: 48px 24px 80px; }
         .apps-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 40px; padding-bottom: 32px; border-bottom: 1px solid var(--border-color, rgba(0,0,0,0.07)); flex-wrap: wrap; }
         .apps-header-left { display: flex; align-items: flex-start; gap: 18px; }
         .apps-header-icon { width: 52px; height: 52px; border-radius: 50%; background: var(--clr-accent-bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color:var(--clr-accent); }
@@ -26,7 +26,7 @@ export default function ApplicationsPage() {
           display: inline-flex; align-items: center; gap: 8px;
           padding: 11px 20px; border-radius: 7px; border: none;
           background: var(--clr-accent, #2563EB); color: white;
-          font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 700;
+          font-family: var(--font-ui); font-size: 14px; font-weight: 700;
           cursor: pointer; transition: all 0.2s; white-space: nowrap;
           box-shadow: none;
           align-self: center;

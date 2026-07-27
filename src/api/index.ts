@@ -226,25 +226,6 @@ export async function parseResumeForProfile(
   return response.json();
 }
 
-export async function parseLinkedInForProfile(
-  accessToken: string,
-  linkedinUrl: string,
-  autoApply: boolean = false
-) {
-  const response = await fetch(`${API_BASE}/profile/parse-linkedin`, {
-    method: "POST",
-    headers: authHeaders(accessToken),
-    body: JSON.stringify({ linkedin_url: linkedinUrl, auto_apply: autoApply }),
-  });
-
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err?.error || "Failed to parse LinkedIn profile");
-  }
-
-  return response.json();
-}
-
 // ─── Subscription ─────────────────────────────────────────────
 export async function getSubscription(accessToken: string): Promise<SubscriptionResponse> {
   const response = await fetch(`${API_BASE}/subscription`, {

@@ -20,8 +20,17 @@ async function syncAuthToken() {
     //    (service workers can't access localStorage directly)
     const tabs = await chrome.tabs.query({ url: CONFIG.FRONTEND_URL + '/*' });
     if (tabs.length > 0) {
-      chrome.tabs.sendMessage(tabs[0].id, { type: 'READ_LOCAL_STORAGE' });
-      return;
+      const credentials = await chrome.tabs.sendMessage(
+        tabs[0].id,
+        { type: 'READ_LOCAL_STORAGE' }
+      );
+      if (credentials?.token) {
+        await chrome.storage.local.set({
+          authToken: credentials.token,
+          refreshToken: credentials.refreshToken || null,
+        });
+        return true;
+      }
     }
 
     // 2. Fallback: cookie
@@ -31,7 +40,9 @@ async function syncAuthToken() {
     if (auth) {
       await chrome.storage.local.set({ authToken: auth.value });
       console.log('[Auth] Token from cookie');
+      return true;
     }
+    return false;
   } catch (e) {
     console.error('[Auth] syncAuthToken error:', e);
   }
@@ -41,16 +52,22 @@ async function syncAuthToken() {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
-  // Content script on the applybotpro domain reports the token
+  // Content script on the CandorApply domain reports the tokens.
   if (request.type === 'AUTH_TOKEN_FOUND') {
-    chrome.storage.local.set({ authToken: request.token });
+    chrome.storage.local.set({
+      authToken: request.token,
+      refreshToken: request.refreshToken || null,
+    });
     sendResponse({ success: true });
     return false;
   }
 
   if (request.type === 'GET_AUTH_TOKEN') {
-    chrome.storage.local.get(['authToken'], r => {
-      sendResponse({ token: r.authToken || null });
+    chrome.storage.local.get(['authToken', 'refreshToken'], r => {
+      sendResponse({
+        token: r.authToken || null,
+        refreshToken: r.refreshToken || null,
+      });
     });
     return true;
   }
@@ -89,19 +106,57 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
+async function refreshAccessToken() {
+  const { refreshToken } = await chrome.storage.local.get(['refreshToken']);
+  if (!refreshToken) return null;
+
+  const response = await fetch(
+    CONFIG.APPLYBOTPRO_DOMAIN + CONFIG.API_ENDPOINTS.REFRESH_TOKEN,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${refreshToken}` },
+    }
+  );
+  if (!response.ok) {
+    await chrome.storage.local.remove(['authToken', 'refreshToken']);
+    return null;
+  }
+
+  const tokens = await response.json();
+  await chrome.storage.local.set({
+    authToken: tokens.access_token,
+    refreshToken: tokens.refresh_token,
+  });
+  return tokens.access_token;
+}
+
+async function authorizedFetch(path, options = {}) {
+  let { authToken } = await chrome.storage.local.get(['authToken']);
+  if (!authToken) return null;
+
+  const request = token => fetch(CONFIG.APPLYBOTPRO_DOMAIN + path, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  let response = await request(authToken);
+  if (response.status === 401) {
+    authToken = await refreshAccessToken();
+    if (authToken) response = await request(authToken);
+  }
+  return response;
+}
+
 // ── Profile helpers ───────────────────────────────────────────────────────────
 
 async function fetchUserProfile() {
   try {
-    const { authToken } = await chrome.storage.local.get(['authToken']);
-    if (!authToken) return null;
+    const res = await authorizedFetch(CONFIG.API_ENDPOINTS.GET_PROFILE);
 
-    const res = await fetch(
-      CONFIG.APPLYBOTPRO_DOMAIN + CONFIG.API_ENDPOINTS.GET_PROFILE,
-      { headers: { Authorization: `Bearer ${authToken}` } }
-    );
-
-    if (!res.ok) return null;
+    if (!res?.ok) return null;
 
     const result = await res.json();
 
@@ -158,21 +213,18 @@ async function getUserProfile() {
 
 async function autofillWithBackend(fields, jobContext = {}) {
   try {
-    const { authToken } = await chrome.storage.local.get(['authToken']);
-    if (!authToken) return { error: 'not_authenticated' };
-
-    const res = await fetch(
-      CONFIG.APPLYBOTPRO_DOMAIN + CONFIG.API_ENDPOINTS.AUTOFILL_PROXY,
+    const res = await authorizedFetch(
+      CONFIG.API_ENDPOINTS.AUTOFILL_PROXY,
       {
         method:  'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization:  `Bearer ${authToken}`,
         },
         body: JSON.stringify({ fields, job_context: jobContext }),
       }
     );
 
+    if (!res) return { error: 'not_authenticated' };
     if (!res.ok) return { error: 'server_error', status: res.status };
     return await res.json();   // { suggestions: [{ index, suggestedValue, confidence }] }
   } catch (e) {
@@ -185,22 +237,18 @@ async function autofillWithBackend(fields, jobContext = {}) {
 
 async function markJobAsApplied(applicationData) {
   try {
-    const { authToken } = await chrome.storage.local.get(['authToken']);
-    if (!authToken) return false;
-
-    const res = await fetch(
-      CONFIG.APPLYBOTPRO_DOMAIN + CONFIG.API_ENDPOINTS.TRACK_APPLICATION,
+    const res = await authorizedFetch(
+      CONFIG.API_ENDPOINTS.TRACK_APPLICATION,
       {
         method:  'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization:  `Bearer ${authToken}`,
         },
         body: JSON.stringify(applicationData),
       }
     );
 
-    if (res.ok) {
+    if (res?.ok) {
       await chrome.storage.local.remove(`tracked_job_${applicationData.job_id}`);
       chrome.notifications.create({
         type:    'basic',

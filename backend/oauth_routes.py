@@ -53,9 +53,15 @@ oauth.register(
     client_secret=os.getenv("LINKEDIN_CLIENT_SECRET"),
     access_token_url="https://www.linkedin.com/oauth/v2/accessToken",
     authorize_url="https://www.linkedin.com/oauth/v2/authorization",
-    userinfo_endpoint="https://api.linkedin.com/v2/me",
+    userinfo_endpoint="https://api.linkedin.com/v2/userinfo",
     api_base_url="https://api.linkedin.com/v2/",
-    client_kwargs={"scope": "openid profile email"},
+    # LinkedIn requires the client credentials in the form body when the
+    # authorization code is exchanged. Authlib otherwise defaults to HTTP
+    # Basic authentication for providers without OIDC discovery metadata.
+    client_kwargs={
+        "scope": "openid profile email",
+        "token_endpoint_auth_method": "client_secret_post",
+    },
 )
 
 
@@ -191,6 +197,8 @@ def linkedin_login():
 def linkedin_callback():
     try:
         token      = oauth.linkedin.authorize_access_token()
+        if not token.get("access_token"):
+            raise RuntimeError("LinkedIn returned no access token")
         userinfo_response = requests.get(
             "https://api.linkedin.com/v2/userinfo",
             headers={"Authorization": f"Bearer {token['access_token']}"},
@@ -221,7 +229,16 @@ def linkedin_callback():
 
     except OAuthAccountConflict as e:
         return _redirect_to_frontend(error=f"account_method_{e.registered_provider}")
-    except Exception as e:
-        print(f"[OAuth/LinkedIn] {e}")
+    except requests.HTTPError as e:
+        response = e.response
+        detail = response.text[:500] if response is not None else str(e)
+        status = response.status_code if response is not None else "unknown"
+        print(f"[OAuth/LinkedIn] userinfo HTTP {status}: {detail}")
         import traceback; traceback.print_exc()
-        return _redirect_to_frontend(error="linkedin_failed")
+        return _redirect_to_frontend(error="linkedin_profile_failed")
+    except Exception as e:
+        # Authlib errors include LinkedIn's OAuth error and description. Keep
+        # them server-side so secrets/tokens never appear in the browser URL.
+        print(f"[OAuth/LinkedIn] token/callback failed: {type(e).__name__}: {e}")
+        import traceback; traceback.print_exc()
+        return _redirect_to_frontend(error="linkedin_token_failed")

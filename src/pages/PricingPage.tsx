@@ -86,10 +86,9 @@ export default function PricingPage() {
   return (
     <div className="pricing-root">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
 
         .pricing-root {
-          font-family: 'DM Sans', var(--font-body, sans-serif);
+          font-family: var(--font-ui);
           max-width: 960px; margin: 0 auto;
           padding: clamp(32px, 5vw, 56px) clamp(14px, 4vw, 28px) 80px;
           color: var(--text, #0A0A0F);
@@ -101,7 +100,7 @@ export default function PricingPage() {
         /* Header */
         .pr-header { text-align: center; margin-bottom: clamp(40px, 6vw, 64px); }
         .pr-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #2563EB; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; gap: 6px; }
-        .pr-title { font-family: 'Syne', var(--font-display, sans-serif); font-size: clamp(1.9rem, 4.5vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; color: var(--text, #0A0A0F); margin: 0 0 12px; }
+        .pr-title { font-family: var(--font-ui); font-size: clamp(1.9rem, 4.5vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; color: var(--text, #0A0A0F); margin: 0 0 12px; }
         .pr-sub { color: var(--text2, #6B7280); font-size: clamp(13.5px, 2vw, 15px); font-weight: 300; max-width: 440px; margin: 0 auto; line-height: 1.7; }
 
         /* Current plan banner */
@@ -147,9 +146,9 @@ export default function PricingPage() {
         /* Plan icon */
         .pr-plan-icon { width: 42px; height: 42px; border-radius: 11px; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
         .pr-current-tag { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 600; background: rgba(16,185,129,0.1); color: #059669; margin-bottom: 8px; }
-        .pr-plan-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.05rem; color: var(--text, #0A0A0F); margin: 0 0 8px; text-transform: capitalize; }
+        .pr-plan-name { font-family: var(--font-ui); font-weight: 700; font-size: 1.05rem; color: var(--text, #0A0A0F); margin: 0 0 8px; text-transform: capitalize; }
         .pr-price-row { display: flex; align-items: flex-end; gap: 3px; margin-bottom: 18px; }
-        .pr-price { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 2.4rem; color: var(--text, #0A0A0F); line-height: 1; }
+        .pr-price { font-family: var(--font-ui); font-weight: 800; font-size: 2.4rem; color: var(--text, #0A0A0F); line-height: 1; }
         .pr-price-period { font-size: 13px; color: var(--text3, #9CA3AF); padding-bottom: 5px; }
 
         /* Features list */
@@ -161,7 +160,7 @@ export default function PricingPage() {
         /* CTA area */
         .pr-cta { margin-top: auto; }
         .pr-btn {
-          width: 100%; height: 44px; border-radius: 11px; font-family: 'DM Sans', sans-serif;
+          width: 100%; height: 44px; border-radius: 11px; font-family: var(--font-ui);
           font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s;
           display: flex; align-items: center; justify-content: center; gap: 7px; border: none;
         }
@@ -175,7 +174,7 @@ export default function PricingPage() {
         .pr-cancel-btn {
           display: block; text-align: center; font-size: 12px; color: #EF4444;
           margin-top: 9px; background: none; border: none; cursor: pointer;
-          width: 100%; font-family: 'DM Sans', sans-serif; transition: opacity 0.2s;
+          width: 100%; font-family: var(--font-ui); transition: opacity 0.2s;
           padding: 4px;
         }
         .pr-cancel-btn:hover { opacity: 0.75; }
@@ -183,7 +182,7 @@ export default function PricingPage() {
 
         /* FAQ */
         .pr-faq { max-width: 680px; margin: 0 auto; }
-        .pr-faq-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: clamp(1.4rem, 3vw, 1.8rem); letter-spacing: -0.02em; color: var(--text, #0A0A0F); text-align: center; margin-bottom: 24px; }
+        .pr-faq-title { font-family: var(--font-ui); font-weight: 800; font-size: clamp(1.4rem, 3vw, 1.8rem); letter-spacing: -0.02em; color: var(--text, #0A0A0F); text-align: center; margin-bottom: 24px; }
         .pr-faq-item { background: var(--surface, white); border: 1px solid var(--border, rgba(0,0,0,0.07)); border-radius: 13px; padding: 18px 22px; margin-bottom: 10px; transition: box-shadow 0.2s; }
         .pr-faq-item:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
         .pr-faq-q { font-weight: 600; font-size: 14px; color: var(--text, #0A0A0F); margin-bottom: 5px; }

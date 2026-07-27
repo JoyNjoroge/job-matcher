@@ -29,14 +29,13 @@ export default function PrepPage() {
     return (
       <div className="prep-root">
         <style>{`
-          @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
-          .prep-root { font-family: 'DM Sans', sans-serif; max-width: 720px; margin: 0 auto; padding: 48px 24px 80px; }
+          .prep-root { font-family: var(--font-ui); max-width: 720px; margin: 0 auto; padding: 48px 24px 80px; }
         `}</style>
         <div style={{ textAlign: "center", padding: "80px 24px" }}>
           <div style={{ width: 72, height: 72, background: "rgba(0,0,0,0.04)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", color: "#9CA3AF" }}>
             <MessageSquare size={30} />
           </div>
-          <h2 style={{ fontFamily: "Syne, sans-serif", fontWeight: 800, fontSize: "1.4rem", color: "#0A0A0F", margin: "0 0 10px" }}>No Applications Selected</h2>
+          <h2 style={{ fontFamily: "var(--font-ui)", fontWeight: 800, fontSize: "1.4rem", color: "#0A0A0F", margin: "0 0 10px" }}>No Applications Selected</h2>
           <p style={{ color: "#6B7280", fontSize: 14, lineHeight: 1.7, maxWidth: 400, margin: "0 auto 24px" }}>
             Go to your Applications page and check "Selected for Interview" on the roles you want to prepare for.
           </p>
@@ -52,17 +51,16 @@ export default function PrepPage() {
   return (
     <div className="prep-root">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
-        .prep-root { font-family: 'DM Sans', sans-serif; max-width: 840px; margin: 0 auto; padding: 48px 24px 80px; }
+        .prep-root { font-family: var(--font-ui); max-width: 840px; margin: 0 auto; padding: 48px 24px 80px; }
         .prep-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 40px; padding-bottom: 32px; border-bottom: 1px solid rgba(0,0,0,0.07); flex-wrap: wrap; }
         .prep-header-left { display: flex; align-items: center; gap: 16px; }
         .prep-header-icon { width: 52px; height: 52px; border-radius: 14px; background: rgba(37,99,235,0.08); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        .prep-header h1 { font-family: 'Syne', sans-serif; font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 800; letter-spacing: -0.025em; color: #0A0A0F; margin: 0 0 4px; }
+        .prep-header h1 { font-family: var(--font-ui); font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 800; letter-spacing: -0.025em; color: #0A0A0F; margin: 0 0 4px; }
         .prep-header p { color: #6B7280; font-size: 14px; margin: 0; font-weight: 300; }
 
         /* Dropdown */
         .prep-selector { position: relative; }
-        .prep-selector-btn { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: white; border: 1.5px solid rgba(0,0,0,0.1); border-radius: 10px; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; color: #0A0A0F; transition: all 0.2s; }
+        .prep-selector-btn { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: white; border: 1.5px solid rgba(0,0,0,0.1); border-radius: 10px; cursor: pointer; font-family: var(--font-ui); font-size: 13px; font-weight: 600; color: #0A0A0F; transition: all 0.2s; }
         .prep-selector-btn:hover { border-color: rgba(37,99,235,0.3); }
         .prep-selector-text { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .prep-dropdown { position: absolute; right: 0; top: calc(100% + 8px); width: 280px; background: white; border: 1.5px solid rgba(0,0,0,0.08); border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.12); z-index: 50; overflow: hidden; }

@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('btn-help').addEventListener('click', () => {
-    chrome.tabs.create({ url: CONFIG.FRONTEND_URL + '/help' });
+    chrome.tabs.create({ url: CONFIG.FRONTEND_URL + '/profile' });
   });
 });
 
@@ -91,7 +91,7 @@ async function checkActiveTab() {
       jobDot.className   = 'dot warn';
       jobStatus.textContent = 'Job page detected';
       infoBox.innerHTML  = 'Click the <strong>AutoFill</strong> button on the page to fill this application.';
-    } else if (url.hostname.includes('applybotpro') || url.hostname.includes('netlify')) {
+    } else if (url.hostname === new URL(CONFIG.FRONTEND_URL).hostname) {
       jobDot.className   = 'dot active';
       jobStatus.textContent = 'CandorApply dashboard';
       infoBox.innerHTML  = 'Click Apply on any job to activate AutoFill on the application page.';

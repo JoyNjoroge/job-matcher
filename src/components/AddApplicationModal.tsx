@@ -168,7 +168,7 @@ export function AddApplicationModal({ isOpen, onClose }: Props) {
           width: 100%; max-width: 520px;
           max-height: 90vh; overflow-y: auto;
           animation: aamSlideUp 0.22s cubic-bezier(0.4,0,0.2,1);
-          font-family: 'DM Sans', sans-serif;
+          font-family: var(--font-ui);
         }
         @keyframes aamSlideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -177,7 +177,7 @@ export function AddApplicationModal({ isOpen, onClose }: Props) {
           padding: 22px 24px 0;
         }
         .aam-title {
-          font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.15rem;
+          font-family: var(--font-ui); font-weight: 800; font-size: 1.15rem;
           color: var(--text, #0A0A0F); letter-spacing: -0.02em;
         }
         .aam-close {
@@ -195,7 +195,7 @@ export function AddApplicationModal({ isOpen, onClose }: Props) {
         .aam-mode-btn {
           flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;
           padding: 9px 14px; border-radius: 10px; border: 1.5px solid transparent;
-          font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+          font-family: var(--font-ui); font-size: 13px; font-weight: 600;
           cursor: pointer; transition: all 0.15s;
         }
         .aam-mode-btn.active { background: var(--clr-accent, #2563EB); color: white; border-color: transparent; box-shadow: 0 4px 12px rgba(37,99,235,0.25); }
@@ -208,14 +208,14 @@ export function AddApplicationModal({ isOpen, onClose }: Props) {
           flex: 1; height: 42px; padding: 0 13px;
           border: 1.5px solid var(--border-color, rgba(0,0,0,0.1));
           border-radius: 10px; background: var(--surface, #fff);
-          color: var(--text, #0A0A0F); font-family: 'DM Sans', sans-serif; font-size: 13.5px;
+          color: var(--text, #0A0A0F); font-family: var(--font-ui); font-size: 13.5px;
           outline: none; transition: border-color 0.2s, box-shadow 0.2s;
         }
         .aam-url-input:focus { border-color: var(--clr-accent, #2563EB); box-shadow: 0 0 0 3px var(--clr-accent-bg, rgba(37,99,235,0.08)); }
         .aam-fetch-btn {
           height: 42px; padding: 0 16px; border-radius: 10px; border: none;
           background: var(--clr-accent, #2563EB); color: white;
-          font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+          font-family: var(--font-ui); font-size: 13px; font-weight: 600;
           cursor: pointer; transition: all 0.15s; white-space: nowrap;
           display: flex; align-items: center; gap: 6px;
         }
@@ -230,7 +230,7 @@ export function AddApplicationModal({ isOpen, onClose }: Props) {
           width: 100%; height: 42px; padding: 0 13px;
           border: 1.5px solid var(--border-color, rgba(0,0,0,0.1));
           border-radius: 10px; background: var(--surface, #fff);
-          color: var(--text, #0A0A0F); font-family: 'DM Sans', sans-serif; font-size: 13.5px;
+          color: var(--text, #0A0A0F); font-family: var(--font-ui); font-size: 13.5px;
           outline: none; transition: border-color 0.2s, box-shadow 0.2s; box-sizing: border-box;
         }
         .aam-input:focus { border-color: var(--clr-accent, #2563EB); box-shadow: 0 0 0 3px var(--clr-accent-bg, rgba(37,99,235,0.08)); }
@@ -238,7 +238,7 @@ export function AddApplicationModal({ isOpen, onClose }: Props) {
           width: 100%; padding: 11px 13px; min-height: 90px; resize: vertical;
           border: 1.5px solid var(--border-color, rgba(0,0,0,0.1));
           border-radius: 10px; background: var(--surface, #fff);
-          color: var(--text, #0A0A0F); font-family: 'DM Sans', sans-serif; font-size: 13.5px;
+          color: var(--text, #0A0A0F); font-family: var(--font-ui); font-size: 13.5px;
           outline: none; transition: border-color 0.2s, box-shadow 0.2s; box-sizing: border-box; line-height: 1.6;
         }
         .aam-textarea:focus { border-color: var(--clr-accent, #2563EB); box-shadow: 0 0 0 3px var(--clr-accent-bg, rgba(37,99,235,0.08)); }
@@ -275,7 +275,7 @@ export function AddApplicationModal({ isOpen, onClose }: Props) {
           padding: 40px 24px; gap: 12px; text-align: center;
         }
         .aam-success-icon { width: 56px; height: 56px; border-radius: 50%; background: rgba(16,185,129,0.1); display: flex; align-items: center; justify-content: center; }
-        .aam-success-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.1rem; color: var(--text, #0A0A0F); }
+        .aam-success-title { font-family: var(--font-ui); font-weight: 800; font-size: 1.1rem; color: var(--text, #0A0A0F); }
         .aam-success-sub { font-size: 13.5px; color: var(--text2, #6B7280); }
 
         /* Footer */
@@ -284,14 +284,14 @@ export function AddApplicationModal({ isOpen, onClose }: Props) {
           flex: 1; height: 44px; border-radius: 11px;
           border: 1.5px solid var(--border-color, rgba(0,0,0,0.1));
           background: var(--surface2, #F2F2EF); color: var(--text2, #6B7280);
-          font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+          font-family: var(--font-ui); font-size: 14px; font-weight: 600;
           cursor: pointer; transition: all 0.15s;
         }
         .aam-cancel-btn:hover { color: var(--text, #0A0A0F); }
         .aam-submit-btn {
           flex: 2; height: 44px; border-radius: 11px; border: none;
           background: var(--clr-accent, #2563EB); color: white;
-          font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 700;
+          font-family: var(--font-ui); font-size: 14px; font-weight: 700;
           cursor: pointer; transition: all 0.2s;
           display: flex; align-items: center; justify-content: center; gap: 8px;
           box-shadow: 0 4px 14px rgba(37,99,235,0.28);

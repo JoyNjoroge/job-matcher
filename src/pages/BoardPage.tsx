@@ -72,7 +72,7 @@ function KanbanCard({
         borderRadius: 14, padding: "14px 16px",
         boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
         cursor: "pointer", transition: "all 0.15s",
-        fontFamily: "'DM Sans', sans-serif",
+        fontFamily: "var(--font-ui)",
         marginBottom: 10,
       }}
       onMouseEnter={e => {
@@ -155,7 +155,7 @@ function KanbanColumn({
         padding: "10px 14px", borderRadius: 12, marginBottom: 14,
         background: col.bg, border: `1px solid ${col.border}`,
       }}>
-        <span style={{ fontWeight: 700, fontSize: 13.5, color: col.color, fontFamily: "'Syne', sans-serif" }}>
+        <span style={{ fontWeight: 700, fontSize: 13.5, color: col.color, fontFamily: "var(--font-ui)" }}>
           {col.title}
         </span>
         <span style={{
@@ -177,7 +177,7 @@ function KanbanColumn({
             border: "1.5px dashed var(--border-color, rgba(0,0,0,0.1))",
             borderRadius: 12, padding: "28px 16px",
             textAlign: "center", color: "var(--text3, #9CA3AF)",
-            fontSize: 13, fontFamily: "'DM Sans', sans-serif",
+            fontSize: 13, fontFamily: "var(--font-ui)",
           }}>
             No applications here
           </div>
@@ -204,7 +204,7 @@ export default function BoardPage() {
   };
 
   return (
-    <div style={{ fontFamily: "'DM Sans', sans-serif", padding: "48px 24px 80px" }}>
+    <div style={{ fontFamily: "var(--font-ui)", padding: "48px 24px 80px" }}>
 
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 40, flexWrap: "wrap", gap: 16 }}>
@@ -228,7 +228,7 @@ export default function BoardPage() {
             display: "inline-flex", alignItems: "center", gap: 8,
             padding: "11px 20px", borderRadius: 7, border: "none",
             background: "var(--clr-accent)", color: "white",
-            fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 700,
+            fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700,
             cursor: "pointer", boxShadow: "none",
             transition: "all 0.2s",
           }}
@@ -251,7 +251,7 @@ export default function BoardPage() {
           </p>
           <button
             onClick={() => setShowAddModal(true)}
-            style={{ padding: "11px 24px", borderRadius: 7, border: "none", background: "var(--clr-accent)", color: "white", fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
+            style={{ padding: "11px 24px", borderRadius: 7, border: "none", background: "var(--clr-accent)", color: "white", fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
           >
             Add your first application
           </button>

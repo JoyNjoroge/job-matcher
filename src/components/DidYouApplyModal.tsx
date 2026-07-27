@@ -70,7 +70,7 @@ export const DidYouApplyModal: React.FC<DidYouApplyModalProps> = ({
         maxWidth: 440,
         boxShadow: "0 20px 60px rgba(0,0,0,0.18)",
         animation: "dyaFadeUp 0.25s ease",
-        fontFamily: "'DM Sans', -apple-system, sans-serif",
+        fontFamily: "var(--font-ui)",
       }}>
         <style>{`
           @keyframes dyaFadeUp {
@@ -107,7 +107,7 @@ export const DidYouApplyModal: React.FC<DidYouApplyModalProps> = ({
 
         {/* Heading */}
         <h2 style={{
-          fontFamily: "'Syne', sans-serif",
+          fontFamily: "var(--font-ui)",
           fontWeight: 800, fontSize: "1.3rem",
           letterSpacing: "-0.02em", color: "#0A0A0F",
           margin: "0 0 8px",

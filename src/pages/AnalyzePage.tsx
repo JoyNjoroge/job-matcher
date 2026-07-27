@@ -85,8 +85,7 @@ export default function AnalyzePage() {
   return (
     <div className="analyze-root p-root">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
-        .analyze-root { font-family: 'DM Sans', sans-serif; max-width: 720px; margin: 0 auto; padding: 48px 24px 80px; }
+        .analyze-root { font-family: var(--font-ui); max-width: 720px; margin: 0 auto; padding: 48px 24px 80px; }
 
         .an-header { text-align: center; margin-bottom: 48px; }
         .an-icon-wrap {
@@ -95,7 +94,7 @@ export default function AnalyzePage() {
           display: flex; align-items: center; justify-content: center;
           margin: 0 auto 20px;
         }
-        .an-title { font-family: 'Syne', sans-serif; font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 800; letter-spacing: -0.025em; color: #0A0A0F; margin: 0 0 10px; }
+        .an-title { font-family: var(--font-ui); font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 800; letter-spacing: -0.025em; color: #0A0A0F; margin: 0 0 10px; }
         .an-sub { color: #6B7280; font-size: 15px; font-weight: 300; margin: 0; }
 
         .an-section { margin-bottom: 28px; }
@@ -108,7 +107,7 @@ export default function AnalyzePage() {
           padding: 9px 18px; border-radius: 10px;
           font-size: 13px; font-weight: 600; cursor: pointer;
           transition: all 0.2s; border: 1.5px solid transparent;
-          font-family: 'DM Sans', sans-serif;
+          font-family: var(--font-ui);
         }
         .an-toggle-btn.active {
           background: #2563EB; color: white;
@@ -124,7 +123,7 @@ export default function AnalyzePage() {
         .an-textarea {
           width: 100%; min-height: 200px; padding: 14px 16px;
           border: 1.5px solid rgba(0,0,0,0.1); border-radius: 12px;
-          font-family: 'DM Sans', sans-serif; font-size: 14px; color: #0A0A0F;
+          font-family: var(--font-ui); font-size: 14px; color: #0A0A0F;
           background: white; resize: vertical; outline: none;
           transition: border-color 0.2s, box-shadow 0.2s; line-height: 1.65;
           box-sizing: border-box;
@@ -133,7 +132,7 @@ export default function AnalyzePage() {
         .an-input {
           width: 100%; height: 44px; padding: 0 14px;
           border: 1.5px solid rgba(0,0,0,0.1); border-radius: 10px;
-          font-family: 'DM Sans', sans-serif; font-size: 14px; color: #0A0A0F;
+          font-family: var(--font-ui); font-size: 14px; color: #0A0A0F;
           background: white; outline: none;
           transition: border-color 0.2s, box-shadow 0.2s; box-sizing: border-box;
         }
@@ -147,7 +146,7 @@ export default function AnalyzePage() {
           display: flex; align-items: flex-start; gap: 14px;
         }
         .an-job-info { flex: 1; }
-        .an-job-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; color: #0A0A0F; margin: 0 0 4px; }
+        .an-job-title { font-family: var(--font-ui); font-weight: 700; font-size: 15px; color: #0A0A0F; margin: 0 0 4px; }
         .an-job-meta { font-size: 13px; color: #6B7280; margin: 0 0 6px; }
         .an-job-desc { font-size: 12px; color: #9CA3AF; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .an-job-clear {
@@ -172,7 +171,7 @@ export default function AnalyzePage() {
           width: 100%; height: 52px;
           background: #2563EB; color: white;
           border: none; border-radius: 12px;
-          font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 700;
+          font-family: var(--font-ui); font-size: 15px; font-weight: 700;
           cursor: pointer; transition: all 0.2s;
           display: flex; align-items: center; justify-content: center; gap: 10px;
           box-shadow: 0 6px 20px rgba(37,99,235,0.3);
@@ -185,7 +184,7 @@ export default function AnalyzePage() {
           width: 100%; height: 48px;
           background: white; color: #2563EB;
           border: 1.5px solid #2563EB; border-radius: 12px;
-          font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+          font-family: var(--font-ui); font-size: 14px; font-weight: 600;
           cursor: pointer; transition: all 0.2s;
           display: flex; align-items: center; justify-content: center; gap: 8px;
           margin-bottom: 12px;

@@ -1,5 +1,5 @@
 // ========================================
-// APPLYBOTPRO EXTENSION CONFIGURATION
+// CANDORAPPLY EXTENSION CONFIGURATION
 // ========================================
 
 const CONFIG = {
@@ -10,6 +10,7 @@ const CONFIG = {
   API_ENDPOINTS: {
     // Auth + profile — matches /api/auth/me in auth.py
     GET_PROFILE:        '/api/auth/me',
+    REFRESH_TOKEN:      '/api/auth/refresh',
 
     // Applications — matches applications_bp
     TRACK_APPLICATION:  '/api/applications',

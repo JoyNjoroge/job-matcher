@@ -4,27 +4,46 @@
 let isActivated   = false;
 let currentJobId  = null;
 let userProfile   = null;
+let pendingFields = [];
 
 // ── Auth token bridge ─────────────────────────────────────────────────────────
 // When on the CandorApply frontend, read the token from localStorage
 // and hand it to the background service worker (which can't access localStorage).
 
-if (
-  window.location.hostname.includes('applybotpro') ||
-  window.location.hostname.includes('netlify')
-) {
+const isCandorApplyFrontend = (() => {
+  try {
+    return window.location.hostname === new URL(CONFIG.FRONTEND_URL).hostname;
+  } catch (_) {
+    return false;
+  }
+})();
+
+let lastReportedToken = null;
+function reportWebsiteAuth() {
+  if (!isCandorApplyFrontend) return;
   const token = localStorage.getItem(CONFIG.AUTH.LOCALSTORAGE_KEY);
-  if (token) {
-    chrome.runtime.sendMessage({ type: 'AUTH_TOKEN_FOUND', token });
+  const refreshToken = localStorage.getItem(CONFIG.AUTH.REFRESH_KEY);
+  if (token && token !== lastReportedToken) {
+    lastReportedToken = token;
+    chrome.runtime.sendMessage({
+      type: 'AUTH_TOKEN_FOUND',
+      token,
+      refreshToken,
+    });
   }
 }
+
+reportWebsiteAuth();
+// OAuth writes localStorage in the same tab, which does not emit a `storage`
+// event there. A small frontend-only poll catches that successful callback.
+if (isCandorApplyFrontend) setInterval(reportWebsiteAuth, 2000);
 
 // ── Message listener (respond to READ_LOCAL_STORAGE from background) ──────────
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'READ_LOCAL_STORAGE') {
     const token = localStorage.getItem(CONFIG.AUTH.LOCALSTORAGE_KEY);
-    if (token) chrome.runtime.sendMessage({ type: 'AUTH_TOKEN_FOUND', token });
-    sendResponse({ ok: true });
+    const refreshToken = localStorage.getItem(CONFIG.AUTH.REFRESH_KEY);
+    sendResponse({ ok: true, token, refreshToken });
     return false;
   }
 
@@ -95,7 +114,7 @@ function showAssistantButton() {
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
         <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
       </svg>
-      <span>AutoFill</span>
+      <span>Review fields</span>
     </div>
   `;
   btn.addEventListener('click', openPanel);
@@ -120,7 +139,7 @@ function openPanel() {
   panel.innerHTML = `
     <div class="applybotpro-panel-header">
       <div style="display:flex;align-items:center;gap:8px">
-        <div style="width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center">
+        <div style="width:28px;height:28px;border-radius:6px;background:#245c46;display:flex;align-items:center;justify-content:center">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
         </div>
         <span style="font-weight:700;font-size:15px">CandorApply</span>
@@ -134,24 +153,24 @@ function openPanel() {
           <p style="color:#DC2626;font-weight:600">⚠ Not connected</p>
           <p style="font-size:12px;color:#666;margin-top:4px">Log in to CandorApply to enable autofill.</p>
           <a href="${CONFIG.FRONTEND_URL}/login" target="_blank"
-             style="display:inline-block;margin-top:10px;padding:8px 16px;background:#6366F1;color:white;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">
+             style="display:inline-block;margin-top:10px;padding:8px 16px;background:#245c46;color:white;border-radius:6px;font-size:13px;font-weight:650;text-decoration:none">
             Log in →
           </a>
         </div>
       ` : `
         <div class="applybotpro-status">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
-            <div style="width:7px;height:7px;border-radius:50%;background:#22C55E;box-shadow:0 0 6px #22C55E"></div>
+            <div style="width:7px;height:7px;border-radius:50%;background:#3f765f"></div>
             <p style="font-weight:700;font-size:14px;color:#111">${userProfile.name}</p>
           </div>
           <p style="font-size:12px;color:#888">${userProfile.email}</p>
-          ${userProfile.job_title ? `<p style="font-size:12px;color:#6366F1;margin-top:2px;font-weight:600">${userProfile.job_title}</p>` : ''}
+          ${userProfile.job_title ? `<p style="font-size:12px;color:#245c46;margin-top:2px;font-weight:600">${userProfile.job_title}</p>` : ''}
         </div>
 
         <div class="applybotpro-actions">
           <button id="abp-fill-btn" class="applybotpro-action-btn primary">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-            Smart Fill Form
+          Scan application
           </button>
           <button id="abp-preview-btn" class="applybotpro-action-btn">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/></svg>
@@ -250,29 +269,67 @@ async function fillFormWithAI() {
       filledFields = simpleFieldMatching(formFields, userProfile);
     }
 
-    // Apply values
-    let filledCount = 0;
-    filledFields.forEach(field => {
-      if (field.suggestedValue) {
-        fillField(field.element, field.suggestedValue);
-        filledCount++;
-      }
-    });
+    // Never write to the employer's form before the applicant reviews the plan.
+    pendingFields = filledFields.filter(field =>
+      field.suggestedValue &&
+      field.confidence !== 'low' &&
+      !isSensitiveField(field)
+    );
+    const needsReview = filledFields.filter(field =>
+      !field.suggestedValue ||
+      field.confidence === 'low' ||
+      isSensitiveField(field)
+    );
 
-    if (filledCount === 0) {
+    if (pendingFields.length === 0) {
       resultsDiv.innerHTML = '<div class="applybotpro-error">Couldn\'t match any fields. Check your profile has name, email, phone etc. filled in.</div>';
     } else {
       resultsDiv.innerHTML = `
-        <div class="applybotpro-success">
-          ✓ Filled <strong>${filledCount}</strong> field${filledCount !== 1 ? 's' : ''}
-          <p class="applybotpro-tip">Always review before submitting.</p>
+        <div class="applybotpro-review-summary">
+          <div><strong>${pendingFields.length}</strong><span>ready</span></div>
+          <div><strong>${needsReview.length}</strong><span>need you</span></div>
         </div>
+        <div class="applybotpro-review-list">
+          ${pendingFields.slice(0, 8).map(field => `
+            <div class="applybotpro-review-row">
+              <span class="applybotpro-review-check">✓</span>
+              <div><small>${escapeHtml(field.label || field.name || 'Application field')}</small>
+              <strong>${escapeHtml(String(field.suggestedValue))}</strong></div>
+              <em>${field.confidence || 'medium'}</em>
+            </div>`).join('')}
+          ${needsReview.length ? `<p class="applybotpro-manual-note">${needsReview.length} sensitive or uncertain field${needsReview.length === 1 ? '' : 's'} will be left untouched.</p>` : ''}
+        </div>
+        <button id="abp-confirm-fill" class="applybotpro-action-btn primary">Fill ${pendingFields.length} reviewed field${pendingFields.length === 1 ? '' : 's'}</button>
+        <p class="applybotpro-privacy-note">CandorApply never submits the application.</p>
       `;
+      document.getElementById('abp-confirm-fill').addEventListener('click', applyReviewedFields);
     }
   } catch (err) {
     console.error('[AutoFill]', err);
     resultsDiv.innerHTML = `<div class="applybotpro-error">Error: ${err.message}</div>`;
   }
+}
+
+function isSensitiveField(field) {
+  const key = `${field.label || ''} ${field.name || ''} ${field.placeholder || ''}`.toLowerCase();
+  return /(gender|sex|race|ethnic|disab|veteran|sponsor|visa|citizen|work authori|salary|compensation|criminal|felony|demographic|pronoun)/.test(key);
+}
+
+function escapeHtml(value) {
+  return value.replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;',
+  })[char]);
+}
+
+function applyReviewedFields() {
+  pendingFields.forEach(field => fillField(field.element, field.suggestedValue));
+  const resultsDiv = document.getElementById('abp-results');
+  resultsDiv.innerHTML = `
+    <div class="applybotpro-success">
+      Filled <strong>${pendingFields.length}</strong> reviewed field${pendingFields.length === 1 ? '' : 's'}.
+      <p class="applybotpro-tip">Check the form and answer the remaining questions yourself.</p>
+    </div>`;
+  pendingFields = [];
 }
 
 // ── Rule-based fallback matching ──────────────────────────────────────────────
@@ -428,9 +485,11 @@ async function markAsApplied() {
       job_id:          currentJobId,
       job_title:       jobTitle,
       company:         company,
-      application_url: window.location.href,
+      source_url:      window.location.href,
+      source_platform: window.location.hostname,
       applied_at:      new Date().toISOString(),
       status:          'applied',
+      tracked_by_extension: true,
       source:          'extension',
     };
 

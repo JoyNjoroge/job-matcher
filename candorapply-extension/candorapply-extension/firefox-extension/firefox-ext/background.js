@@ -1,32 +1,48 @@
-// background.js — Firefox MV2 Background Page
-// config.js is already loaded before this file via manifest "scripts" array.
-// No importScripts needed — this is a regular JS environment, not a service worker.
+// Background Service Worker — CandorApply Extension
+// Handles auth sync, profile caching, job tracking, application saving.
+
+importScripts('config.js');
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
-browser.runtime.onInstalled.addListener(async () => {
-  console.log('[CandorApply] Extension installed v1.1 (Firefox)');
+chrome.runtime.onInstalled.addListener(async () => {
+  console.log('[CandorApply] Extension installed v1.1');
   await syncAuthToken();
 });
 
 // ── Auth sync ─────────────────────────────────────────────────────────────────
+// Tries localStorage first (how AuthContext.tsx stores tokens),
+// then falls back to cookie.
 
 async function syncAuthToken() {
   try {
-    // Ask any open CandorApply tab to read localStorage for us
-    const tabs = await browser.tabs.query({ url: CONFIG.FRONTEND_URL + '/*' });
+    // 1. Ask any open CandorApply tab to read localStorage for us
+    //    (service workers can't access localStorage directly)
+    const tabs = await chrome.tabs.query({ url: CONFIG.FRONTEND_URL + '/*' });
     if (tabs.length > 0) {
-      browser.tabs.sendMessage(tabs[0].id, { type: 'READ_LOCAL_STORAGE' });
-      return;
+      const credentials = await chrome.tabs.sendMessage(
+        tabs[0].id,
+        { type: 'READ_LOCAL_STORAGE' }
+      );
+      if (credentials?.token) {
+        await chrome.storage.local.set({
+          authToken: credentials.token,
+          refreshToken: credentials.refreshToken || null,
+        });
+        return true;
+      }
     }
-    // Fallback: cookie
+
+    // 2. Fallback: cookie
     const hostname = new URL(CONFIG.APPLYBOTPRO_DOMAIN).hostname;
-    const cookies  = await browser.cookies.getAll({ domain: hostname });
+    const cookies  = await chrome.cookies.getAll({ domain: hostname });
     const auth     = cookies.find(c => c.name === CONFIG.AUTH.COOKIE_NAME);
     if (auth) {
-      await browser.storage.local.set({ authToken: auth.value });
+      await chrome.storage.local.set({ authToken: auth.value });
       console.log('[Auth] Token from cookie');
+      return true;
     }
+    return false;
   } catch (e) {
     console.error('[Auth] syncAuthToken error:', e);
   }
@@ -34,65 +50,122 @@ async function syncAuthToken() {
 
 // ── Message router ────────────────────────────────────────────────────────────
 
-browser.runtime.onMessage.addListener((request, sender) => {
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
+  // Content script on the CandorApply domain reports the tokens.
   if (request.type === 'AUTH_TOKEN_FOUND') {
-    browser.storage.local.set({ authToken: request.token });
-    return Promise.resolve({ success: true });
+    chrome.storage.local.set({
+      authToken: request.token,
+      refreshToken: request.refreshToken || null,
+    });
+    sendResponse({ success: true });
+    return false;
   }
 
   if (request.type === 'GET_AUTH_TOKEN') {
-    return browser.storage.local.get(['authToken'])
-      .then(r => ({ token: r.authToken || null }));
+    chrome.storage.local.get(['authToken', 'refreshToken'], r => {
+      sendResponse({
+        token: r.authToken || null,
+        refreshToken: r.refreshToken || null,
+      });
+    });
+    return true;
   }
 
   if (request.type === 'SYNC_AUTH') {
-    return syncAuthToken().then(() => ({ success: true }));
+    syncAuthToken().then(() => sendResponse({ success: true }));
+    return true;
   }
 
   if (request.type === 'GET_USER_PROFILE') {
-    return getUserProfile().then(profile => ({ profile }));
+    getUserProfile().then(profile => sendResponse({ profile }));
+    return true;
   }
 
   if (request.type === 'AUTOFILL_WITH_AI') {
-    return autofillWithBackend(request.fields, request.jobContext);
+    autofillWithBackend(request.fields, request.jobContext)
+      .then(result => sendResponse(result));
+    return true;
   }
 
   if (request.type === 'TRACK_JOB_CLICKED') {
-    browser.storage.local.set({
+    chrome.storage.local.set({
       [`tracked_job_${request.jobData.jobId}`]: {
         ...request.jobData,
         trackedAt: Date.now(),
       },
     });
-    return Promise.resolve({ success: true });
+    sendResponse({ success: true });
+    return false;
   }
 
   if (request.type === 'MARK_APPLIED') {
-    return markJobAsApplied(request.applicationData)
-      .then(ok => ({ success: ok }));
+    markJobAsApplied(request.applicationData)
+      .then(ok => sendResponse({ success: ok }));
+    return true;
   }
 });
+
+async function refreshAccessToken() {
+  const { refreshToken } = await chrome.storage.local.get(['refreshToken']);
+  if (!refreshToken) return null;
+
+  const response = await fetch(
+    CONFIG.APPLYBOTPRO_DOMAIN + CONFIG.API_ENDPOINTS.REFRESH_TOKEN,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${refreshToken}` },
+    }
+  );
+  if (!response.ok) {
+    await chrome.storage.local.remove(['authToken', 'refreshToken']);
+    return null;
+  }
+
+  const tokens = await response.json();
+  await chrome.storage.local.set({
+    authToken: tokens.access_token,
+    refreshToken: tokens.refresh_token,
+  });
+  return tokens.access_token;
+}
+
+async function authorizedFetch(path, options = {}) {
+  let { authToken } = await chrome.storage.local.get(['authToken']);
+  if (!authToken) return null;
+
+  const request = token => fetch(CONFIG.APPLYBOTPRO_DOMAIN + path, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  let response = await request(authToken);
+  if (response.status === 401) {
+    authToken = await refreshAccessToken();
+    if (authToken) response = await request(authToken);
+  }
+  return response;
+}
 
 // ── Profile helpers ───────────────────────────────────────────────────────────
 
 async function fetchUserProfile() {
   try {
-    const { authToken } = await browser.storage.local.get(['authToken']);
-    if (!authToken) return null;
+    const res = await authorizedFetch(CONFIG.API_ENDPOINTS.GET_PROFILE);
 
-    const res = await fetch(
-      CONFIG.APPLYBOTPRO_DOMAIN + CONFIG.API_ENDPOINTS.GET_PROFILE,
-      { headers: { Authorization: `Bearer ${authToken}` } }
-    );
-    if (!res.ok) return null;
+    if (!res?.ok) return null;
 
     const result = await res.json();
-    const u = result.user    || {};
-    const p = result.profile || {};
+
+    // Normalise → flat profile shape content.js expects
+    const u = result.user || {};
+    const p = result.profile || u.profile || {};
 
     const profile = {
-      name:          u.full_name        || p.full_name        || u.email?.split('@')[0] || 'User',
+      name:          p.full_name        || u.full_name        || u.email?.split('@')[0] || 'User',
       email:         u.email            || '',
       phone:         p.phone            || '',
       address:       p.address          || '',
@@ -111,10 +184,11 @@ async function fetchUserProfile() {
       job_title:     p.job_title        || p.headline          || '',
     };
 
-    await browser.storage.local.set({
-      userProfile:     profile,
-      profileCachedAt: Date.now(),
+    await chrome.storage.local.set({
+      userProfile:      profile,
+      profileCachedAt:  Date.now(),
     });
+
     return profile;
   } catch (e) {
     console.error('[Profile] fetchUserProfile error:', e);
@@ -123,7 +197,7 @@ async function fetchUserProfile() {
 }
 
 async function getUserProfile() {
-  const { userProfile, profileCachedAt } = await browser.storage.local.get([
+  const { userProfile, profileCachedAt } = await chrome.storage.local.get([
     'userProfile', 'profileCachedAt',
   ]);
   const FIVE_MIN = 5 * 60 * 1000;
@@ -134,25 +208,25 @@ async function getUserProfile() {
 }
 
 // ── AI autofill via backend proxy ─────────────────────────────────────────────
+// Sends field descriptors to our Flask backend which calls the LLM.
+// The OpenRouter key stays on the server — never exposed in the extension.
 
 async function autofillWithBackend(fields, jobContext = {}) {
   try {
-    const { authToken } = await browser.storage.local.get(['authToken']);
-    if (!authToken) return { error: 'not_authenticated' };
-
-    const res = await fetch(
-      CONFIG.APPLYBOTPRO_DOMAIN + CONFIG.API_ENDPOINTS.AUTOFILL_PROXY,
+    const res = await authorizedFetch(
+      CONFIG.API_ENDPOINTS.AUTOFILL_PROXY,
       {
         method:  'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization:  `Bearer ${authToken}`,
         },
         body: JSON.stringify({ fields, job_context: jobContext }),
       }
     );
+
+    if (!res) return { error: 'not_authenticated' };
     if (!res.ok) return { error: 'server_error', status: res.status };
-    return await res.json();
+    return await res.json();   // { suggestions: [{ index, suggestedValue, confidence }] }
   } catch (e) {
     console.error('[AutoFill] Backend proxy error:', e);
     return { error: e.message };
@@ -163,24 +237,20 @@ async function autofillWithBackend(fields, jobContext = {}) {
 
 async function markJobAsApplied(applicationData) {
   try {
-    const { authToken } = await browser.storage.local.get(['authToken']);
-    if (!authToken) return false;
-
-    const res = await fetch(
-      CONFIG.APPLYBOTPRO_DOMAIN + CONFIG.API_ENDPOINTS.TRACK_APPLICATION,
+    const res = await authorizedFetch(
+      CONFIG.API_ENDPOINTS.TRACK_APPLICATION,
       {
         method:  'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization:  `Bearer ${authToken}`,
         },
         body: JSON.stringify(applicationData),
       }
     );
 
-    if (res.ok) {
-      await browser.storage.local.remove(`tracked_job_${applicationData.job_id}`);
-      browser.notifications.create({
+    if (res?.ok) {
+      await chrome.storage.local.remove(`tracked_job_${applicationData.job_id}`);
+      chrome.notifications.create({
         type:    'basic',
         iconUrl: 'icons/icon48.png',
         title:   'Application tracked!',
@@ -190,19 +260,21 @@ async function markJobAsApplied(applicationData) {
     }
     return false;
   } catch (e) {
-    console.error('[Apply] error:', e);
+    console.error('[Apply] markJobAsApplied error:', e);
     return false;
   }
 }
 
 // ── Tab monitoring ────────────────────────────────────────────────────────────
 
-browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status !== 'complete' || !tab.url) return;
   try {
     const url   = new URL(tab.url);
     const jobId = url.searchParams.get(CONFIG.JOB_ID_PARAM);
-    if (jobId) browser.tabs.sendMessage(tabId, { type: 'ACTIVATE_AUTOFILL', jobId });
+    if (jobId) {
+      chrome.tabs.sendMessage(tabId, { type: 'ACTIVATE_AUTOFILL', jobId });
+    }
   } catch (_) {}
 });
 

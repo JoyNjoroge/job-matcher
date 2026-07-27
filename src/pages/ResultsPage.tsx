@@ -19,7 +19,7 @@ function ScoreRing({ score }: { score: number }) {
         position: "absolute", display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center",
       }}>
-        <span style={{ fontFamily: "Syne, sans-serif", fontWeight: 800, fontSize: 24, color, lineHeight: 1 }}>{score}%</span>
+        <span style={{ fontFamily: "var(--font-ui)", fontWeight: 800, fontSize: 24, color, lineHeight: 1 }}>{score}%</span>
         <span style={{ fontSize: 10, color: "#9CA3AF", fontWeight: 600, letterSpacing: "0.05em", marginTop: 2 }}>FIT</span>
       </div>
     </div>
@@ -60,14 +60,14 @@ export default function ResultsPage() {
 
   if (!analysis) {
     return (
-      <div style={{ fontFamily: "DM Sans, sans-serif", textAlign: "center", padding: "80px 24px" }}>
+      <div style={{ fontFamily: "var(--font-ui)", textAlign: "center", padding: "80px 24px" }}>
         <p style={{ color: "#6B7280", marginBottom: 24 }}>No analysis data available</p>
         <button
           onClick={() => navigate("/")}
           style={{
             padding: "12px 24px", background: "#2563EB", color: "white",
             border: "none", borderRadius: 10, cursor: "pointer",
-            fontFamily: "DM Sans, sans-serif", fontWeight: 600,
+            fontFamily: "var(--font-ui)", fontWeight: 600,
           }}
         >
           Go to Analyze
@@ -116,22 +116,21 @@ export default function ResultsPage() {
   return (
     <div className="results-root">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
-        .results-root { font-family: 'DM Sans', sans-serif; max-width: 780px; margin: 0 auto; padding: 48px 24px 80px; }
+        .results-root { font-family: var(--font-ui); max-width: 780px; margin: 0 auto; padding: 48px 24px 80px; }
 
-        .rs-back-btn { display: inline-flex; align-items: center; gap: 7px; background: none; border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 14px; color: #6B7280; padding: 0; margin-bottom: 36px; transition: color 0.2s; }
+        .rs-back-btn { display: inline-flex; align-items: center; gap: 7px; background: none; border: none; cursor: pointer; font-family: var(--font-ui); font-size: 14px; color: #6B7280; padding: 0; margin-bottom: 36px; transition: color 0.2s; }
         .rs-back-btn:hover { color: #0A0A0F; }
 
         .rs-hero { background: white; border: 1px solid rgba(0,0,0,0.07); border-radius: 24px; padding: 36px; margin-bottom: 24px; display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
         .rs-hero-text { flex: 1; min-width: 200px; }
         .rs-hero-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #2563EB; display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
-        .rs-hero-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.6rem; color: #0A0A0F; margin: 0 0 6px; letter-spacing: -0.02em; }
+        .rs-hero-title { font-family: var(--font-ui); font-weight: 800; font-size: 1.6rem; color: #0A0A0F; margin: 0 0 6px; letter-spacing: -0.02em; }
         .rs-hero-sub { color: #6B7280; font-size: 14px; font-weight: 300; margin: 0 0 14px; }
 
         .rs-card { background: white; border: 1px solid rgba(0,0,0,0.07); border-radius: 20px; overflow: hidden; margin-bottom: 16px; }
         .rs-card-header { padding: 20px 24px 16px; display: flex; align-items: center; gap: 10px; }
         .rs-card-header-icon { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        .rs-card-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; color: #0A0A0F; margin: 0; }
+        .rs-card-title { font-family: var(--font-ui); font-weight: 700; font-size: 15px; color: #0A0A0F; margin: 0; }
         .rs-card-body { padding: 0 24px 24px; }
 
         .rs-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,0.04); font-size: 14px; color: #374151; line-height: 1.6; }
@@ -140,13 +139,13 @@ export default function ResultsPage() {
         .rs-empty { color: #9CA3AF; font-size: 14px; font-style: italic; padding: 8px 0; }
 
         .rs-actions { display: flex; gap: 12px; margin-top: 32px; flex-wrap: wrap; }
-        .rs-btn-primary { flex: 1; min-width: 160px; height: 50px; background: #2563EB; color: white; border: none; border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(37,99,235,0.3); }
+        .rs-btn-primary { flex: 1; min-width: 160px; height: 50px; background: #2563EB; color: white; border: none; border-radius: 12px; font-family: var(--font-ui); font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(37,99,235,0.3); }
         .rs-btn-primary:hover { background: #1D4ED8; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(37,99,235,0.4); }
-        .rs-btn-outline { flex: 1; min-width: 160px; height: 50px; background: white; color: #0A0A0F; border: 1.5px solid rgba(0,0,0,0.12); border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .rs-btn-outline { flex: 1; min-width: 160px; height: 50px; background: white; color: #0A0A0F; border: 1.5px solid rgba(0,0,0,0.12); border-radius: 12px; font-family: var(--font-ui); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .rs-btn-outline:hover { border-color: rgba(0,0,0,0.25); background: #F9FAFB; }
-        .rs-btn-apply { flex: 1; min-width: 160px; height: 50px; background: #10B981; color: white; border: none; border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(16,185,129,0.3); }
+        .rs-btn-apply { flex: 1; min-width: 160px; height: 50px; background: #10B981; color: white; border: none; border-radius: 12px; font-family: var(--font-ui); font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(16,185,129,0.3); }
         .rs-btn-apply:hover { background: #059669; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16,185,129,0.4); }
-        .rs-btn-cv { flex: 1; min-width: 160px; height: 50px; background: #7C3AED; color: white; border: none; border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(124,58,237,0.3); }
+        .rs-btn-cv { flex: 1; min-width: 160px; height: 50px; background: #7C3AED; color: white; border: none; border-radius: 12px; font-family: var(--font-ui); font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(124,58,237,0.3); }
         .rs-btn-cv:hover { background: #6D28D9; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(124,58,237,0.4); }
       `}</style>
 

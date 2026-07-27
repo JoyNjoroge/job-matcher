@@ -10,22 +10,40 @@ let pendingFields = [];
 // When on the CandorApply frontend, read the token from localStorage
 // and hand it to the background service worker (which can't access localStorage).
 
-if (
-  window.location.hostname.includes('applybotpro') ||
-  window.location.hostname.includes('netlify')
-) {
+const isCandorApplyFrontend = (() => {
+  try {
+    return window.location.hostname === new URL(CONFIG.FRONTEND_URL).hostname;
+  } catch (_) {
+    return false;
+  }
+})();
+
+let lastReportedToken = null;
+function reportWebsiteAuth() {
+  if (!isCandorApplyFrontend) return;
   const token = localStorage.getItem(CONFIG.AUTH.LOCALSTORAGE_KEY);
-  if (token) {
-    chrome.runtime.sendMessage({ type: 'AUTH_TOKEN_FOUND', token });
+  const refreshToken = localStorage.getItem(CONFIG.AUTH.REFRESH_KEY);
+  if (token && token !== lastReportedToken) {
+    lastReportedToken = token;
+    chrome.runtime.sendMessage({
+      type: 'AUTH_TOKEN_FOUND',
+      token,
+      refreshToken,
+    });
   }
 }
+
+reportWebsiteAuth();
+// OAuth writes localStorage in the same tab, which does not emit a `storage`
+// event there. A small frontend-only poll catches that successful callback.
+if (isCandorApplyFrontend) setInterval(reportWebsiteAuth, 2000);
 
 // ── Message listener (respond to READ_LOCAL_STORAGE from background) ──────────
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'READ_LOCAL_STORAGE') {
     const token = localStorage.getItem(CONFIG.AUTH.LOCALSTORAGE_KEY);
-    if (token) chrome.runtime.sendMessage({ type: 'AUTH_TOKEN_FOUND', token });
-    sendResponse({ ok: true });
+    const refreshToken = localStorage.getItem(CONFIG.AUTH.REFRESH_KEY);
+    sendResponse({ ok: true, token, refreshToken });
     return false;
   }
 
@@ -121,7 +139,7 @@ function openPanel() {
   panel.innerHTML = `
     <div class="applybotpro-panel-header">
       <div style="display:flex;align-items:center;gap:8px">
-        <div style="width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center">
+        <div style="width:28px;height:28px;border-radius:6px;background:#245c46;display:flex;align-items:center;justify-content:center">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
         </div>
         <span style="font-weight:700;font-size:15px">CandorApply</span>
@@ -135,18 +153,18 @@ function openPanel() {
           <p style="color:#DC2626;font-weight:600">⚠ Not connected</p>
           <p style="font-size:12px;color:#666;margin-top:4px">Log in to CandorApply to enable autofill.</p>
           <a href="${CONFIG.FRONTEND_URL}/login" target="_blank"
-             style="display:inline-block;margin-top:10px;padding:8px 16px;background:#6366F1;color:white;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">
+             style="display:inline-block;margin-top:10px;padding:8px 16px;background:#245c46;color:white;border-radius:6px;font-size:13px;font-weight:650;text-decoration:none">
             Log in →
           </a>
         </div>
       ` : `
         <div class="applybotpro-status">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
-            <div style="width:7px;height:7px;border-radius:50%;background:#22C55E;box-shadow:0 0 6px #22C55E"></div>
+            <div style="width:7px;height:7px;border-radius:50%;background:#3f765f"></div>
             <p style="font-weight:700;font-size:14px;color:#111">${userProfile.name}</p>
           </div>
           <p style="font-size:12px;color:#888">${userProfile.email}</p>
-          ${userProfile.job_title ? `<p style="font-size:12px;color:#6366F1;margin-top:2px;font-weight:600">${userProfile.job_title}</p>` : ''}
+          ${userProfile.job_title ? `<p style="font-size:12px;color:#245c46;margin-top:2px;font-weight:600">${userProfile.job_title}</p>` : ''}
         </div>
 
         <div class="applybotpro-actions">

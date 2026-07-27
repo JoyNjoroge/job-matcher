@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Manrope:wght@500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -101,8 +99,9 @@
     --sidebar-w: 240px;
     --sidebar-collapsed-w: 64px;
 
-    --font-display: 'Manrope', sans-serif;
-    --font-body: 'DM Sans', sans-serif;
+    --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    --font-display: var(--font-ui);
+    --font-body: var(--font-ui);
 
     --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
@@ -202,6 +201,10 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     transition: background var(--transition), color var(--transition);
+  }
+
+  button, input, textarea, select {
+    font-family: var(--font-ui);
   }
 }
 

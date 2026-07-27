@@ -39,7 +39,6 @@ const NAV_BOTTOM = [
 
 /* ── CSS ────────────────────────────────────────────────────────────── */
 const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600&display=swap');
 
   :root {
     --sidebar-w: 240px;
@@ -82,7 +81,7 @@ const CSS = `
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { font-size: 16px; }
-  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-ui); }
 
   /* ── SIDEBAR ── */
   .sb-sidebar {
@@ -125,7 +124,7 @@ const CSS = `
     box-shadow: none;
   }
   .sb-logo-name {
-    font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 0.95rem;
+    font-family: var(--font-ui); font-weight: 700; font-size: 0.95rem;
     color: var(--text); letter-spacing: -0.01em; white-space: nowrap;
     opacity: 1; transition: opacity var(--transition);
     flex: 1;
@@ -274,7 +273,7 @@ const CSS = `
   .sb-mobile-menu-btn:hover { background: var(--accent-bg); color: var(--accent); }
 
   .sb-mobile-logo {
-    display: flex; align-items: center; gap: 8px; font-family: 'Manrope', sans-serif;
+    display: flex; align-items: center; gap: 8px; font-family: var(--font-ui);
     font-weight: 700; font-size: 0.9rem; color: var(--text);
   }
 

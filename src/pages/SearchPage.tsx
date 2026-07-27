@@ -50,13 +50,12 @@ export default function SearchPage() {
   return (
     <div className="search-root">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
-        .search-root { font-family: 'DM Sans', sans-serif; max-width: 960px; margin: 0 auto; padding: 48px 24px 80px; }
+        .search-root { font-family: var(--font-ui); max-width: 960px; margin: 0 auto; padding: 48px 24px 80px; }
 
         /* Header */
         .sr-header { margin-bottom: 36px; }
         .sr-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #2563EB; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
-        .sr-title { font-family: 'Syne', sans-serif; font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 800; letter-spacing: -0.025em; color: #0A0A0F; margin: 0 0 8px; }
+        .sr-title { font-family: var(--font-ui); font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 800; letter-spacing: -0.025em; color: #0A0A0F; margin: 0 0 8px; }
         .sr-sub { color: #6B7280; font-size: 15px; font-weight: 300; margin: 0; }
 
         /* Search bar */
@@ -68,14 +67,14 @@ export default function SearchPage() {
         .sr-input {
           width: 100%; height: 46px; padding: 0 14px 0 40px;
           border: 1.5px solid rgba(0,0,0,0.1); border-radius: 10px;
-          font-family: 'DM Sans', sans-serif; font-size: 14px; color: #0A0A0F;
+          font-family: var(--font-ui); font-size: 14px; color: #0A0A0F;
           background: #F9FAFB; outline: none; transition: all 0.2s; box-sizing: border-box;
         }
         .sr-input:focus { border-color: #2563EB; background: white; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
         .sr-form-actions { display: flex; gap: 10px; }
         .sr-search-btn {
           flex: 1; height: 46px; background: #2563EB; color: white; border: none;
-          border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 14px;
+          border-radius: 10px; font-family: var(--font-ui); font-size: 14px;
           font-weight: 700; cursor: pointer; transition: all 0.2s;
           display: flex; align-items: center; justify-content: center; gap: 8px;
           box-shadow: 0 4px 14px rgba(37,99,235,0.28);
@@ -93,7 +92,7 @@ export default function SearchPage() {
         .sr-clear-btn {
           height: 46px; padding: 0 16px; border: 1.5px solid rgba(0,0,0,0.1);
           background: white; border-radius: 10px; cursor: pointer;
-          font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+          font-family: var(--font-ui); font-size: 13px; font-weight: 600;
           color: #6B7280; transition: all 0.2s; display: flex; align-items: center; gap: 6px;
           flex-shrink: 0;
         }
@@ -108,7 +107,7 @@ export default function SearchPage() {
 
         /* Results header */
         .sr-results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 8px; }
-        .sr-results-count { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.1rem; color: #0A0A0F; }
+        .sr-results-count { font-family: var(--font-ui); font-weight: 700; font-size: 1.1rem; color: #0A0A0F; }
         .sr-results-meta { font-size: 13px; color: #9CA3AF; }
 
         /* Job card */
@@ -124,13 +123,13 @@ export default function SearchPage() {
         .sr-job-card:hover { box-shadow: 0 8px 28px rgba(0,0,0,0.08); border-color: rgba(37,99,235,0.2); transform: translateX(2px); }
         .sr-job-card:hover::before { opacity: 1; }
         .sr-job-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
-        .sr-job-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.05rem; color: #0A0A0F; margin: 0 0 4px; }
+        .sr-job-title { font-family: var(--font-ui); font-weight: 700; font-size: 1.05rem; color: #0A0A0F; margin: 0 0 4px; }
         .sr-job-meta { display: flex; align-items: center; gap: 12px; font-size: 13px; color: #6B7280; flex-wrap: wrap; }
         .sr-job-meta-item { display: flex; align-items: center; gap: 4px; }
         .sr-job-actions { display: flex; gap: 8px; flex-shrink: 0; }
         .sr-apply-btn {
           height: 38px; padding: 0 18px; background: #2563EB; color: white;
-          border: none; border-radius: 9px; font-family: 'DM Sans', sans-serif;
+          border: none; border-radius: 9px; font-family: var(--font-ui);
           font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s;
           box-shadow: 0 3px 10px rgba(37,99,235,0.25);
         }
@@ -160,7 +159,7 @@ export default function SearchPage() {
         /* Empty / Initial */
         .sr-empty { text-align: center; padding: 80px 24px; }
         .sr-empty-icon { width: 72px; height: 72px; background: rgba(37,99,235,0.06); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: #93C5FD; }
-        .sr-empty h3 { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.2rem; color: #0A0A0F; margin: 0 0 8px; }
+        .sr-empty h3 { font-family: var(--font-ui); font-weight: 700; font-size: 1.2rem; color: #0A0A0F; margin: 0 0 8px; }
         .sr-empty p { color: #6B7280; font-size: 14px; margin: 0; }
 
         /* Spinner */
