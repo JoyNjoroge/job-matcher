@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect } from "react";
+import { Component, useState, useCallback, useEffect } from "react";
+import type { ErrorInfo, ReactNode } from "react";
 import { PDFViewer, pdf } from "@react-pdf/renderer";
 import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,35 @@ import { emptyResume } from "@/types/jsonResume";
 import { useAuth } from "@/contexts/AuthContext";
 import { API_BASE } from "@/api";
 
+class PdfPreviewBoundary extends Component<
+  { children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("CV PDF preview failed:", error, info);
+  }
+
+  render() {
+    if (this.state.failed) {
+      return (
+        <div className="h-full grid place-items-center p-6 text-center text-sm text-muted-foreground">
+          <div>
+            <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p>The live PDF preview could not load.</p>
+            <p className="mt-1">You can still edit your resume and use Download PDF.</p>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function CVGeneratorPage() {
   const { user } = useAuth();
@@ -349,9 +379,11 @@ export default function CVGeneratorPage() {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="h-[calc(100vh-340px)] min-h-[500px]">
-                  <PDFViewer width="100%" height="100%" showToolbar={false} className="rounded-b-lg">
-                    <CVPdfDocument resume={resume} template={template} />
-                  </PDFViewer>
+                  <PdfPreviewBoundary>
+                    <PDFViewer width="100%" height="100%" showToolbar={false} className="rounded-b-lg">
+                      <CVPdfDocument resume={resume} template={template} />
+                    </PDFViewer>
+                  </PdfPreviewBoundary>
                 </div>
               </CardContent>
             </Card>
