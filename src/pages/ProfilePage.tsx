@@ -6,6 +6,8 @@ import { Upload, Save, Loader, Link2, X, User, Briefcase, Globe, FileText } from
 
 interface Profile {
   id: string; full_name: string | null; phone: string | null; location: string | null;
+  address_line1: string | null; address_line2: string | null; city: string | null;
+  state: string | null; postal_code: string | null; country: string | null;
   job_titles: string[]; skills: string[]; experience_level: string | null;
   linkedin_url: string | null; github_url: string | null; portfolio_url: string | null; summary: string | null;
   education: Record<string, any>[]; work_experience: Record<string, any>[];
@@ -17,6 +19,8 @@ interface Profile {
 }
 interface ParsedData {
   full_name?: string; email?: string; phone?: string; location?: string; summary?: string;
+  address_line1?: string; address_line2?: string; city?: string;
+  state?: string; postal_code?: string; country?: string;
   job_titles?: string[]; skills?: string[]; experience_level?: string;
   education?: Record<string, any>[]; work_experience?: Record<string, any>[];
   certifications?: Record<string, any>[]; projects?: Record<string, any>[];
@@ -129,6 +133,12 @@ export default function ProfilePage() {
     if (parsedData.full_name && !formData.full_name) updates.full_name = parsedData.full_name;
     if (parsedData.phone && !formData.phone) updates.phone = parsedData.phone;
     if (parsedData.location && !formData.location) updates.location = parsedData.location;
+    if (parsedData.address_line1 && !formData.address_line1) updates.address_line1 = parsedData.address_line1;
+    if (parsedData.address_line2 && !formData.address_line2) updates.address_line2 = parsedData.address_line2;
+    if (parsedData.city && !formData.city) updates.city = parsedData.city;
+    if (parsedData.state && !formData.state) updates.state = parsedData.state;
+    if (parsedData.postal_code && !formData.postal_code) updates.postal_code = parsedData.postal_code;
+    if (parsedData.country && !formData.country) updates.country = parsedData.country;
     if (parsedData.summary && !formData.summary) updates.summary = parsedData.summary;
     if (parsedData.experience_level && !formData.experience_level) updates.experience_level = parsedData.experience_level;
     if (parsedData.job_titles?.length) updates.job_titles = [...new Set([...(formData.job_titles || []), ...parsedData.job_titles])];
@@ -478,6 +488,30 @@ export default function ProfilePage() {
                 <option value="lead">Lead</option>
                 <option value="executive">Executive</option>
               </select>
+            </div>
+            <div className="pr-field pr-field-wide">
+              <label className="pr-field-label">Street Address</label>
+              <input name="address_line1" className="pr-input" value={formData.address_line1 || ""} onChange={handleInputChange} placeholder="Street and building" />
+            </div>
+            <div className="pr-field pr-field-wide">
+              <label className="pr-field-label">Address Line 2</label>
+              <input name="address_line2" className="pr-input" value={formData.address_line2 || ""} onChange={handleInputChange} placeholder="Apartment, suite, or unit (optional)" />
+            </div>
+            <div className="pr-field">
+              <label className="pr-field-label">City</label>
+              <input name="city" className="pr-input" value={formData.city || ""} onChange={handleInputChange} placeholder="City" />
+            </div>
+            <div className="pr-field">
+              <label className="pr-field-label">State / County / Province</label>
+              <input name="state" className="pr-input" value={formData.state || ""} onChange={handleInputChange} placeholder="State or region" />
+            </div>
+            <div className="pr-field">
+              <label className="pr-field-label">Postal Code</label>
+              <input name="postal_code" className="pr-input" value={formData.postal_code || ""} onChange={handleInputChange} placeholder="Postal code" />
+            </div>
+            <div className="pr-field">
+              <label className="pr-field-label">Country</label>
+              <input name="country" className="pr-input" value={formData.country || ""} onChange={handleInputChange} placeholder="Country" />
             </div>
           </div>
         </div>

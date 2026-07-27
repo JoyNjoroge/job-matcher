@@ -226,13 +226,19 @@ async function fillFormWithAI() {
   detectedForms.forEach(({ inputs }) => {
     inputs.forEach(input => {
       if (['hidden','submit','button','file','image','reset'].includes(input.type)) return;
+      const currentValue = getCurrentFieldValue(input);
+      const label = getFieldLabel(input);
       formFields.push({
         element:     input,
         type:        input.type || input.tagName.toLowerCase(),
         name:        input.name  || input.id || '',
-        label:       getFieldLabel(input),
+        label,
+        context:     getFieldContext(input, label),
         placeholder: input.placeholder || '',
-        value:       input.value || '',
+        value:       currentValue,
+        options:     getSelectOptions(input),
+        checked:     ['checkbox', 'radio'].includes(input.type) ? input.checked : undefined,
+        multiple:    input.tagName === 'SELECT' ? input.multiple : undefined,
         required:    input.required || false,
       });
     });
@@ -252,15 +258,21 @@ async function fillFormWithAI() {
       type:        f.type,
       name:        f.name,
       label:       f.label,
+      context:     f.context,
       placeholder: f.placeholder,
+      currentValue: f.value,
+      options:     f.options,
+      checked:     f.checked,
+      multiple:    f.multiple,
       required:    f.required,
     }));
 
     // Job context from page (helps AI write better cover letters etc.)
     const jobContext = {
-      title:   document.querySelector('h1')?.textContent?.trim() || '',
-      company: document.querySelector('[class*="company"], [data-company]')?.textContent?.trim() || '',
-      url:     window.location.href,
+      title:       document.querySelector('h1')?.textContent?.trim() || '',
+      company:     document.querySelector('[class*="company"], [data-company]')?.textContent?.trim() || '',
+      description: getJobDescriptionContext(),
+      url:         window.location.href,
     };
 
     let filledFields;
@@ -275,7 +287,14 @@ async function fillFormWithAI() {
     if (aiResult?.suggestions && !aiResult.error) {
       filledFields = formFields.map((f, i) => {
         const s = aiResult.suggestions.find(s => s.index === i);
-        return { ...f, suggestedValue: s?.suggestedValue || null, confidence: s?.confidence || 'low' };
+        return {
+          ...f,
+          suggestedValue: s?.suggestedValue ?? null,
+          confidence:     s?.confidence || 'low',
+          sourceEvidence: s?.sourceEvidence ?? null,
+          reason:         s?.reason || '',
+          answerMode:     s?.answerMode || null,
+        };
       });
     } else {
       // Fallback: rule-based matching (works offline / if backend is down)
@@ -283,19 +302,36 @@ async function fillFormWithAI() {
     }
 
     // Never write to the employer's form before the applicant reviews the plan.
+    // Existing values may have been typed by the applicant or restored by the
+    // employer site/browser, so keep them exactly as they are.
+    const preservedFields = filledFields.filter(field =>
+      hasNonEmptyFieldValue(field.element)
+    );
     pendingFields = filledFields.filter(field =>
-      field.suggestedValue &&
+      !hasNonEmptyFieldValue(field.element) &&
+      hasSuggestedValue(field.suggestedValue) &&
       field.confidence !== 'low' &&
       !isSensitiveField(field)
     );
     const needsReview = filledFields.filter(field =>
-      !field.suggestedValue ||
-      field.confidence === 'low' ||
-      isSensitiveField(field)
+      !hasNonEmptyFieldValue(field.element) &&
+      (
+        !hasSuggestedValue(field.suggestedValue) ||
+        field.confidence === 'low' ||
+        isSensitiveField(field)
+      )
     );
 
     if (pendingFields.length === 0) {
-      resultsDiv.innerHTML = '<div class="applybotpro-error">Couldn\'t match any fields. Check your profile has name, email, phone etc. filled in.</div>';
+      resultsDiv.innerHTML = `
+        <div class="${preservedFields.length ? 'applybotpro-success' : 'applybotpro-error'}">
+          ${preservedFields.length
+            ? `No empty fields are ready to fill. Kept <strong>${preservedFields.length}</strong> completed field${preservedFields.length === 1 ? '' : 's'} unchanged.`
+            : 'Couldn\'t confidently match any empty fields.'}
+          ${needsReview.length
+            ? `<p class="applybotpro-tip">${needsReview.length} sensitive or uncertain field${needsReview.length === 1 ? ' needs' : 's need'} your answer.</p>`
+            : ''}
+        </div>`;
     } else {
       resultsDiv.innerHTML = `
         <div class="applybotpro-review-summary">
@@ -307,10 +343,14 @@ async function fillFormWithAI() {
             <div class="applybotpro-review-row">
               <span class="applybotpro-review-check">✓</span>
               <div><small>${escapeHtml(field.label || field.name || 'Application field')}</small>
-              <strong>${escapeHtml(String(field.suggestedValue))}</strong></div>
+              <strong>${escapeHtml(String(field.suggestedValue))}</strong>
+              <span style="display:block;color:#66736d;font-size:10px;line-height:1.35;margin-top:3px">
+                ${escapeHtml(getSuggestionExplanation(field))}
+              </span></div>
               <em>${field.confidence || 'medium'}</em>
             </div>`).join('')}
           ${needsReview.length ? `<p class="applybotpro-manual-note">${needsReview.length} sensitive or uncertain field${needsReview.length === 1 ? '' : 's'} will be left untouched.</p>` : ''}
+          ${preservedFields.length ? `<p class="applybotpro-manual-note" style="background:#edf4f0;color:#426454">${preservedFields.length} field${preservedFields.length === 1 ? '' : 's'} already completed will be kept unchanged.</p>` : ''}
         </div>
         <button id="abp-confirm-fill" class="applybotpro-action-btn primary">Fill ${pendingFields.length} reviewed field${pendingFields.length === 1 ? '' : 's'}</button>
         <p class="applybotpro-privacy-note">CandorApply never submits the application.</p>
@@ -329,20 +369,228 @@ function isSensitiveField(field) {
 }
 
 function escapeHtml(value) {
-  return value.replace(/[&<>"']/g, char => ({
+  return String(value).replace(/[&<>"']/g, char => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;',
   })[char]);
 }
 
 function applyReviewedFields() {
-  pendingFields.forEach(field => fillField(field.element, field.suggestedValue));
+  // The applicant can continue typing while the review panel is open. Re-check
+  // at confirmation time so a late user edit is never overwritten.
+  const fieldsToFill = pendingFields.filter(field =>
+    field.element?.isConnected && !hasNonEmptyFieldValue(field.element)
+  );
+  const skippedCount = pendingFields.length - fieldsToFill.length;
+  fieldsToFill.forEach(field => fillField(field.element, field.suggestedValue));
   const resultsDiv = document.getElementById('abp-results');
   resultsDiv.innerHTML = `
     <div class="applybotpro-success">
-      Filled <strong>${pendingFields.length}</strong> reviewed field${pendingFields.length === 1 ? '' : 's'}.
+      Filled <strong>${fieldsToFill.length}</strong> reviewed field${fieldsToFill.length === 1 ? '' : 's'}.
+      ${skippedCount ? `<p class="applybotpro-tip">Kept ${skippedCount} field${skippedCount === 1 ? '' : 's'} you completed after the scan unchanged.</p>` : ''}
       <p class="applybotpro-tip">Check the form and answer the remaining questions yourself.</p>
     </div>`;
   pendingFields = [];
+}
+
+function hasSuggestedValue(value) {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'string') return value.trim().length > 0;
+  if (Array.isArray(value)) return value.length > 0;
+  return true;
+}
+
+function getCurrentFieldValue(element) {
+  if (element.tagName === 'SELECT' && element.multiple) {
+    return Array.from(element.selectedOptions)
+      .filter(option => !option.disabled && !/^(select|choose|please select)/i.test(option.textContent?.trim() || ''))
+      .map(option => option.value)
+      .filter(value => String(value).trim());
+  }
+  if (element.tagName === 'SELECT') {
+    const option = element.selectedOptions?.[0];
+    if (
+      !option ||
+      option.disabled ||
+      !String(option.value || '').trim() ||
+      /^(select|choose|please select)/i.test(option.textContent?.trim() || '')
+    ) {
+      return '';
+    }
+    return option.value;
+  }
+  if (['checkbox', 'radio'].includes(element.type)) {
+    return element.checked ? (element.value || true) : '';
+  }
+  return element.value || '';
+}
+
+function getSelectOptions(element) {
+  if (element.tagName !== 'SELECT') return [];
+  return Array.from(element.options).map(option => ({
+    value:    option.value,
+    label:    option.textContent?.trim() || option.label || option.value,
+    selected: option.selected,
+    disabled: option.disabled,
+  }));
+}
+
+function getFieldContext(element, label) {
+  const describedBy = (element.getAttribute('aria-describedby') || '')
+    .split(/\s+/)
+    .map(id => document.getElementById(id)?.textContent?.trim())
+    .filter(Boolean)
+    .join(' ');
+  if (describedBy) return truncateText(describedBy.replace(/\s+/g, ' '), 500);
+
+  const normalizedLabel = String(label || '').replace(/\s+/g, ' ').trim();
+  let container = element.parentElement;
+  let depth = 0;
+
+  while (container && container !== document.body && depth < 6) {
+    if (container.tagName === 'FORM') break;
+    const text = getReadableContainerText(container, {
+      removeFormControls: true,
+      maxLength: 800,
+    });
+    const isOnlyKnownLabel = normalizedLabel
+      && text.toLowerCase() === normalizedLabel.toLowerCase();
+
+    // Avoid sending an entire form section. A nearby, bounded container is
+    // useful for custom controls whose actual question is not a <label>.
+    if (text && !isOnlyKnownLabel && text.length <= 700) {
+      return truncateText(text, 500);
+    }
+
+    container = container.parentElement;
+    depth += 1;
+  }
+
+  return '';
+}
+
+function hasNonEmptyFieldValue(element) {
+  if (!element) return false;
+  const value = getCurrentFieldValue(element);
+  return Array.isArray(value)
+    ? value.length > 0
+    : value !== false && String(value).trim().length > 0;
+}
+
+function getSuggestionExplanation(field) {
+  const modeLabels = {
+    profile: 'Saved profile',
+    resume: 'Resume',
+    deterministic: 'Saved profile',
+    rule: 'Saved profile',
+    ai: 'AI answer',
+    generated: 'AI answer',
+    ai_generated: 'AI answer',
+  };
+  const mode = modeLabels[String(field.answerMode || '').toLowerCase()]
+    || cleanMetadata(field.answerMode);
+  const reason = cleanMetadata(field.reason);
+  const evidence = cleanMetadata(field.sourceEvidence);
+  const parts = [];
+
+  if (mode) parts.push(mode);
+  if (reason) parts.push(reason);
+  if (evidence && !reason.toLowerCase().includes(evidence.toLowerCase())) {
+    parts.push(`Evidence: ${evidence}`);
+  }
+
+  return truncateText(parts.join(' · ') || 'Matched from your saved profile', 180);
+}
+
+function cleanMetadata(value) {
+  if (value === null || value === undefined) return '';
+  if (Array.isArray(value)) {
+    return value.map(cleanMetadata).filter(Boolean).join('; ');
+  }
+  if (typeof value === 'object') {
+    const preferredValue = value.text || value.quote || value.value
+      || value.source || value.field || value.label;
+    if (preferredValue) return cleanMetadata(preferredValue);
+    try {
+      return JSON.stringify(value);
+    } catch (_) {
+      return '';
+    }
+  }
+  return String(value).replace(/\s+/g, ' ').trim();
+}
+
+function truncateText(value, maxLength) {
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+function getJobDescriptionContext() {
+  const selectors = [
+    '[data-testid*="job-description" i]',
+    '[id*="job-description" i]',
+    '[class*="job-description" i]',
+    '[id*="jobdescription" i]',
+    '[class*="jobdescription" i]',
+    '[data-testid*="description" i]',
+    'article',
+    'main',
+    '[role="main"]',
+  ];
+  const seen = new Set();
+  let best = { text: '', score: -1 };
+
+  selectors.forEach((selector, selectorIndex) => {
+    let matches = [];
+    try {
+      matches = Array.from(document.querySelectorAll(selector));
+    } catch (_) {
+      return;
+    }
+
+    matches.forEach(element => {
+      if (seen.has(element) || element.closest('#abp-panel')) return;
+      seen.add(element);
+      const text = getReadableContainerText(element, {
+        removeForms: true,
+        maxLength: 7000,
+      });
+      if (text.length < 120) return;
+
+      const keywordHits = (
+        text.match(/\b(responsibilit|qualification|requirement|experience|about (us|the role)|who you are|job description)\w*/gi)
+        || []
+      ).length;
+      const selectorPriority = (selectors.length - selectorIndex) * 500;
+      const score = selectorPriority + Math.min(text.length, 6000) + (keywordHits * 120);
+      if (score > best.score) best = { text, score };
+    });
+  });
+
+  return truncateText(best.text, 6000);
+}
+
+function getReadableContainerText(element, options = {}) {
+  const clone = element.cloneNode(true);
+  const removals = [
+    '#abp-panel',
+    '#abp-assistant',
+    'script',
+    'style',
+    'noscript',
+    'template',
+    'svg',
+  ];
+  if (options.removeForms) {
+    removals.push('form', 'nav', 'aside', 'footer');
+  } else if (options.removeFormControls) {
+    removals.push('input', 'textarea', 'select', 'button');
+  }
+  clone.querySelectorAll(removals.join(',')).forEach(node => node.remove());
+  clone.querySelectorAll('p,li,br,h1,h2,h3,h4,h5,h6,dt,dd,section,div')
+    .forEach(node => node.append(' '));
+
+  const text = (clone.textContent || '').replace(/\s+/g, ' ').trim();
+  return truncateText(text, options.maxLength || 1000);
 }
 
 // ── Rule-based fallback matching ──────────────────────────────────────────────

@@ -22,6 +22,8 @@ def profile_schema_error_response(error):
         "education", "work_experience", "certifications", "projects", "tools",
         "languages", "awards", "volunteer_experience", "publications",
         "courses", "interests", "additional_details", "years_of_experience",
+        "address_line1", "address_line2", "city", "state", "postal_code",
+        "country",
     )
     missing_column = (
         ("column" in message or "schema cache" in message)
@@ -30,9 +32,9 @@ def profile_schema_error_response(error):
     if missing_column:
         return jsonify({
             "error": (
-                "Supabase is missing the structured profile columns. "
-                "Run backend/migrations/002_structured_profile.sql in the "
-                "Supabase SQL Editor, then try saving again."
+                "Supabase is missing required profile columns. Run the pending "
+                "SQL files in backend/migrations in the Supabase SQL Editor, "
+                "then try saving again."
             ),
             "error_code": "profile_schema_migration_required",
         }), 503
@@ -70,7 +72,8 @@ def update_profile():
             db.create_profile(profile_data)
         
         allowed_fields = [
-            "full_name", "phone", "location", "job_titles", "skills",
+            "full_name", "phone", "location", "address_line1", "address_line2",
+            "city", "state", "postal_code", "country", "job_titles", "skills",
             "experience_level", "linkedin_url", "github_url", "portfolio_url", "summary",
             "education", "work_experience", "certifications", "projects", "tools",
             "languages", "awards", "volunteer_experience", "publications",
@@ -143,7 +146,11 @@ def parse_resume_for_profile():
                 profile = profile_data
             
             update_data = {"updated_at": datetime.utcnow().isoformat()}
-            for field in ['full_name', 'phone', 'location', 'summary', 'experience_level']:
+            for field in [
+                'full_name', 'phone', 'location', 'address_line1',
+                'address_line2', 'city', 'state', 'postal_code', 'country',
+                'summary', 'experience_level',
+            ]:
                 if parsed_data.get(field) and not profile.get(field):
                     update_data[field] = parsed_data[field]
             

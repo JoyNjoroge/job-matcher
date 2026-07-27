@@ -6,7 +6,7 @@ importScripts('config.js');
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 chrome.runtime.onInstalled.addListener(async () => {
-  console.log('[CandorApply] Extension installed v1.1');
+  console.log('[CandorApply] Extension installed v1.4');
   await syncAuthToken();
 });
 
@@ -178,10 +178,11 @@ async function fetchUserProfile() {
       name:          p.full_name        || u.full_name        || u.email?.split('@')[0] || 'User',
       email:         u.email            || '',
       phone:         p.phone            || '',
-      address:       p.address          || '',
-      city:          p.city             || p.location          || '',
+      address:       p.address_line1    || p.address || '',
+      address_line2: p.address_line2    || '',
+      city:          p.city             || '',
       state:         p.state            || '',
-      zip:           p.zip_code         || '',
+      zip:           p.postal_code      || p.zip_code || '',
       country:       p.country          || '',
       linkedin_url:  p.linkedin_url     || '',
       portfolio_url: p.portfolio_url    || '',
@@ -202,7 +203,7 @@ async function fetchUserProfile() {
       years_experience: p.years_of_experience ?? null,
       additional_details: p.additional_details || {},
       summary:       p.summary          || p.bio               || '',
-      job_title:     p.job_title        || p.headline          || '',
+      job_title:     p.job_title        || p.headline || p.job_titles?.[0] || '',
     };
 
     await chrome.storage.local.set({
